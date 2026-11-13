@@ -71,26 +71,36 @@ export async function writeLaunchOptions(appId: number, value: string): Promise<
 
 const OWN_LIMITERS = /(^|\s)(MANGOHUD_CONFIG|DXVK_FRAME_RATE)=/;
 
-/** Put `prefix` in front of %command% (adding %command% if missing). */
+/**
+ * Add `prefix` (environment settings) at the very start of the options.
+ * Settings have to come before any wrapper command - lsfg-vk's `~/lsfg`,
+ * `gamemoderun`, `mangohud` and the like - or the shell passes them to the
+ * wrapper as arguments. %command% is added when missing.
+ */
 export function addPrefix(options: string, prefix: string): { value: string; addedCommand: boolean } {
   const trimmed = options.trim();
   if (OWN_LIMITERS.test(trimmed)) {
     throw new Error(
-      "This game's launch options already set a frame limiter (MANGOHUD_CONFIG or DXVK_FRAME_RATE). Remove it there first.",
+      "This game's launch options already set a frame limiter (MANGOHUD_CONFIG or DXVK_FRAME_RATE, e.g. from lsfg-vk). Remove it there first.",
     );
   }
   if (trimmed.includes(COMMAND)) {
-    return { value: trimmed.replace(COMMAND, `${prefix} ${COMMAND}`), addedCommand: false };
+    return { value: `${prefix} ${trimmed}`, addedCommand: false };
   }
   // Without %command% the existing options are arguments for the game.
   return { value: `${prefix} ${COMMAND}${trimmed ? " " + trimmed : ""}`, addedCommand: true };
 }
 
-/** Undo addPrefix exactly, leaving anything else the user wrote. */
+/**
+ * Undo addPrefix: remove each setting it added (the first time it appears,
+ * wherever another tool moved it), leaving everything else as it was.
+ */
 export function removePrefix(options: string, prefix: string, addedCommand: boolean): string {
-  let value = options.trim();
-  const at = value.indexOf(`${prefix} `);
-  if (at >= 0) value = (value.slice(0, at) + value.slice(at + prefix.length + 1)).trim();
-  if (addedCommand && value.startsWith(COMMAND)) value = value.slice(COMMAND.length).trim();
-  return value;
+  const words = options.trim().split(/\s+/).filter(Boolean);
+  for (const token of prefix.split(/\s+/).filter(Boolean)) {
+    const at = words.indexOf(token);
+    if (at >= 0) words.splice(at, 1);
+  }
+  if (addedCommand && words[0] === COMMAND) words.shift();
+  return words.join(" ");
 }

@@ -104,8 +104,10 @@ rate**. The plugin then:
 
 - adds MangoHud's limiter with `fps_limit_method=early` to the game's launch
   options (the Linux counterpart of RTSS's async / front-edge limiter; games
-  without MangoHud's Vulkan layer fall back to DXVK's limiter). Your own
-  launch options are kept, and switching off removes exactly what was added.
+  without MangoHud's Vulkan layer fall back to DXVK's limiter). The settings
+  go at the very start, so wrappers you use (lsfg-vk's `~/lsfg`,
+  `gamemoderun`, ...) keep working; your own launch options are kept, and
+  switching off removes exactly what was added.
 - switches the screen to a refresh rate the cap divides evenly while the game
   runs (60 fps: 60 Hz, 72 fps: 144 Hz), with gamescope's own limiter left
   off, and hands the refresh rate back when the game closes.
@@ -115,7 +117,9 @@ rate**. The plugin then:
 Only caps that divide the screen's refresh rates are offered (Legion Go:
 30, 36, 48, 60, 72, 144). Restart the game after changing it. For the best
 result turn off Steam's Framerate limit and the game's own limiter and
-V-Sync for that game. Shader-compilation and loading stutter come from the
+V-Sync for that game. With **lsfg-vk frame generation** use lsfg-vk's own
+frame cap instead: Smooth mode refuses to add a second limiter when a game
+already has one. Shader-compilation and loading stutter come from the
 game and cannot be removed this way.
 
 ### Fan
