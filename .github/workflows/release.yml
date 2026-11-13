@@ -1,0 +1,36 @@
+name: Release
+
+# Push a tag like v2.5.0 to build the plugin and publish it as a release.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Backend tests
+        run: python3 -m unittest discover -s tests
+      - name: Build and package
+        run: bash scripts/package.sh
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release/legion-go-toolbox.zip \
+            docs/Legion-Go-Toolbox-Manual.pdf \
+            --title "LeGo Decky Toolbox $GITHUB_REF_NAME" \
+            --notes "Install: Decky → Developer → Install plugin from ZIP file → legion-go-toolbox.zip. The user manual is attached as a PDF."
