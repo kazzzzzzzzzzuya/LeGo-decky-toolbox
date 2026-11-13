@@ -1,9 +1,15 @@
 name: Release
 
-# Push a tag like v2.5.0 to build the plugin and publish it as a release.
+# Builds the plugin and publishes it as a GitHub release. Start it from the
+# Actions tab ("Run workflow", enter a version like v2.5.0) or push a tag.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version, e.g. v2.5.0"
+        required: true
 
 permissions:
   contents: write
@@ -30,7 +36,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" release/legion-go-toolbox.zip \
+          TAG="${{ inputs.version || github.ref_name }}"
+          gh release create "$TAG" release/legion-go-toolbox.zip \
             docs/Legion-Go-Toolbox-Manual.pdf \
-            --title "LeGo Decky Toolbox $GITHUB_REF_NAME" \
+            --target "$GITHUB_SHA" \
+            --title "LeGo Decky Toolbox $TAG" \
             --notes "Install: Decky → Developer → Install plugin from ZIP file → legion-go-toolbox.zip. The user manual is attached as a PDF."
