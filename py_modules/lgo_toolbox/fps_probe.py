@@ -97,6 +97,8 @@ class Connection(object):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self._buf = b""
         self._next_id = _CONTROL + 1
+        self._private = None          # (registry name, version) if offered
+        self._private_id = None
         try:
             self.sock.settimeout(timeout)
             self.sock.connect(path)
@@ -155,6 +157,8 @@ class Connection(object):
                     (gver,) = struct.unpack_from("<I", payload, off)
                     if iface == "gamescope_control":
                         name, version = gname, gver
+                    elif iface == "gamescope_private":
+                        self._private = (gname, gver)
                 elif obj == _SYNC and opcode == 0:        # wl_callback.done
                     done = True
                 elif obj == _DISPLAY and opcode == 0:     # wl_display.error
@@ -210,6 +214,21 @@ class Connection(object):
                     "vrr": bool(flags & DISPLAY_VRR), "rates": rates}
         return info
 
+    def set_convar(self, name, value):
+        """Set a gamescope setting through gamescope_private, the interface
+        gamescope's own gamescopectl uses."""
+        if self._private is None:
+            raise ProbeError("this gamescope offers no settings interface")
+        if self._private_id is None:
+            self._private_id = self._next_id
+            self._next_id += 1
+            gname, _ = self._private
+            self._send(_msg(_REGISTRY, 0, struct.pack("<I", gname) + _string("gamescope_private")
+                            + struct.pack("<II", 1, self._private_id)))
+        # gamescope_private.execute(cvar_name, value)
+        self._send(_msg(self._private_id, 1, _string(name) + _string(value)))
+        self.roundtrip()
+
     def set_refresh_cycle(self, fps, internal=True):
         """Switch the screen to the highest refresh rate that is a multiple
         of `fps`, without gamescope's own frame limiter (0 clears)."""
@@ -232,6 +251,13 @@ class Connection(object):
 
 
 ROTATE_S = 3.0   # no frame from one gamescope for this long: try the next one
+
+# With its default output timing, gamescope only answers frame-time requests
+# for games on its own display output. A game shown on a virtual display
+# (Steam Remote Play, Punktfunk and other streaming hosts) gets no answers.
+# Switched off, every frame a game delivers is reported, on any display.
+# Steam's performance overlay has its own path and is not affected.
+TIMING_CVAR = "mangoapp_use_output_timing"
 
 
 def candidate_ids(app_id):
@@ -259,6 +285,23 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
     left for the next one. ``note(text)`` receives why nothing is measured.
     """
     note = note or (lambda text: None)
+    switched = set()            # sockets whose timing setting we changed
+    try:
+        _measure(app_id, emit, stopped, socket_paths, window, clock, note, switched)
+    finally:
+        # Hand gamescope back its default.
+        for path in switched:
+            try:
+                conn = Connection(path)
+                try:
+                    conn.set_convar(TIMING_CVAR, "1")
+                finally:
+                    conn.close()
+            except (OSError, ProbeError):
+                pass
+
+
+def _measure(app_id, emit, stopped, socket_paths, window, clock, note, switched):
     turn = 0
     while not stopped():
         paths = socket_paths() if socket_paths else find_sockets()
@@ -308,6 +351,22 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
                     total = 0.0
                     worst = 0.0
                     window_end = clock() + window
+                if clock() - last_frame >= ROTATE_S and path not in switched:
+                    # Likely a virtual (streamed) display: ask gamescope to
+                    # report frames per game commit, then listen again.
+                    try:
+                        conn.set_convar(TIMING_CVAR, "0")
+                        switched.add(path)
+                        for i in ids:
+                            conn.request(i)
+                        note("switched %s to report every game frame (needed on streamed "
+                             "displays); waiting for frames" % os.path.basename(path))
+                    except (OSError, ProbeError) as e:
+                        switched.add(path)     # do not try again
+                        note("%s: could not switch frame reporting: %s"
+                             % (os.path.basename(path), e))
+                    last_frame = clock()
+                    continue
                 if clock() - last_frame >= ROTATE_S:
                     note("gamescope reports no frames for the game (ids %s) on %s%s" % (
                         "/".join(str(i) for i in ids), os.path.basename(path),
@@ -344,6 +403,10 @@ def main(argv):
     def stopped():
         # Stop when the plugin that started us is gone
         return os.getppid() != parent
+
+    # Terminating the probe must still restore gamescope's setting.
+    import signal
+    signal.signal(signal.SIGTERM, lambda *a: sys.exit(0))
 
     def note(text):
         sys.stdout.write("! %s\n" % text.replace("\n", " "))

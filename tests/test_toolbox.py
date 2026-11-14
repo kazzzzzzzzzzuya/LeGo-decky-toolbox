@@ -687,8 +687,13 @@ class AutoTdpSimulation(unittest.TestCase):
 class FakeGamescope(object):
     """A tiny Wayland server that implements what the probe uses."""
 
-    def __init__(self, path, version=7, with_control=True):
+    def __init__(self, path, version=7, with_control=True, streaming=False):
         self.path = path
+        # streaming: the game is on a virtual display, so frames are only
+        # reported once mangoapp_use_output_timing is 0 (like gamescope).
+        self.streaming = streaming
+        self.convars = {}
+        self.convar_log = []
         self.version = version
         self.with_control = with_control
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -727,7 +732,7 @@ class FakeGamescope(object):
                         body, buf = buf[8:size], buf[size:]
                         if obj == 1 and opcode == 1:            # get_registry
                             (registry,) = struct.unpack("<I", body)
-                            globs = [(1, "wl_compositor", 5)]
+                            globs = [(1, "wl_compositor", 5), (8, "gamescope_private", 1)]
                             if self.with_control:
                                 globs.append((7, "gamescope_control", self.version))
                             for name, iface, ver in globs:
@@ -736,6 +741,15 @@ class FakeGamescope(object):
                         elif obj == 1 and opcode == 0:          # sync
                             (cb,) = struct.unpack("<I", body)
                             self._send(cb, 0, struct.pack("<I", 0))
+                        elif obj == registry and opcode == 0 and \
+                                fps_probe._read_string(body, 4)[0] == "gamescope_private":
+                            _, off = fps_probe._read_string(body, 4)
+                            _, private = struct.unpack_from("<II", body, off)
+                        elif obj == locals().get("private") and opcode == 1:   # execute
+                            name, off = fps_probe._read_string(body, 0)
+                            value, _ = fps_probe._read_string(body, off)
+                            self.convars[name] = value
+                            self.convar_log.append((name, value))
                         elif obj == registry and opcode == 0:   # bind
                             (name,) = struct.unpack_from("<I", body)
                             iface, off = fps_probe._read_string(body, 4)
@@ -759,6 +773,8 @@ class FakeGamescope(object):
 
     def present(self, app, frametime_s, control=4):
         """The app showed a frame: answer whoever asked (like gamescope)."""
+        if self.streaming and self.convars.get("mangoapp_use_output_timing") != "0":
+            return 0
         with self.lock:
             n = self.pending.pop(app, 0)
         ns = int(frametime_s * 1e9)
@@ -838,6 +854,80 @@ class FpsProbe(TempDirCase):
         t.join(3.0)
         self.assertTrue(got and all(f is None and n == 0 for f, n in got))
         self.assertEqual(server.requests, len(fps_probe.candidate_ids(1)))  # once per id, never spammed
+
+    def test_streamed_display_switches_frame_reporting(self):
+        server, path = self._server(streaming=True)
+        orig = fps_probe.ROTATE_S
+        fps_probe.ROTATE_S = 0.4
+        self.addCleanup(setattr, fps_probe, "ROTATE_S", orig)
+        got, notes = [], []
+        stop = threading.Event()
+        t = threading.Thread(
+            target=fps_probe.measure,
+            args=(1293830, lambda f, n, *low: got.append(f), stop.is_set),
+            kwargs={"socket_paths": lambda: [path], "window": 0.2, "note": notes.append},
+            daemon=True)
+        t.start()
+        self.assertTrue(server.bound.wait(3.0))
+        end = time.monotonic() + 4.0
+        while time.monotonic() < end and not any(f for f in got if f):
+            server.present(1293830, 1 / 60.0)
+            time.sleep(0.005)
+        self.assertTrue(any(f and abs(f - 60.0) < 0.1 for f in got), got[-5:])
+        self.assertEqual(server.convar_log, [("mangoapp_use_output_timing", "0")])
+        self.assertTrue(any("streamed displays" in n for n in notes))
+        stop.set()
+        t.join(5.0)
+        self.assertFalse(t.is_alive())
+        # Measuring stopped: gamescope gets its default back
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline and len(server.convar_log) < 2:
+            time.sleep(0.02)
+        self.assertEqual(server.convar_log[-1], ("mangoapp_use_output_timing", "1"))
+
+    def test_probe_program_restores_setting_when_stopped(self):
+        import subprocess
+        import sys
+        server, path = self._server(streaming=True)
+        script = os.path.join(os.path.dirname(fps_probe.__file__), "fps_probe.py")
+        code = ("import sys; sys.argv=['fps_probe.py','77']\n"
+                "import importlib.util as u\n"
+                "spec=u.spec_from_file_location('p', %r); m=u.module_from_spec(spec)\n"
+                "spec.loader.exec_module(m)\n"
+                "m.ROTATE_S=0.4\n"
+                "m.find_sockets=lambda root='/run/user': [%r]\n"
+                "sys.exit(m.main(sys.argv))\n" % (script, path))
+        proc = subprocess.Popen([sys.executable, "-u", "-c", code], stdout=subprocess.PIPE)
+        self.addCleanup(proc.kill)
+        self.assertTrue(server.bound.wait(5.0))
+        end = time.monotonic() + 3.0
+        while time.monotonic() < end and ("mangoapp_use_output_timing", "0") not in server.convar_log:
+            time.sleep(0.02)
+        for _ in range(100):
+            server.present(77, 1 / 60.0)
+            time.sleep(0.005)
+        proc.terminate()                                # how the plugin stops it
+        out = proc.communicate(timeout=5)[0].decode()
+        self.assertIn("60.00", out)
+        self.assertEqual(server.convar_log[-1], ("mangoapp_use_output_timing", "1"))
+
+    def test_local_display_is_left_alone(self):
+        server, path = self._server()
+        got = []
+        stop = threading.Event()
+        t = threading.Thread(target=fps_probe.measure,
+                             args=(5, lambda f, n, *low: got.append(f), stop.is_set),
+                             kwargs={"socket_paths": lambda: [path], "window": 0.2}, daemon=True)
+        t.start()
+        self.assertTrue(server.bound.wait(3.0))
+        end = time.monotonic() + 1.0
+        while time.monotonic() < end:
+            server.present(5, 1 / 30.0)
+            time.sleep(0.005)
+        stop.set()
+        t.join(3.0)
+        self.assertTrue(any(f for f in got))
+        self.assertEqual(server.convar_log, [])          # setting never touched
 
     def test_candidate_ids(self):
         self.assertEqual(fps_probe.candidate_ids(1091500), [1091500, 0])

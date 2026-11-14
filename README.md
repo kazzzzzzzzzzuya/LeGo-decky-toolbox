@@ -213,6 +213,24 @@ controller.
 
 Press **Calibrate** once and leave the controllers alone for a few seconds.
 
+## With frame generation and upscalers
+
+- **HelixSR** (upscaling only): use Smooth mode and Auto TDP as usual; both
+  keep HelixSR's launch settings. Auto TDP settles at fewer watts.
+- **lsfg-vk 2.0 / Decky-Framegen** (frame generation): use **one** limiter,
+  on the game's own frames. Pick a final rate that suits the screen (60 at
+  60 Hz, 72 or 144 at 144 Hz) and cap the game at final ÷ multiplier
+  (2×: 30 for 60, 72 for 144; 3×: 48 for 144; 4×: 36 for 144).
+  - lsfg-vk: set the base cap in decky-lsfg-vk and leave Smooth mode off.
+  - Decky-Framegen: game / OptiScaler limit at the base rate, or Smooth
+    mode at the base rate. Apply Decky-Framegen first; if it re-applies
+    later, use *Add the cap again*.
+  - Steam: Refresh rate to the final rate where offered, Framerate limit
+    off. Auto TDP target = the **final** rate.
+- Not verified on a device yet: whether generated frames are counted the
+  same way by every tool. If Auto TDP misbehaves with frame generation,
+  set the watts by hand for that game.
+
 ## Troubleshooting
 
 - **A feature says "not available"** – the text under it gives the reason.
@@ -220,8 +238,10 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   plugin is installed.
 - **Auto TDP says "waiting for the game to draw frames"** – no game is in
   focus, or the game is paused. Otherwise the line shows why no frame rate
-  is measured. While streaming (Punktfunk and other hosts run their own
-  gamescope) the plugin looks for the gamescope the game draws on by itself.
+  is measured. While streaming (Steam Remote Play, Punktfunk) gamescope does
+  not report frame times by default; the plugin switches its frame
+  reporting (`mangoapp_use_output_timing`) while it measures and restores it
+  afterwards. Steam's performance overlay is not affected.
 - **Streaming shows a different frame rate than the device** – the stream
   runs at the client's refresh rate and repeats frames when the game is
   slower. The game's real frame rate is what the Power tab shows.
@@ -235,7 +255,7 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 
 ## Scope and limits
 
-- Used on a Legion Go (83E1), and verified with simulated hardware (137
+- Used on a Legion Go (83E1), and verified with simulated hardware (143
   automated tests). Every module reads the device state back after a change
   and reports it when a change did not take.
 - Legion Go 2 and Legion Go S are recognised for the parts that are known to
