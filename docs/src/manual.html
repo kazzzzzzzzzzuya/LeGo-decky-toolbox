@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.6.6</div>
+    <div class="kicker">User manual · Version 2.7.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -76,7 +76,7 @@
     <tr><th>Item</th><th>Details</th></tr>
     <tr><td class="k">Device</td><td>Lenovo Legion Go (model 83E1). Legion Go 2 and Legion Go S are recognised for the parts known to be identical (power limits, charge limit, power light); everything else stays off on those.</td></tr>
     <tr><td class="k">System</td><td>SteamOS with <a href="https://decky.xyz">Decky Loader</a> installed.</td></tr>
-    <tr><td class="k">For the fan curve only</td><td>The <code>acpi_call</code> kernel module (see chapter 6). Everything else works on a stock SteamOS.</td></tr>
+    <tr><td class="k">For the fan curve only</td><td>The <code>acpi_call</code> kernel module, which the Home tab can install (chapter 4). Everything else works on a stock SteamOS.</td></tr>
   </table>
 
   <h2>What each feature depends on</h2>
@@ -88,7 +88,7 @@
     <tr><td>Power modes and TDP</td><td>SteamOS has Lenovo's power-limit driver (current versions do)</td></tr>
     <tr><td>Auto TDP</td><td>The above, in Gaming Mode (the frame rate is read from the SteamOS compositor)</td></tr>
     <tr><td>Swapped menu buttons, gyro in Steam games</td><td>InputPlumber is running (it is on SteamOS)</td></tr>
-    <tr><td><b>Custom fan curve</b></td><td><b>The <code>acpi_call</code> module is installed - SteamOS does not include it</b></td></tr>
+    <tr><td><b>Custom fan curve</b></td><td><b>The <code>acpi_call</code> module - SteamOS does not include it; the Home tab installs it</b></td></tr>
   </table>
 
   <div class="warn"><b>One controller of each thing.</b> Two plugins steering the same hardware keep overwriting each other. Remove (or switch off) SimpleDeckyTDP, Legion Center, HueSync, DeckyPlumber and LegionGoRemapper before using the matching tab here. Also turn off Steam's own <i>TDP limit</i> in the Performance menu if you use the Power tab.</div>
@@ -146,10 +146,27 @@
   <h2>Overview</h2>
   <p>Five rows - Power, Fan, Lights, Buttons, Gyro - each show a one-line summary, for example <i>Custom · 12 W · auto · 60 fps</i>. If a module has a problem, its row shows that instead. Select a row to open its tab.</p>
 
+  <h2>This game</h2>
+  <p>Below the overview, a row with the running game's name opens and closes a summary of everything the plugin applies to that game: its power profile (with Auto TDP's target, the current watts and the watts it remembered), the Smooth frame rate with frame generation and screen rate, the fan setting in use, and the controller type Steam sees. Select a line to change it in its tab. Closed, the row shows the two most important lines.</p>
+
   <h2>Battery</h2>
-  <p>Shows the charge level and whether it is charging.</p>
+  <p>Shows the charge level, whether it is charging, the watts flowing out of (or into) the battery and the time left at that rate, for example <i>88% · Discharging · 21.4 W · about 1 h 50 min left</i>. This is where you see what Auto TDP saves.</p>
   <h3>Limit charge to 80 %</h3>
   <p>Turns on the battery's <i>Long Life</i> mode: charging stops at about 80 %. Worth it if the Legion Go spends a lot of time on the charger. The setting is stored in the firmware and survives reboots; turn it off before a long trip to get a full charge.</p>
+
+  <h2>Firmware access (acpi_call)</h2>
+  <p>Shown only while the <code>acpi_call</code> kernel module is missing. <b>Install acpi_call</b> builds it on the device and loads it; the custom fan curve and full speed work right after.</p>
+  <table>
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td class="k">What it needs</td><td>Internet, about 4 GB of free space on the internal drive during the build (freed afterwards), several minutes. The row shows the current step.</td></tr>
+    <tr><td class="k">What it changes</td><td>Nothing on SteamOS's system partition. The compiler and kernel headers are installed in a throw-away overlay that is deleted afterwards (the technique Legion Center uses); only the finished module is kept, in the plugin's data folder, and loaded when the plugin starts.</td></tr>
+    <tr><td class="k">After a SteamOS update</td><td>A new kernel needs a new build. The section comes back with <i>SteamOS was updated</i>; install once more.</td></tr>
+    <tr><td class="k">If it fails</td><td>The reason is shown; nothing is left behind. Most often: no internet, or SteamOS is not up to date (update, restart, try again).</td></tr>
+  </table>
+  <div class="note">The installer's steps are tested, but it has not been run on a Legion Go yet. A module that is already installed (Legion Center, Bazzite) is simply used.</div>
+
+  <h2>Backup</h2>
+  <p><b>Back up settings</b> writes every setting and profile of the plugin - power and fan profiles, Smooth caps, lights, buttons, controller types, gyro tuning - to <code>legion-go-toolbox-backup.json</code> in your home folder. <b>Restore from backup</b> (select twice) replaces the current settings with it and applies them. Copy the file to another Legion Go to carry your setup over. The gyro's calibration is not part of it: calibrate once after restoring.</p>
 
   <h2>About</h2>
   <p><b>Reset hardware settings</b> returns Power, Fan, Lights, Battery and Controls to their defaults (all off, Steam Deck controller, default swap layout). It does not touch the gyro's calibration and tuning - those have their own reset in the Gyro tab's advanced options.</p>
@@ -186,6 +203,7 @@
   <h3>How it decides</h3>
   <table>
     <tr><th>Situation</th><th>What Auto TDP does</th></tr>
+    <tr><td>A game starts that Auto TDP has run before</td><td>Starts at the watts it settled at last time for that game and target - one value on battery, one on the charger - instead of searching from the maximum. The Home tab and the <b>Now</b> line show it as <i>remembered</i></td></tr>
     <tr><td>Frame rate below 90 % of the target</td><td>Adds 3 W at once</td></tr>
     <tr><td>Frame rate between 90 and 97 % of the target</td><td>Adds 1 W</td></tr>
     <tr><td>Target held for 6 seconds</td><td>Tries 1 W less</td></tr>
@@ -236,7 +254,7 @@
 <section class="chapter">
   <h1><span class="chap-num">6</span>Fan</h1>
 
-  <div class="note"><b>Requirement.</b> The Legion Go only accepts a fan curve through a Lenovo firmware call, and Linux can make that call only with the <code>acpi_call</code> kernel module. SteamOS does not include it, and this plugin deliberately does not install kernel modules (that means modifying the read-only system after every SteamOS update). If the module is present - for example installed with Legion Center's <i>Install Fan Support</i>, or on Bazzite - the curve editor appears by itself. Without it the fan follows the firmware's own curve, which is safe.</div>
+  <div class="note"><b>Requirement.</b> The Legion Go only accepts a fan curve through a Lenovo firmware call, and Linux can make that call only with the <code>acpi_call</code> kernel module. SteamOS does not include it: use <b>Install acpi_call</b> in the Home tab (chapter 4). If the module is already present - installed with Legion Center's <i>Install Fan Support</i>, or on Bazzite - the curve editor appears by itself. Without it the fan follows the firmware's own curve, which is safe.</div>
 
   <h2>Custom fan curve</h2>
   <p>The firmware keeps control of the fan and of overheating protection; the plugin only changes the curve it follows. The firmware uses a custom curve only in the <i>Custom</i> power mode. If the Power tab has a firmware mode selected, the Fan tab says <i>Not in use right now</i>.</p>
@@ -457,12 +475,16 @@
   <div class="tip"><b>The cap must be reachable.</b> Frame generation only doubles what the game delivers: a 72 cap the game holds at 45 shows about 90, not 144. Choose a cap the game holds steadily - the <b>Now</b> line shows the shown frame rate.</div>
 
   <h2>Decky-Framegen</h2>
-  <p>OptiScaler generates frames inside the game, so they pass the same limiter and a Smooth cap would cap the final rate. Not verified on a device yet; the safe setup:</p>
+  <p>OptiScaler generates frames inside the game, so the plugin cannot see whether frame generation is switched on. It does see Decky-Framegen's wrapper in the game's launch options and says so under <b>Frame generation</b>.</p>
   <ol class="steps">
-    <li>Keep Smooth mode <i>off</i> for the game, and cap the base rate with the game's or OptiScaler's own frame limit.</li>
-    <li>Turn on Auto TDP with the <b>final</b> rate as target (for example 60 with 30 × 2).</li>
+    <li>Choose the game's cap under <b>Smooth frame rate</b>, for example <i>60</i>.</li>
+    <li>When you turn frame generation on in the game's own settings, set <b>Frame generation</b> to <b>2×</b>. The cap then counts the frames on screen (120), the game makes 60, and Auto TDP aims at 120.</li>
+    <li>Set it back to <i>Off</i> when you turn frame generation off in the game; otherwise the game would run uncapped up to 120.</li>
   </ol>
-  <div class="note">If a game with a Smooth cap and <b>Frame generation</b> off shows far more frames than the cap, the plugin notices, says <i>Frame generation detected</i> and aims Auto TDP at the target instead.</div>
+  <div class="note">Not verified on a device yet. Using only Decky-Framegen's FSR 4 upscaling with lsfg-vk for frame generation needs none of this: leave Frame generation on Auto.</div>
+
+  <h2>External screens with variable refresh</h2>
+  <p>On a screen with VRR the cap is held just below its top rate - 116 on 120 Hz, 138 on 144 Hz - so variable refresh stays active, and Auto TDP aims at that number. The Legion Go's own screen has no VRR, so nothing changes there.</p>
 </section>
 
 <!-- ============================== 11 ============================== -->
@@ -476,7 +498,7 @@
     <tr><td>Auto TDP says "waiting for the game to draw frames"</td><td>No game is in focus, it is paused, or you are in Desktop Mode. Otherwise the line names the reason. While streaming (Steam Remote Play, Punktfunk) gamescope does not report frame times by default; the plugin switches its frame reporting for as long as it measures and puts it back afterwards.</td></tr>
     <tr><td>Stream shows another frame rate than the device</td><td>The stream runs at the client's refresh rate and repeats frames when the game is slower. The game's real frame rate is the one in the Power tab.</td></tr>
     <tr><td>Fan full speed or curve switches itself off</td><td>The firmware drops them when the power mode changes. The plugin restores them within about 5 seconds; the Fan tab's <i>Kept on</i> line shows when it did.</td></tr>
-    <tr><td>No fan curve editor</td><td>The <code>acpi_call</code> module is missing (chapter 6).</td></tr>
+    <tr><td>No fan curve editor</td><td>The <code>acpi_call</code> module is missing: Home tab → Install acpi_call (chapter 4).</td></tr>
     <tr><td>Stick lights or remapping: "controllers not found"</td><td>Wake the controllers by pressing a button, then change the setting again.</td></tr>
     <tr><td>Menu buttons back to normal</td><td>InputPlumber restarted; the swap is re-applied within a few seconds.</td></tr>
     <tr><td>No gyro option in Steam's controller settings</td><td>Gyro tab → the type for <i>All games</i> (or for that game) must not be <i>Xbox controller</i>. Restart the game after changing it.</td></tr>
@@ -499,6 +521,9 @@
     <tr><th>What</th><th>Where</th></tr>
     <tr><td>Hardware settings</td><td><code>~/homebrew/settings/Legion Go Toolbox/toolbox.json</code></td></tr>
     <tr><td>Gyro settings and calibration</td><td><code>~/homebrew/settings/Legion Go Toolbox/gyro.json</code></td></tr>
+    <tr><td>Settings backup</td><td><code>~/legion-go-toolbox-backup.json</code></td></tr>
+    <tr><td>Smooth mode's cap files</td><td><code>~/.config/lgo-toolbox/smooth/</code></td></tr>
+    <tr><td>acpi_call module built on the device</td><td><code>~/homebrew/settings/Legion Go Toolbox/acpi_call/</code></td></tr>
     <tr><td>Logs</td><td><code>~/homebrew/logs/Legion Go Toolbox/</code></td></tr>
   </table>
 
@@ -522,7 +547,7 @@
   </table>
 
   <h2>Testing status</h2>
-  <p>Besides use on a Legion Go (83E1), every module is covered by automated tests with simulated hardware (154 tests), and every module reads the hardware back after a change and reports it when a change did not take.</p>
+  <p>Besides use on a Legion Go (83E1), every module is covered by automated tests with simulated hardware (161 tests), and every module reads the hardware back after a change and reports it when a change did not take.</p>
 
   <h2>Credits</h2>
   <p class="muted">Legion Go Toolbox is its own code, built on what these projects worked out about the hardware: Handheld Daemon and hwinfo (controller protocol, Lenovo firmware methods and fan minimum), Legion Center and LegionGoRemapper (remapping, fan table, charge limit), HueSync (power light), SimpleDeckyTDP (power limits), DeckyPlumber and InputPlumber (menu-button swap), Panel de Control (frame times from gamescope), decky-lsfg-vk (tabs) and Legion Go 2 Companion (overview layout).</p>

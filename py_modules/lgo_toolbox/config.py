@@ -54,6 +54,9 @@ def defaults():
             "per_game": False,
             "cpu_boost": None,
             "profiles": {"default": dict(POWER_PROFILE_DEFAULT)},
+            # Auto TDP's last stable watts per game: {"<appid>" or "<appid>:ac":
+            # {"tdp", "target"}} - where the next session starts.
+            "learned": {},
         },
         # Smooth mode per game: {appid: {"fps", "fg", "name", "prefix", "added_command"}}
         # "fps" is the game's own cap; "fg" the frame-generation multiplier
@@ -198,6 +201,18 @@ def sanitize(data):
                 if key != "default" and isinstance(key, str) and key.isdigit() and len(key) <= 12:
                     d["profiles"][key] = sanitize_profile(value, d["profiles"]["default"])
 
+        learned = p.get("learned")
+        if isinstance(learned, dict):
+            for key, v in list(learned.items())[:1000]:
+                if not (_fan_key_ok(key) and key.partition(":")[0] != "default"
+                        and isinstance(v, dict)):
+                    continue
+                tdp, target = v.get("tdp"), v.get("target")
+                if any(isinstance(x, bool) or not isinstance(x, int) for x in (tdp, target)):
+                    continue
+                if TDP_ABS_MIN <= tdp <= TDP_ABS_MAX and 15 <= target <= 1000:
+                    d["learned"][key] = {"tdp": tdp, "target": target}
+
     sm = data.get("smooth")
     if isinstance(sm, dict) and isinstance(sm.get("games"), dict):
         for key, v in list(sm["games"].items())[:500]:
@@ -217,6 +232,9 @@ def sanitize(data):
                 "fps": fps, "prefix": prefix,
                 "fg": fg if fg in FG_MULTIPLIERS and not isinstance(fg, bool) else FG_AUTO,
                 "added_command": _flag(v.get("added_command"), False),
+                # Decky-Framegen (OptiScaler) is set up for the game: its
+                # generated frames pass MangoHud's limiter.
+                "fgmod": _flag(v.get("fgmod"), False),
                 "name": name[:120] if isinstance(name, str) else "",
             }
 

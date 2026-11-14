@@ -1,0 +1,4 @@
+acpi_call kernel module, unmodified, from https://github.com/nix-community/acpi_call
+(commit 6ad1e67, version 1.2.2). Licensed under the GNU GPL v3, see LICENSE.
+It is built on the device by the "Install acpi_call" action; the plugin itself
+is a separate work under its own license.

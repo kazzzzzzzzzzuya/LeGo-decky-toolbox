@@ -16,6 +16,9 @@ import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 const OFF = 0;
 const FG_AUTO = 0;
 const FG_CHOICES = [FG_AUTO, 1, 2, 3, 4];
+// Decky-Framegen's wrapper in the launch options: OptiScaler is set up, and
+// frame generation switched on in the game is made inside the game.
+const FGMOD_RE = /(^|[\s/])fgmod(\s|$)/;
 // The same caps as Auto TDP's target list.
 const CAPS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
@@ -42,12 +45,24 @@ export const SmoothSection: FC = () => {
     setWiped(false);
     if (app0 == null || !entry0) return;
     readLaunchOptions(app0)
-      .then((o) => alive && setWiped(!hasPrefix(o, entry0.prefix)))
+      .then((o) => {
+        if (!alive) return;
+        setWiped(!hasPrefix(o, entry0.prefix));
+        // Decky-Framegen added or removed since the cap was set: tell the backend.
+        const fgmod = FGMOD_RE.test(o);
+        if (fgmod !== !!entry0.fgmod && !working.current) {
+          void setSmoothGame(
+            app0, entry0.fps, entry0.name, entry0.prefix, entry0.added_command, entry0.fg, fgmod,
+          )
+            .then(replaceSettings)
+            .catch(() => undefined);
+        }
+      })
       .catch(() => undefined);
     return () => {
       alive = false;
     };
-  }, [app0, entry0?.prefix, busy]);
+  }, [app0, entry0?.prefix, entry0?.fgmod, busy]);
   // Caps set before 2.6.4 sit in the launch options as a fixed number.
   // Move them once to the live cap file, so cap changes and frame
   // generation apply while the game runs.
@@ -79,23 +94,24 @@ export const SmoothSection: FC = () => {
       const original = await readLaunchOptions(appId);
       let options = entry ? removePrefix(original, entry.prefix, entry.added_command) : original;
       let now = false;
+      const fgmod = FGMOD_RE.test(original);
       if (fps === OFF) {
         await writeLaunchOptions(appId, options);
-        replaceSettings(await setSmoothGame(appId, null, name, "", false, FG_AUTO));
+        replaceSettings(await setSmoothGame(appId, null, name, "", false, FG_AUTO, false));
       } else {
         const plan = await smoothPlan(fps, appId);
         if (entry && plan.live && entry.prefix === plan.prefix && hasPrefix(original, plan.prefix)) {
           // Live cap file: the launch options stay as they are.
           now = true;
           replaceSettings(
-            await setSmoothGame(appId, fps, name, plan.prefix, entry.added_command, fg),
+            await setSmoothGame(appId, fps, name, plan.prefix, entry.added_command, fg, fgmod),
           );
         } else {
           const next = addPrefix(options, plan.prefix);
           options = next.value;
           await writeLaunchOptions(appId, options);
           replaceSettings(
-            await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand, fg),
+            await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand, fg, fgmod),
           );
         }
       }
@@ -130,7 +146,9 @@ export const SmoothSection: FC = () => {
     setProblem(null);
     try {
       replaceSettings(
-        await setSmoothGame(appId, entry.fps, name, entry.prefix, entry.added_command, fg),
+        await setSmoothGame(
+          appId, entry.fps, name, entry.prefix, entry.added_command, fg, !!entry.fgmod,
+        ),
       );
       toaster.toast({
         title: PLUGIN_NAME,
@@ -178,7 +196,12 @@ export const SmoothSection: FC = () => {
     // More frames than the screen can show: they are dropped, not seen.
     if (rates.length && !vrr && out > Math.max(...rates))
       return `${name} · above the screen's ${Math.max(...rates)} Hz`;
-    if (vrr) return `${name} · VRR`;
+    if (vrr) {
+      // On a variable-refresh screen the cap stays just below its top rate.
+      const top = rates.length ? Math.max(...rates) : 0;
+      const keep = top ? Math.floor(top - (top * top) / 3600) : 0;
+      return keep && out > keep ? `${name} · VRR, held at ${keep}` : `${name} · VRR`;
+    }
     // Not divisible: the screen goes to its highest rate (as even as it gets).
     return rates.length ? `${name} · screen ${Math.max(...rates)} Hz, uneven` : name;
   };
@@ -197,6 +220,11 @@ export const SmoothSection: FC = () => {
   const fgDescription = (): string => {
     if (!current) return "";
     if (lsfg?.error) return `Could not read lsfg-vk's settings (${lsfg.error}). Pick the multiplier by hand.`;
+    const viaGame = !!current.fgmod && lsfgMult <= 1;
+    if (viaGame && fgSetting <= 1)
+      return "Decky-Framegen is set up for this game. If its frame generation is switched on in the game's settings, choose 2× here: the plugin cannot see that switch, and the cap would otherwise halve the game's own frame rate.";
+    if (viaGame)
+      return `Decky-Framegen: the game makes ${current.fps} fps, its frame generation shows ${out}. Auto TDP aims at ${out}. Set this back to Off when you turn frame generation off in the game.`;
     if (fgSetting === FG_AUTO) {
       if (!lsfg?.installed) return "Follows lsfg-vk's setting for this game once lsfg-vk is installed. Nothing to do without frame generation.";
       if (lsfgMult > 1)

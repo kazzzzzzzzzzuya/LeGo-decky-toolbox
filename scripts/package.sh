@@ -16,7 +16,9 @@ files = ["plugin.json", "package.json", "main.py", "LICENSE", "README.md",
 for base, _, names in os.walk("py_modules"):
     if "__pycache__" in base:
         continue
-    files += [os.path.join(base, n) for n in sorted(names) if n.endswith(".py")]
+    # acpi_call_src: the kernel module's source, built on the device.
+    files += [os.path.join(base, n) for n in sorted(names)
+              if n.endswith(".py") or os.path.basename(base) == "acpi_call_src"]
 
 os.makedirs("release", exist_ok=True)
 target = os.path.join("release", "legion-go-toolbox.zip")

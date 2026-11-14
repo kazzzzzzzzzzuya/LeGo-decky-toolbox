@@ -114,9 +114,36 @@ def battery_info(root=POWER_SUPPLY):
         cap = sysio.read_int(os.path.join(base, "capacity"))
         if cap is None:
             continue
-        return {"percent": cap,
+        info = {"percent": cap,
                 "status": sysio.read_text(os.path.join(base, "status"), "")}
+        info.update(_flow(base, info["status"]))
+        return info
     return None
+
+
+def _flow(base, status):
+    """Watts going in or out of the battery and the time that leaves:
+    {"watts", "minutes"} (None where the battery does not say)."""
+    def micro(name):
+        v = sysio.read_int(os.path.join(base, name))
+        return None if v is None else abs(v) / 1e6
+
+    watts = micro("power_now")
+    volts = micro("voltage_now")
+    if watts is None and volts is not None and micro("current_now") is not None:
+        watts = micro("current_now") * volts
+    now, full = micro("energy_now"), micro("energy_full")
+    if now is None and volts is not None and micro("charge_now") is not None:
+        now = micro("charge_now") * volts
+        full = micro("charge_full") * volts if micro("charge_full") is not None else None
+    minutes = None
+    if watts and watts >= 0.5 and now is not None:
+        if status == "Discharging":
+            minutes = now / watts * 60.0
+        elif status == "Charging" and full is not None and full > now:
+            minutes = (full - now) / watts * 60.0
+    return {"watts": round(watts, 1) if watts is not None else None,
+            "minutes": int(round(minutes)) if minutes is not None and minutes < 6000 else None}
 
 
 def on_external_power(root=POWER_SUPPLY):

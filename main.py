@@ -12,11 +12,13 @@ if _MODULES not in sys.path:
     sys.path.insert(0, _MODULES)
 
 from lgo_gyro.service import GyroService  # noqa: E402
-from lgo_toolbox import __version__  # noqa: E402
+from lgo_toolbox import __version__, backup  # noqa: E402
 from lgo_toolbox.hub import Hub  # noqa: E402
 
 GYRO_SETTINGS = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "gyro.json")
 HUB_SETTINGS = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "toolbox.json")
+BACKUP_FILE = os.path.join(getattr(decky, "DECKY_USER_HOME", None) or os.path.expanduser("~"),
+                           "legion-go-toolbox-backup.json")
 
 
 async def _bg(fn, *args):
@@ -126,10 +128,35 @@ class Plugin:
         return await _bg(Plugin._hub().smooth_plan, int(fps),
                          None if app_id is None else int(app_id))
 
-    async def set_smooth_game(self, app_id, fps, name, prefix, added_command, fg=0):
+    async def set_smooth_game(self, app_id, fps, name, prefix, added_command, fg=0,
+                              fgmod=False):
         return await _bg(Plugin._hub().set_smooth_game, app_id,
                          None if fps is None else int(fps), name, prefix, added_command,
-                         int(fg) if fg in (0, 1, 2, 3, 4) else 0)
+                         int(fg) if fg in (0, 1, 2, 3, 4) else 0, bool(fgmod))
+
+    async def acpi_install_start(self):
+        return await _bg(Plugin._hub().acpi_install_start)
+
+    # ---- backup ------------------------------------------------------------
+    async def backup_info(self):
+        return await _bg(backup.info, BACKUP_FILE)
+
+    async def backup_settings(self):
+        hub, gyro = Plugin._hub(), Plugin._gyro()
+        return await _bg(backup.save, BACKUP_FILE, __version__,
+                         hub.get_settings(), gyro.get_settings())
+
+    async def restore_settings(self):
+        """Returns {"ok", "error", "settings", "gyro"}."""
+        data = await _bg(backup.load, BACKUP_FILE)
+        if data.get("error"):
+            return {"ok": False, "error": data["error"]}
+        hub, gyro = Plugin._hub(), Plugin._gyro()
+        settings = await _bg(hub.restore, data["toolbox"])
+        if isinstance(data.get("gyro"), dict):
+            gyro.update_settings(data["gyro"])
+        return {"ok": True, "error": None, "settings": settings,
+                "gyro": gyro.get_settings()}
 
     async def delete_fan_profile(self, key):
         return await _bg(Plugin._hub().delete_fan_profile, str(key))

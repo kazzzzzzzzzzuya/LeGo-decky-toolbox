@@ -43,7 +43,14 @@ export interface Settings {
     /** fps: the game's own cap; fg: frame generation (0 = follow lsfg-vk, 1 = none, 2-4 fixed). */
     games: Record<
       string,
-      { fps: number; fg: number; name: string; prefix: string; added_command: boolean }
+      {
+        fps: number;
+        fg: number;
+        name: string;
+        prefix: string;
+        added_command: boolean;
+        fgmod?: boolean;
+      }
     >;
   };
   fan: {
@@ -58,6 +65,7 @@ export interface Settings {
     per_game: boolean;
     cpu_boost: boolean | null;
     profiles: Record<string, PowerProfile>;
+    learned?: Record<string, { tdp: number; target: number }>;
   };
   controls: {
     swap_menu: boolean;
@@ -102,6 +110,17 @@ export interface HubStatus {
   model: string;
   errors: Record<string, string>;
   app: { id: number | null; name: string };
+  /** The acpi_call kernel module and its on-device build (null: not a Legion Go). */
+  acpi: {
+    available: boolean;
+    built: boolean;
+    kernel_changed: boolean;
+    running: boolean;
+    done: boolean;
+    step: string | null;
+    error: string | null;
+    log: string[];
+  } | null;
   steam_controller: { type: string; source: "game" | "default" };
   smooth: {
     fps: number | null;
@@ -109,6 +128,10 @@ export interface HubStatus {
      *  follow lsfg-vk), lsfg-vk's own settings, and the frames on screen. */
     fg: number;
     fg_setting: number;
+    /** Decky-Framegen (OptiScaler) is set up for the game. */
+    fgmod: boolean;
+    /** Frames on screen after a variable-refresh screen's cap. */
+    shown: number | null;
     lsfg: LsfgInfo | null;
     output: number | null;
     refresh: number | null;
@@ -132,6 +155,8 @@ export interface HubStatus {
       low: number | null;
       target: number | null;
       frame_gen?: boolean;
+      /** Watts Auto TDP settled at for this game before (this power source). */
+      learned: number | null;
       probe_error: string | null;
     };
   };
@@ -146,7 +171,12 @@ export interface HubStatus {
     on_ac: boolean;
   };
   battery: {
-    info: { percent: number; status: string } | null;
+    info: {
+      percent: number;
+      status: string;
+      watts: number | null;
+      minutes: number | null;
+    } | null;
     charge_limit: boolean | null;
     backend: string | null;
   };
@@ -193,9 +223,24 @@ export const setSmoothGame = callable<
     prefix: string,
     addedCommand: boolean,
     fg: number,
+    fgmod: boolean,
   ],
   Settings
 >("set_smooth_game");
+export const acpiInstallStart = callable<[], boolean>("acpi_install_start");
+export interface BackupInfo {
+  path: string;
+  exists: boolean;
+  saved_at: string | null;
+  version: string | null;
+  error?: string | null;
+}
+export const backupInfo = callable<[], BackupInfo>("backup_info");
+export const backupSettings = callable<[], BackupInfo>("backup_settings");
+export const restoreSettings = callable<
+  [],
+  { ok: boolean; error: string | null; settings?: Settings; gyro?: GyroSettings }
+>("restore_settings");
 export const deleteFanProfile = callable<[key: string], Settings>("delete_fan_profile");
 export const setGameController = callable<
   [appId: number, kind: string | null, name: string],

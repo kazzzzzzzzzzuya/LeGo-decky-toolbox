@@ -48,16 +48,21 @@ controller reconnects, also while the menu is closed.
 | TDP and power modes | SteamOS has the Lenovo power-limit driver (current versions do) |
 | Auto TDP | The above, in Gaming Mode (the frame rate comes from gamescope) |
 | Swapped menu buttons, gyro in Steam games | InputPlumber is running (it is on SteamOS) |
-| **Fan curve** | **The `acpi_call` kernel module is installed. SteamOS does not include it** |
+| **Fan curve** | **The `acpi_call` kernel module. SteamOS does not include it; the Home tab installs it** |
 
 **About the fan curve.** The Legion Go only accepts a fan table through a
 Lenovo firmware call, and Linux can only make that call with the `acpi_call`
-module. Installing a kernel module on SteamOS means changing the read-only
-system and repeating that after every system update, so this plugin
-deliberately does not do it for you. If the module is present (for example
-installed with Legion Center's *Install Fan Support*, or on Bazzite), the
-curve editor appears by itself. Without it the fan follows the firmware's own
-curve, which is safe.
+module. When it is missing, the Home tab shows **Install acpi_call**: the
+plugin builds the module on the device (internet, about 4 GB of free space
+during the build, several minutes) and loads it. The build happens in a
+throw-away overlay, the same technique Legion Center uses, but nothing is
+written to SteamOS's system partition: the finished module is kept in the
+plugin's data folder and loaded at start. After a SteamOS update that brings
+a new kernel the Home tab asks you to build it once more. A module that is
+already present (Legion Center's *Install Fan Support*, Bazzite) is used as
+it is. Without the module the fan follows the firmware's own curve, which is
+safe. The installer's mechanics are tested, but it has not been run on a
+Legion Go yet.
 
 ## Installation
 
@@ -86,7 +91,9 @@ curve, which is safe.
   - adds power immediately when the frame rate drops below the target,
   - tries one watt less whenever the target has been held for a few seconds,
   - remembers settings that turned out too low, so it settles instead of
-    bouncing.
+    bouncing,
+  - remembers the watts each game settled at, separately for battery and
+    charger, and starts there next time instead of searching again.
 
   *Maximum TDP* and *Minimum TDP* are the limits it stays within. It works
   best with a frame limit (in the game or Steam) equal to the target. In
@@ -246,13 +253,16 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
      60 × 2 = 120 and 45 × 2 = 90 run at 144 Hz there, marked *uneven*; even on a
      120 Hz monitor (for example when streaming).
-- **Decky-Framegen** (OptiScaler frame generation inside the game): its
-  generated frames pass the same limiter, so a Smooth cap would cap the
-  final rate. Not verified on a device yet; the safe setup is Smooth mode
-  off, the base rate capped with the game's or OptiScaler's own limit, and
-  Auto TDP with the **final** rate as target. If a game with a Smooth cap
-  shows far more frames than the cap without Frame generation set, the
-  plugin detects it and aims Auto TDP at the target instead.
+- **Decky-Framegen** (OptiScaler frame generation inside the game): the
+  plugin sees its wrapper in the game's launch options and says so under
+  **Frame generation**. Its frames are made inside the game, so the plugin
+  cannot see whether frame generation is switched on there: when you turn it
+  on in the game's settings, choose **2×** under Frame generation. The cap
+  then counts the frames on screen (60 → 120) and Auto TDP aims at them. Not
+  verified on a device yet.
+- **External screens with variable refresh (VRR)**: the cap is held just
+  below the screen's top rate (116 on 120 Hz, 138 on 144 Hz) so VRR stays
+  active. The Legion Go's own screen has no VRR.
 
 ## Troubleshooting
 
@@ -278,7 +288,7 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 
 ## Scope and limits
 
-- Used on a Legion Go (83E1), and verified with simulated hardware (144
+- Used on a Legion Go (83E1), and verified with simulated hardware (161
   automated tests). Every module reads the device state back after a change
   and reports it when a change did not take.
 - Legion Go 2 and Legion Go S are recognised for the parts that are known to

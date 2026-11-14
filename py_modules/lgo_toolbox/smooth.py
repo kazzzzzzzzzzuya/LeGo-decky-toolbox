@@ -168,6 +168,13 @@ def screen_rate(fps, rates, vrr=False):
     return max(rates)
 
 
+def vrr_cap(rates):
+    """Highest frame rate that keeps variable refresh active: a little below
+    the screen's top rate (120 Hz: 116, 144 Hz: 138), the usual rule."""
+    top = max(rates) if rates else 0
+    return int(top - top * top / 3600.0) if top else 0
+
+
 def refresh_request(fps, rates, vrr=False):
     """What to ask gamescope for. gamescope picks the highest rate that is a
     multiple of the request; a request no rate is a multiple of is left to

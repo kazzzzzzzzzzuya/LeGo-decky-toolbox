@@ -16,6 +16,7 @@ from lgo_toolbox import acpi, battery, config as cfg, controller, fan, fps_probe
 from lgo_toolbox import plumber, power, powerled
 from lgo_toolbox import smooth as smoothmod
 from lgo_toolbox import lsfg as lsfgmod
+from lgo_toolbox import acpi_install, backup
 from lgo_toolbox.hub import Hub
 
 DEFAULT_PROFILE_YAML = """# comment
@@ -169,7 +170,31 @@ class Battery(TempDirCase):
         self.assertTrue(after["enabled"] and after["error"] is None)
         self.assertEqual(limit.set(False)["enabled"], False)
         self.assertEqual(battery.battery_info(self.tmp),
-                         {"percent": 77, "status": "Discharging"})
+                         {"percent": 77, "status": "Discharging", "watts": None,
+                          "minutes": None})
+
+    def test_watts_and_time_left(self):
+        self._supply("[Standard] Long_Life\n")
+        bat = os.path.join(self.tmp, "BAT0")
+        for name, value in (("power_now", 20000000), ("energy_now", 30000000),
+                            ("energy_full", 50000000)):
+            write(os.path.join(bat, name), "%d\n" % value)
+        info = battery.battery_info(self.tmp)
+        self.assertEqual((info["watts"], info["minutes"]), (20.0, 90))     # 30 Wh / 20 W
+        write(os.path.join(bat, "status"), "Charging\n")
+        self.assertEqual(battery.battery_info(self.tmp)["minutes"], 60)    # 20 Wh to go
+        # Batteries that report current and charge instead
+        os.remove(os.path.join(bat, "power_now"))
+        os.remove(os.path.join(bat, "energy_now"))
+        os.remove(os.path.join(bat, "energy_full"))
+        for name, value in (("current_now", -2000000), ("voltage_now", 10000000),
+                            ("charge_now", 1000000), ("charge_full", 4000000)):
+            write(os.path.join(bat, name), "%d\n" % value)
+        write(os.path.join(bat, "status"), "Discharging\n")
+        info = battery.battery_info(self.tmp)
+        self.assertEqual((info["watts"], info["minutes"]), (20.0, 30))
+        write(os.path.join(bat, "status"), "Full\n")
+        self.assertIsNone(battery.battery_info(self.tmp)["minutes"])
 
     def test_write_that_does_not_stick_is_reported(self):
         self._supply("[Standard] Long_Life\n")
@@ -1128,7 +1153,7 @@ class SmoothMode(TempDirCase):
             "11": {"fps": 5, "prefix": "x"}, "12": {"fps": 60}, "x": {"fps": 60, "prefix": "y"}}}})
         self.assertEqual(d["smooth"]["games"], {"10": {
             "fps": 60, "prefix": "DXVK_FRAME_RATE=60", "added_command": False, "name": "G",
-            "fg": 0}})
+            "fg": 0, "fgmod": False}})
         # Frame generation: 0 follows lsfg-vk (default), 1 none, 2-4 fixed
         for fg, want in ((2, 2), (4, 4), (1, 1), (0, 0), (5, 0), (True, 0), ("2", 0), (None, 0)):
             d = cfg.sanitize({"version": 3, "smooth": {"games": {
@@ -1823,6 +1848,99 @@ class HubTests(TempDirCase):
                          smoothmod.launch_prefix(60, "MANGOHUD"))       # no spaces in a prefix
         self.assertFalse(smoothmod.write_conf("/proc/nope/x.conf", 60))
 
+    def test_auto_tdp_remembers_the_games_watts(self):
+        fps = self.mods["fps"]
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 60, "tdp": 30, "min_tdp": 8}}}})
+        self.hub.set_running_app(10, "Game")
+        self.assertEqual(self.hub._auto.tdp, 30)              # nothing known: from the top
+        auto = self.hub._auto
+        auto.tdp, auto.state = 16, "optimal"
+        fps.value = 60.0
+        self.hub._remember(auto)
+        self.assertEqual(self.hub.get_settings()["power"]["learned"],
+                         {"10": {"tdp": 16, "target": 60}})
+        auto.state = "raising"                                # only settled values count
+        auto.tdp = 20
+        self.hub._remember(auto)
+        self.assertEqual(self.hub.settings["power"]["learned"]["10"]["tdp"], 16)
+        # Next session starts there; another game or target does not
+        self.hub.set_running_app(None, "")
+        self.hub.set_running_app(10, "Game")
+        self.assertEqual(self.hub._auto.tdp, 16)
+        self.assertEqual(self.hub.status()["power"]["auto"]["learned"], 16)
+        self.hub.set_running_app(11, "Other")
+        self.assertEqual(self.hub._auto.tdp, 30)
+        self.hub.set_running_app(10, "Game")
+        self.hub.update({"power": {"profiles": {"default": {"target_fps": 45}}}})
+        self.assertIsNone(self.hub.status()["power"]["auto"]["learned"])
+        # The charger has its own value, taken over when plugged in
+        self.hub.update({"power": {"profiles": {"default": {"target_fps": 60}}}})
+        self.hub.update({"power": {"learned": {"10:ac": {"tdp": 25, "target": 60}}}})
+        self.ac = True
+        self.hub._tick(9000.0)
+        self.assertEqual(self.hub._auto.tdp, 25)
+        # Survives a sanitize round trip; junk does not
+        d = cfg.sanitize({"version": 3, "power": {"learned": {
+            "10": {"tdp": 16, "target": 60}, "default": {"tdp": 16, "target": 60},
+            "x": {"tdp": 16, "target": 60}, "11": {"tdp": 999, "target": 60}}}})
+        self.assertEqual(d["power"]["learned"], {"10": {"tdp": 16, "target": 60}})
+
+    def test_vrr_screen_and_decky_framegen(self):
+        gs, lsfg = self.mods["gamescope"], self.mods["lsfg"]
+        gs.display = lambda: {"name": "DP-1", "internal": False, "vrr": True,
+                              "rates": [60, 120]}
+        self.assertEqual(smoothmod.vrr_cap([60, 120]), 116)
+        self.assertEqual(smoothmod.vrr_cap([144]), 138)
+        self.hub.display_info(refresh=True)
+        conf = os.path.join(self.home, ".config", "lgo-toolbox", "smooth", "5.conf")
+        read = lambda: open(conf).read()
+        self.hub.set_running_app(5, "Game")
+        plan = self.hub.smooth_plan(120, 5)
+        self.hub.set_smooth_game(5, 120, "Game", plan["prefix"], False, 1)
+        self.assertIn("fps_limit=116\n", read())             # just below 120 Hz
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 45, "tdp": 25}}}})
+        self.assertEqual(self.hub._auto.target, 116.0)       # Auto TDP aims at what is shown
+        self.hub.set_smooth_game(5, 60, "Game", plan["prefix"], False, 1)
+        self.assertIn("fps_limit=60\n", read())              # below the cap: untouched
+        # 60 x 2 on that screen: 116 shown; a limiter on the game's frames gets 58
+        self.hub.set_smooth_game(5, 60, "Game", plan["prefix"], False, 2)
+        self.assertIn("fps_limit=116\n", read())
+        self.hub._on_output = False
+        self.hub._tick(100.0)
+        self.assertIn("fps_limit=58\n", read())
+        # Decky-Framegen makes its frames inside the game: always counted
+        self.hub.set_smooth_game(5, 60, "Game", plan["prefix"], False, 2, True)
+        self.assertIn("fps_limit=116\n", read())
+        self.assertTrue(self.hub.status()["smooth"]["fgmod"])
+        lsfg.mult[5] = 2                                      # ... unless lsfg-vk does it
+        self.hub._tick(101.0)
+        self.assertIn("fps_limit=58\n", read())
+
+    def test_restore_from_backup(self):
+        path = os.path.join(self.tmp, "backup.json")
+        self.assertFalse(backup.info(path)["exists"])
+        self.assertIn("No backup", backup.load(path)["error"])
+        self.hub.update({"fan": {"enabled": True, "profiles": {"default": {"full_speed": True}}},
+                         "controls": {"swap_menu": True}})
+        saved = backup.save(path, "9.9.9", self.hub.get_settings(), {"enabled": True})
+        self.assertIsNone(saved["error"])
+        self.assertEqual((saved["exists"], saved["version"]), (True, "9.9.9"))
+        self.hub.reset()
+        self.assertFalse(self.hub.get_settings()["fan"]["enabled"])
+        data = backup.load(path)
+        out = self.hub.restore(data["toolbox"])
+        self.assertTrue(out["fan"]["enabled"] and out["controls"]["swap_menu"])
+        self.assertTrue(self.mods["fan"].full_speed)
+        self.assertEqual(data["gyro"], {"enabled": True})
+        with open(path, "w") as f:
+            f.write('{"kind": "something else"}')
+        self.assertIn("not a Legion Go Toolbox backup", backup.load(path)["error"])
+        with open(path, "w") as f:
+            f.write("{broken")
+        self.assertIn("Could not read", backup.load(path)["error"])
+
     def test_manual_tdp_and_modes(self):
         limits = self.mods["limits"]
         self.hub.update({"power": {"enabled": True, "profiles": {"default": {"tdp": 12}}}})
@@ -2147,6 +2265,56 @@ multiplier = 2
         self.assertEqual(l.for_app(1293830)["multiplier"], 3)            # cached
         self.now += 3
         self.assertEqual(l.for_app(1293830)["multiplier"], 4)
+
+
+class AcpiInstall(TempDirCase):
+    def test_stored_module_per_kernel(self):
+        rel = acpi_install.kernel_release()
+        self.assertTrue(acpi_install.stored_module(self.tmp).endswith(
+            os.path.join("acpi_call", rel, "acpi_call.ko")))
+        calls = []
+        run = lambda cmd, timeout=0: calls.append(cmd) or (0, "", "")
+        missing = os.path.join(self.tmp, "proc_call")
+        self.assertFalse(acpi_install.load_stored(self.tmp, run=run, proc=missing))
+        self.assertEqual(calls, [])                           # nothing built: nothing loaded
+        self.assertFalse(acpi_install.built_for_other_kernel(self.tmp))
+        old = acpi_install.stored_module(self.tmp, "6.0.0-old")
+        os.makedirs(os.path.dirname(old))
+        open(old, "w").close()
+        self.assertTrue(acpi_install.built_for_other_kernel(self.tmp))   # SteamOS was updated
+        ko = acpi_install.stored_module(self.tmp)
+        os.makedirs(os.path.dirname(ko))
+        open(ko, "w").close()
+        acpi_install.load_stored(self.tmp, run=run, proc=missing)
+        self.assertEqual(calls, [["insmod", ko]])
+        open(missing, "w").close()
+        self.assertTrue(acpi_install.load_stored(self.tmp, run=run, proc=missing))
+        self.assertEqual(len(calls), 1)                       # already there: left alone
+
+    def test_headers_url_and_source(self):
+        conf = "[options]\nArchitecture = auto\n\n[jupiter-main]\nInclude = x\n[holo-main]\n"
+        mirrors = "# c\nServer = https://mirror.example/repos/$repo/os/$arch\n"
+        self.assertEqual(
+            acpi_install.headers_url("linux-neptune-611-headers-1-1-x86_64.pkg.tar.zst",
+                                     conf, mirrors),
+            "https://mirror.example/repos/jupiter-main/os/x86_64/"
+            "linux-neptune-611-headers-1-1-x86_64.pkg.tar.zst")
+        self.assertIsNone(acpi_install.headers_url("x", "[core]", mirrors))
+        for name in ("acpi_call.c", "Makefile", "LICENSE"):
+            self.assertTrue(os.path.isfile(os.path.join(acpi_install.SOURCE_DIR, name)), name)
+
+    def test_failure_is_reported_and_cleaned_up(self):
+        inst = acpi_install.Installer(self.tmp)
+        steps = []
+        inst._build = lambda: (_ for _ in ()).throw(acpi_install.InstallError("no network"))
+        inst._teardown = lambda: steps.append("teardown")
+        done = []
+        inst._on_done = done.append
+        self.assertTrue(inst.start())
+        inst._thread.join(5)
+        st = inst.status()
+        self.assertEqual((st["running"], st["done"], st["error"]), (False, False, "no network"))
+        self.assertEqual((steps, done), (["teardown"], [False]))
 
 
 if __name__ == "__main__":

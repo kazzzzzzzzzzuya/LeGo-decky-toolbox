@@ -64,6 +64,9 @@ export const PowerTab: FC = () => {
       parts.push(`${Math.round(st.auto.fps)} fps`);
       if (st.auto.low != null) parts.push(`slowest ${Math.round(st.auto.low)}`);
     }
+    if (st.auto.active && st.auto.learned != null && status.app.id != null) {
+      parts.push(`remembered ${st.auto.learned} W ${status.fan.on_ac ? "on charger" : "on battery"}`);
+    }
     return parts.join(" · ");
   };
 

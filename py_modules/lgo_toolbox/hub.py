@@ -12,7 +12,7 @@ import threading
 import time
 
 from . import config as cfg
-from . import controller, fan, fps_probe, sysio
+from . import acpi_install, controller, fan, fps_probe, sysio
 from .battery import ChargeLimit, battery_info, on_external_power
 from .plumber import MenuSwap, SteamController
 from .power import CUSTOM, AutoTdp, FpsMonitor, PowerLimits, cpu_boost_state, set_cpu_boost
@@ -44,6 +44,16 @@ class Hub(object):
         self._log = logger or logging.getLogger("lgo_toolbox")
         self.product = product if product is not None else sysio.dmi("product_name")
         self.vendor = sysio.dmi("sys_vendor")
+        self._state_dir = state_dir
+        m0 = modules or {}
+        if state_dir and "acpi_installer" not in m0:
+            try:
+                acpi_install.load_stored(state_dir)   # the module built on this device
+            except Exception:
+                pass
+        self.acpi_installer = m0.get("acpi_installer") or (
+            acpi_install.Installer(state_dir, logger=self._log, on_done=self._acpi_installed)
+            if state_dir else None)
         self._controller_status = controller_status
 
         m = modules or {}
@@ -167,7 +177,7 @@ class Hub(object):
             caps["fan"] = cap(False, "Fan curves are only supported on the Legion Go (83E1)")
         else:
             caps["fan"] = cap(self.fan.available(),
-                              "Needs the acpi_call kernel module, which SteamOS does not include")
+                              "Needs the acpi_call kernel module: Home tab → Install acpi_call")
         charge = self.charge.status() if known else {"available": False, "error": not_legion}
         caps["charge_limit"] = cap(charge["available"], charge.get("error"))
         caps["power_led"] = cap(self.led.available, self.led.error)
@@ -222,6 +232,31 @@ class Hub(object):
             self._save()
         for section in SECTIONS:
             self._apply_section(section, old)
+        return self.get_settings()
+
+    def _acpi_installed(self, ok):
+        """The module was just built and loaded: everything that waited for
+        it gets applied."""
+        if not ok:
+            return
+        self._caps = None
+        self._reapply_all_at = time.monotonic() + 1.0
+
+    def acpi_install_start(self):
+        if self.acpi_installer is None:
+            return False
+        return self.acpi_installer.start()
+
+    # ---- backup ----------------------------------------------------------------
+    def restore(self, data):
+        """Replace the settings with a backup's (sanitized) and apply them."""
+        with self._lock:
+            old = self.settings
+            self.settings = cfg.sanitize(data)
+            self._save()
+        for section in SECTIONS:
+            self._apply_section(section, old)
+        self._apply_smooth(force=True)
         return self.get_settings()
 
     def set_running_app(self, app_id, name=""):
@@ -586,7 +621,11 @@ class Hub(object):
             if profile["auto"]:
                 if self._auto is None or force:
                     start = self._auto.tdp if self._auto is not None else top
-                    self._auto = AutoTdp(low, top, self._auto_target(profile), start=start)
+                    target = self._auto_target(profile)
+                    known = self._learned(target)
+                    if known is not None:
+                        start = known      # where this game settled last time
+                    self._auto = AutoTdp(low, top, target, start=start)
                     self._auto_applied = None
                 else:
                     self._auto.retarget(low, top, self._auto_target(profile))
@@ -641,10 +680,8 @@ class Hub(object):
         frame generation it was not told about (more frames shown than the
         cap allows), the profile's target (the final frame rate) is used."""
         entry = self.smooth_for()
-        if entry and self._fg(entry) > 1:
-            return self._smooth_output(entry)
-        if entry and not self._frame_gen:
-            return entry["fps"]
+        if entry and (self._fg(entry) > 1 or not self._frame_gen):
+            return self._shown(entry)
         return profile["target_fps"]
 
     def _watch_frame_gen(self, fps):
@@ -697,12 +734,30 @@ class Hub(object):
                 self._on_output = True
         return self._on_output
 
+    def _shown(self, entry, app=None):
+        """Frames on screen Smooth mode aims at: cap x multiplier, kept just
+        below the top rate of a variable-refresh screen so VRR stays active."""
+        shown = entry["fps"] * self._fg(entry, app)
+        info = self._display
+        if info and info["vrr"] and info["rates"]:
+            shown = min(shown, smoothmod.vrr_cap(info["rates"]))
+        return shown
+
     def _mh_limit(self, entry, app=None):
         """MangoHud's fps_limit for a Smooth entry. Where MangoHud sees the
-        generated frames too (after lsfg-vk), its cap is the frame rate on
-        screen: cap x multiplier. Otherwise it is the game's own cap."""
+        generated frames too (after lsfg-vk, or with frame generation made
+        inside the game by OptiScaler / Decky-Framegen), its cap is the frame
+        rate on screen. Otherwise it is the game's own share of it."""
         fg = self._fg(entry, app)
-        return entry["fps"] * fg if fg > 1 and self.limit_on_output() else entry["fps"]
+        shown = self._shown(entry, app)
+        if fg <= 1:
+            return shown
+        app = self._app if app is None else app
+        in_game = entry.get("fgmod") and (
+            app is None or self.lsfg.for_app(app)["multiplier"] <= 1)
+        if in_game or self.limit_on_output():
+            return shown
+        return min(entry["fps"], shown // fg)
 
     def _write_limit(self, path, limit):
         if self._conf_written.get(path) == limit:
@@ -726,7 +781,7 @@ class Hub(object):
             self._write_limit(path, self._mh_limit(entry))
 
     def set_smooth_game(self, app_id, fps, name="", prefix="", added_command=False,
-                        fg=cfg.FG_AUTO):
+                        fg=cfg.FG_AUTO, fgmod=False):
         """Store a game's Smooth cap (fps None removes it) and its frame-
         generation multiplier. The frontend has already changed the game's
         launch options accordingly."""
@@ -741,7 +796,8 @@ class Hub(object):
                     self._write_limit(path, 0)
             else:
                 games[key] = {"fps": int(fps), "name": str(name or ""), "prefix": str(prefix),
-                              "added_command": bool(added_command), "fg": fg}
+                              "added_command": bool(added_command), "fg": fg,
+                              "fgmod": bool(fgmod)}
             self.settings = cfg.sanitize(dict(self.settings, smooth={"games": games}))
             self._save()
         self._frame_gen = False
@@ -758,7 +814,7 @@ class Hub(object):
         refresh rate back when it has none."""
         self._sync_limit()
         entry = self.smooth_for()
-        want = self._smooth_output(entry) if entry else 0
+        want = self._shown(entry) if entry else 0
         if want == self._smooth_applied and not force:
             return
         if want == 0 and self._smooth_applied == 0:
@@ -780,12 +836,14 @@ class Hub(object):
         rates = info["rates"] if info else []
         entry = self.smooth_for()
         fps = entry["fps"] if entry else None
-        output = self._smooth_output(entry) if entry else None
+        output = self._shown(entry) if entry else None
         lsfg = self.lsfg.for_app(self._app) if self._app is not None else None
         return {
             "fps": fps,
             "fg": self._fg(entry) if entry else 1,           # in effect
             "fg_setting": entry.get("fg", cfg.FG_AUTO) if entry else cfg.FG_AUTO,
+            "fgmod": bool(entry and entry.get("fgmod")),
+            "shown": self._shown(entry) if entry else None,   # after the VRR cap
             "lsfg": lsfg,
             "output": output,
             "refresh": smoothmod.screen_rate(output, rates, bool(info and info["vrr"]))
@@ -796,6 +854,34 @@ class Hub(object):
             "active": bool(self._smooth_applied),
             "measured": {"fps": self.fps.get(), "low": self.fps.get_low()} if entry else None,
         }
+
+    # ---- Auto TDP memory -----------------------------------------------------------
+    def _learn_key(self):
+        if self._app is None:
+            return None
+        return "%d:ac" % self._app if self.on_ac() else str(self._app)
+
+    def _learned(self, target):
+        """Watts Auto TDP settled at for the running game on this power
+        source and target, or None."""
+        key = self._learn_key()
+        entry = self.settings["power"].get("learned", {}).get(key) if key else None
+        if entry and entry["target"] == int(round(target)):
+            return entry["tdp"]
+        return None
+
+    def _remember(self, auto):
+        if auto.state not in ("optimal", "at_min") or auto.target < 15:
+            return
+        key = self._learn_key()
+        new = {"tdp": int(auto.tdp), "target": int(round(auto.target))}
+        if key is None or self.settings["power"].get("learned", {}).get(key) == new:
+            return
+        with self._lock:
+            power = dict(self.settings["power"])
+            power["learned"] = dict(power.get("learned", {}), **{key: new})
+            self.settings = dict(self.settings, power=power)
+            self._save()
 
     def _smooth_floor(self, target):
         """Slowest-frame rate that is still even for `target` on this screen:
@@ -827,6 +913,7 @@ class Hub(object):
                 auto.retarget(low, top, target)
             auto.smooth_floor = self._smooth_floor(auto.target)
             want = auto.step(fps, now, self.fps.get_low())
+            self._remember(auto)
         if want != self._auto_applied:
             with self._hw:
                 if self.limits.set_tdp(want):
@@ -875,6 +962,10 @@ class Hub(object):
                 self._log.info("Now %s", "on the charger" if ac else "on battery")
                 self._on_ac = ac
                 self._refresh_fan()
+                if self._auto is not None and self._app is not None:
+                    known = self._learned(self._auto.target)
+                    if known is not None:      # this game's watts on the new power source
+                        self._auto._set(known, now)
 
         if now - self._fan_checked >= FAN_CHECK_S:
             self._fan_checked = now
@@ -957,6 +1048,8 @@ class Hub(object):
             "model": self.product,
             "errors": dict(self.errors),
             "app": {"id": self._app, "name": self._app_name},
+            "acpi": self.acpi_installer.status() if self.acpi_installer is not None
+            and self.product in LEGION_GO + LEGION_GO_2 + LEGION_GO_S else None,
             "smooth": self._smooth_status(),
             "steam_controller": dict(zip(("type", "source"), self.steam_controller_for())),
             "power": {
@@ -973,6 +1066,7 @@ class Hub(object):
                     "low": self.fps.get_low() if auto is not None else None,
                     "target": self._auto_target(profile) if auto is not None else None,
                     "frame_gen": self._frame_gen,
+                    "learned": self._learned(auto.target) if auto is not None else None,
                     "probe_error": self.fps.error,
                 },
             },
