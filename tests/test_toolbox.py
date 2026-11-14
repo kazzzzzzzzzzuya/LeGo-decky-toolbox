@@ -1093,7 +1093,13 @@ class SmoothMode(TempDirCase):
             "10": {"fps": 60, "prefix": "DXVK_FRAME_RATE=60", "name": "G"},
             "11": {"fps": 5, "prefix": "x"}, "12": {"fps": 60}, "x": {"fps": 60, "prefix": "y"}}}})
         self.assertEqual(d["smooth"]["games"], {"10": {
-            "fps": 60, "prefix": "DXVK_FRAME_RATE=60", "added_command": False, "name": "G"}})
+            "fps": 60, "prefix": "DXVK_FRAME_RATE=60", "added_command": False, "name": "G",
+            "fg": 1}})
+        # Frame-generation multiplier: 1-4, anything else means none
+        for fg, want in ((2, 2), (4, 4), (5, 1), (True, 1), ("2", 1), (None, 1)):
+            d = cfg.sanitize({"smooth": {"games": {
+                "10": {"fps": 60, "prefix": "x", "fg": fg}}}})
+            self.assertEqual(d["smooth"]["games"]["10"]["fg"], want, fg)
 
 
 class Config(unittest.TestCase):
@@ -1639,6 +1645,36 @@ class HubTests(TempDirCase):
             self.hub._auto_step(now)
             now += 1.0
         self.assertFalse(self.hub._frame_gen)
+        self.assertEqual(self.hub._auto.target, 60.0)
+
+    def test_smooth_with_frame_generation(self):
+        gs = self.mods["gamescope"]
+        fps = self.mods["fps"]
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 45, "tdp": 25}}}})
+        self.hub.set_running_app(1091500, "Cyberpunk 2077")
+        prefix = smoothmod.launch_prefix(60, "MANGOHUD")
+        # 60 fps from the game, doubled to 120 by frame generation
+        out = self.hub.set_smooth_game(1091500, 60, "Cyberpunk 2077", prefix, True, 2)
+        self.assertEqual(out["smooth"]["games"]["1091500"]["fg"], 2)
+        self.assertEqual(gs.sent[-1], 120)                 # screen rate for the output
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["fps"], st["fg"], st["output"]), (60, 2, 120))
+        self.assertEqual(self.hub._auto.target, 120.0)     # Auto TDP holds the output
+        # Shown frames above the cap are expected here, not "detected"
+        now = 3000.0
+        fps.value = 120.0
+        for _ in range(5):
+            self.hub._auto_step(now)
+            now += 1.0
+        self.assertFalse(self.hub._frame_gen)
+        self.assertEqual(self.hub._auto.target, 120.0)
+        # 72 x 2 = 144: an even rate on the Legion Go's 144 Hz screen
+        self.hub.set_smooth_game(1091500, 72, "Cyberpunk 2077", prefix, True, 2)
+        self.assertEqual(self.hub.status()["smooth"]["refresh"], 144)
+        # Back to no frame generation: the cap itself again
+        self.hub.set_smooth_game(1091500, 60, "Cyberpunk 2077", prefix, True, 1)
+        self.assertEqual(gs.sent[-1], 60)
         self.assertEqual(self.hub._auto.target, 60.0)
 
     def test_manual_tdp_and_modes(self):

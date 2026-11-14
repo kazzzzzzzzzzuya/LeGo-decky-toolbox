@@ -117,9 +117,11 @@ Auto TDP). The ones marked with a screen rate - 30 and 60 at 60 Hz, 72 and
 144 at 144 Hz on the Legion Go - are perfectly even; the others do not divide
 the screen's refresh rate, so some frames stay on screen longer. Restart the game after changing it. For the best
 result turn off Steam's Framerate limit and the game's own limiter and
-V-Sync for that game. With **lsfg-vk frame generation** use lsfg-vk's own
-frame cap instead: Smooth mode refuses to add a second limiter when a game
-already has one.
+V-Sync for that game. With **lsfg-vk frame generation** pick its multiplier
+under **Frame generation** (below the cap): the cap stays on the game's own
+frames, and the screen rate and Auto TDP follow the generated rate (60 × 2 =
+120). Smooth mode refuses to add a second limiter when a game already has
+one.
 
 Other launch-option tools: settings from HelixSR, Decky-Framegen and similar
 plugins are kept. Decky-Framegen and Steam ROM Manager *replace* a game's
@@ -217,20 +219,25 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 
 - **HelixSR** (upscaling only): use Smooth mode and Auto TDP as usual; both
   keep HelixSR's launch settings. Auto TDP settles at fewer watts.
-- **lsfg-vk 2.0 / Decky-Framegen** (frame generation): use **one** limiter,
-  on the game's own frames. Pick a final rate that suits the screen (60 at
-  60 Hz, 72 or 144 at 144 Hz) and cap the game at final ÷ multiplier
-  (2×: 30 for 60, 72 for 144; 3×: 48 for 144; 4×: 36 for 144).
-  - Cap the base rate in the frame-generation tool (lsfg-vk: decky-lsfg-vk's
-    base frame rate; Decky-Framegen: the game's or OptiScaler's limit).
-    Keep Smooth mode **off** for frame-generated games.
-  - Steam: Refresh rate to the final rate where offered, Framerate limit off.
-  - Last, Auto TDP on with the **final** rate as target. If a game still has
-    a Smooth cap and shows far more frames than it, the plugin detects frame
-    generation and aims at the target instead.
-- Not verified on a device yet: whether generated frames are counted the
-  same way by every tool. If Auto TDP misbehaves with frame generation,
-  set the watts by hand for that game.
+- **lsfg-vk 2.0** (frame generation): Smooth mode caps the game's own frames
+  and lsfg-vk multiplies them (tested on a Legion Go: a 30 cap with 2× shows
+  60).
+  1. In decky-lsfg-vk set the multiplier (for example 2×) and leave its own
+     frame cap **off**.
+  2. Power tab → Smooth frame rate: choose the game's cap, for example 60.
+     Below it set **Frame generation** to the same multiplier: *60 → 120*.
+  3. Steam's Framerate limit off. The plugin sets the screen rate for the
+     final rate and Auto TDP aims at it (120), not at the cap.
+  4. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
+     60 × 2 = 120 is marked *uneven on this screen* there, but is even on a
+     120 Hz monitor (for example when streaming).
+- **Decky-Framegen** (OptiScaler frame generation inside the game): its
+  generated frames pass the same limiter, so a Smooth cap would cap the
+  final rate. Not verified on a device yet; the safe setup is Smooth mode
+  off, the base rate capped with the game's or OptiScaler's own limit, and
+  Auto TDP with the **final** rate as target. If a game with a Smooth cap
+  shows far more frames than the cap without Frame generation set, the
+  plugin detects it and aims Auto TDP at the target instead.
 
 ## Troubleshooting
 

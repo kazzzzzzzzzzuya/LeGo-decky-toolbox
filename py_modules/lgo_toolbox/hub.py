@@ -603,6 +603,13 @@ class Hub(object):
             return None
         return self.settings["smooth"]["games"].get(str(app))
 
+    @staticmethod
+    def _smooth_output(entry):
+        """Frames on screen: the game's cap times the frame-generation
+        multiplier (lsfg-vk sits after MangoHud's limiter, so the cap holds
+        the game's own frames and the generated ones come on top)."""
+        return entry["fps"] * entry.get("fg", 1)
+
     def _measure_app(self):
         """The game whose frame rate is measured: needed for Smooth mode's
         readout even when Auto TDP is off."""
@@ -612,17 +619,20 @@ class Hub(object):
     FG_READINGS = 3
 
     def _auto_target(self, profile):
-        """Auto TDP aims at the game's Smooth cap when it has one - unless
-        frame generation shows more frames than the cap lets the game draw;
-        then the profile's target (the final frame rate) is used."""
+        """Auto TDP aims at what the screen should show for the game's Smooth
+        setting: the cap, or cap x multiplier with frame generation set. With
+        frame generation it was not told about (more frames shown than the
+        cap allows), the profile's target (the final frame rate) is used."""
         entry = self.smooth_for()
+        if entry and entry.get("fg", 1) > 1:
+            return self._smooth_output(entry)
         if entry and not self._frame_gen:
             return entry["fps"]
         return profile["target_fps"]
 
     def _watch_frame_gen(self, fps):
         entry = self.smooth_for()
-        if not entry or fps is None or self._frame_gen:
+        if not entry or fps is None or self._frame_gen or entry.get("fg", 1) > 1:
             return False
         self._fg_run = self._fg_run + 1 if fps > entry["fps"] * self.FG_RATIO else 0
         if self._fg_run >= self.FG_READINGS:
@@ -647,9 +657,10 @@ class Hub(object):
         return {"prefix": smoothmod.launch_prefix(fps, env),
                 "limiter": "mangohud" if env else "dxvk"}
 
-    def set_smooth_game(self, app_id, fps, name="", prefix="", added_command=False):
-        """Store a game's Smooth cap (fps None removes it). The frontend has
-        already changed the game's launch options accordingly."""
+    def set_smooth_game(self, app_id, fps, name="", prefix="", added_command=False, fg=1):
+        """Store a game's Smooth cap (fps None removes it) and its frame-
+        generation multiplier. The frontend has already changed the game's
+        launch options accordingly."""
         key = str(int(app_id))
         with self._lock:
             games = dict(self.settings["smooth"]["games"])
@@ -657,7 +668,7 @@ class Hub(object):
                 games.pop(key, None)
             else:
                 games[key] = {"fps": int(fps), "name": str(name or ""), "prefix": str(prefix),
-                              "added_command": bool(added_command)}
+                              "added_command": bool(added_command), "fg": fg}
             self.settings = cfg.sanitize(dict(self.settings, smooth={"games": games}))
             self._save()
         self._frame_gen = False
@@ -673,7 +684,7 @@ class Hub(object):
         """Switch the refresh rate for the running game's cap, or hand the
         refresh rate back when it has none."""
         entry = self.smooth_for()
-        want = entry["fps"] if entry else 0
+        want = self._smooth_output(entry) if entry else 0
         if want == self._smooth_applied and not force:
             return
         if want == 0 and self._smooth_applied == 0:
@@ -693,9 +704,12 @@ class Hub(object):
         rates = info["rates"] if info else []
         entry = self.smooth_for()
         fps = entry["fps"] if entry else None
+        output = self._smooth_output(entry) if entry else None
         return {
             "fps": fps,
-            "refresh": smoothmod.refresh_for(fps, rates) if fps and rates else None,
+            "fg": entry.get("fg", 1) if entry else 1,
+            "output": output,
+            "refresh": smoothmod.refresh_for(output, rates) if output and rates else None,
             "rates": rates,
             "vrr": bool(info and info["vrr"]),
             "choices": smoothmod.fps_choices(rates),

@@ -20,6 +20,7 @@ SETTINGS_VERSION = 2
 STEAM_CONTROLLERS = ("deck-uhid", "xbox", "ds5-edge", "ds5")
 DEFAULT_STEAM_CONTROLLER = "deck-uhid"
 SWAP_LAYOUTS = ("steam_menu", "steam_view")
+FG_MULTIPLIERS = (1, 2, 3, 4)
 TARGET_FPS_CHOICES = (30, 40, 45, 48, 50, 60, 72, 90, 120, 144)
 TDP_ABS_MIN = 4
 TDP_ABS_MAX = 40
@@ -53,7 +54,9 @@ def defaults():
             "cpu_boost": None,
             "profiles": {"default": dict(POWER_PROFILE_DEFAULT)},
         },
-        # Smooth mode per game: {appid: {"fps", "name", "prefix", "added_command"}}
+        # Smooth mode per game: {appid: {"fps", "fg", "name", "prefix", "added_command"}}
+        # "fps" is the game's own cap; "fg" the frame-generation multiplier
+        # (1 = none), so the screen shows fps * fg.
         "smooth": {"games": {}},
         "controls": {
             "swap_menu": False,
@@ -204,8 +207,10 @@ def sanitize(data):
             if not isinstance(prefix, str) or not prefix or len(prefix) > 200:
                 continue
             name = v.get("name")
+            fg = v.get("fg")
             out["smooth"]["games"][key] = {
                 "fps": fps, "prefix": prefix,
+                "fg": fg if fg in FG_MULTIPLIERS and not isinstance(fg, bool) else 1,
                 "added_command": _flag(v.get("added_command"), False),
                 "name": name[:120] if isinstance(name, str) else "",
             }

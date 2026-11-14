@@ -40,7 +40,11 @@ export interface Settings {
   };
   battery: { charge_limit: boolean | null };
   smooth: {
-    games: Record<string, { fps: number; name: string; prefix: string; added_command: boolean }>;
+    /** fps: the game's own cap; fg: frame-generation multiplier (1 = none). */
+    games: Record<
+      string,
+      { fps: number; fg: number; name: string; prefix: string; added_command: boolean }
+    >;
   };
   fan: {
     enabled: boolean;
@@ -101,6 +105,9 @@ export interface HubStatus {
   steam_controller: { type: string; source: "game" | "default" };
   smooth: {
     fps: number | null;
+    /** Frame-generation multiplier and the resulting frames on screen. */
+    fg: number;
+    output: number | null;
     refresh: number | null;
     rates: number[];
     vrr: boolean;
@@ -164,7 +171,14 @@ export const smoothPlan = callable<[fps: number], { prefix: string; limiter: str
   "smooth_plan",
 );
 export const setSmoothGame = callable<
-  [appId: number, fps: number | null, name: string, prefix: string, addedCommand: boolean],
+  [
+    appId: number,
+    fps: number | null,
+    name: string,
+    prefix: string,
+    addedCommand: boolean,
+    fg: number,
+  ],
   Settings
 >("set_smooth_game");
 export const deleteFanProfile = callable<[key: string], Settings>("delete_fan_profile");

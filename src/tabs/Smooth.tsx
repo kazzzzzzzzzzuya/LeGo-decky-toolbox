@@ -14,6 +14,7 @@ import { replaceSettings, useStore } from "../store";
 import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 
 const OFF = 0;
+const FG_CHOICES = [1, 2, 3, 4];
 // The same caps as Auto TDP's target list.
 const CAPS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
@@ -53,6 +54,7 @@ export const SmoothSection: FC = () => {
 
   /** Change one game's cap: launch options first, then the plugin's record. */
   const apply = async (appId: number, name: string, fps: number) => {
+    const fg = games[String(appId)]?.fg ?? 1;
     setBusy(true);
     setProblem(null);
     try {
@@ -61,12 +63,14 @@ export const SmoothSection: FC = () => {
       if (entry) options = removePrefix(options, entry.prefix, entry.added_command);
       if (fps === OFF) {
         await writeLaunchOptions(appId, options);
-        replaceSettings(await setSmoothGame(appId, null, name, "", false));
+        replaceSettings(await setSmoothGame(appId, null, name, "", false, 1));
       } else {
         const plan = await smoothPlan(fps);
         const next = addPrefix(options, plan.prefix);
         await writeLaunchOptions(appId, next.value);
-        replaceSettings(await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand));
+        replaceSettings(
+          await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand, fg),
+        );
       }
       toaster.toast({
         title: PLUGIN_NAME,
@@ -74,6 +78,31 @@ export const SmoothSection: FC = () => {
           fps === OFF
             ? `Smooth mode off for ${name}. Restart the game to remove the cap.`
             : `${name}: ${fps} fps. Restart the game for the cap to apply.`,
+      });
+    } catch (e) {
+      setProblem(`${e instanceof Error ? e.message : e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** Frame generation changes only the screen rate and Auto TDP's aim; the
+   *  game's own cap (and so its launch options) stays as it is. */
+  const applyFg = async (appId: number, name: string, fg: number) => {
+    const entry = games[String(appId)];
+    if (!entry) return;
+    setBusy(true);
+    setProblem(null);
+    try {
+      replaceSettings(
+        await setSmoothGame(appId, entry.fps, name, entry.prefix, entry.added_command, fg),
+      );
+      toaster.toast({
+        title: PLUGIN_NAME,
+        body:
+          fg > 1
+            ? `${name}: ${entry.fps} fps × ${fg} = ${entry.fps * fg} fps on screen. Set ${fg}× in your frame-generation tool too.`
+            : `${name}: no frame generation, ${entry.fps} fps on screen.`,
       });
     } catch (e) {
       setProblem(`${e instanceof Error ? e.message : e}`);
@@ -99,12 +128,18 @@ export const SmoothSection: FC = () => {
   // Even: a refresh rate the cap divides, so every frame stays on screen
   // equally long. Otherwise some frames stay longer (judder) unless the
   // screen has variable refresh (VRR).
-  const label = (f: number) => {
-    const r = refreshFor(f, rates);
-    if (r) return `${f} fps · screen ${r} Hz`;
-    if (vrr) return `${f} fps · VRR`;
-    return rates.length ? `${f} fps · uneven on this screen` : `${f} fps`;
+  // With frame generation the screen shows f × fg frames, so evenness is
+  // judged on that number.
+  const label = (f: number, fg = 1) => {
+    const out = f * fg;
+    const name = fg > 1 ? `${f} → ${out} fps` : `${f} fps`;
+    const r = refreshFor(out, rates);
+    if (r) return `${name} · screen ${r} Hz`;
+    if (vrr) return `${name} · VRR`;
+    return rates.length ? `${name} · uneven on this screen` : name;
   };
+  const fg = current?.fg ?? 1;
+  const out = current ? current.fps * fg : 0;
   const measured = st?.measured;
   const saved = Object.entries(games).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
@@ -115,20 +150,40 @@ export const SmoothSection: FC = () => {
           <DropdownItem
             label={app.name || "This game"}
             description={
-              current && !refreshFor(current.fps, rates) && !vrr && rates.length
-                ? `${current.fps} fps does not divide this screen's ${rates.join(" / ")} Hz, so some frames stay on screen longer. Caps marked with a screen rate are perfectly even.`
+              current && !refreshFor(out, rates) && !vrr && rates.length
+                ? `${out} fps does not divide this screen's ${rates.join(" / ")} Hz, so some frames stay on screen longer. Caps marked with a screen rate are perfectly even.`
                 : "Even frame pacing: an early frame limiter plus a screen refresh rate the cap divides evenly. Applies from the game's next start."
             }
             disabled={busy}
             rgOptions={[
               { data: OFF, label: "Off" },
-              ...choices.map((f) => ({ data: f, label: label(f) })),
+              ...choices.map((f) => ({ data: f, label: label(f, fg) })),
             ]}
             selectedOption={current?.fps ?? OFF}
             onChange={(o) => void apply(app.id as number, app.name || "This game", o.data as number)}
           />
         </PanelSectionRow>
-      ) : (
+      ) : null}
+      {app.id != null && current ? (
+        <PanelSectionRow>
+          <DropdownItem
+            label="Frame generation"
+            description={
+              fg > 1
+                ? `The game makes ${current.fps} fps, frame generation shows ${out}. Set ${fg}× in lsfg-vk (or your frame-generation tool) as well, with its own frame cap off. Auto TDP aims at ${out} fps.`
+                : "Using lsfg-vk? Pick its multiplier here: the cap stays on the game's own frames, and the screen rate and Auto TDP follow the doubled (or more) frame rate."
+            }
+            disabled={busy}
+            rgOptions={FG_CHOICES.map((m) => ({
+              data: m,
+              label: m === 1 ? "Off" : `${m}× · ${label(current.fps, m)}`,
+            }))}
+            selectedOption={fg}
+            onChange={(o) => void applyFg(app.id as number, app.name || "This game", o.data as number)}
+          />
+        </PanelSectionRow>
+      ) : null}
+      {app.id == null && (
         <Info label="Start a game">Smooth mode is set per game while it runs.</Info>
       )}
 
@@ -183,7 +238,7 @@ export const SmoothSection: FC = () => {
               <ButtonItem
                 layout="below"
                 disabled={busy}
-                description={label(g.fps)}
+                description={label(g.fps, g.fg ?? 1)}
                 onClick={() => void apply(Number(key), g.name || `App ${key}`, OFF)}
               >
                 {g.name || `App ${key}`}
