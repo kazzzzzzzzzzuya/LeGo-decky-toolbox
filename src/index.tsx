@@ -48,6 +48,16 @@ const TAB_STYLES = `
     display: block;
     margin: 0;
   }
+  /* Steam greys the tab icons while focus is in the page below; keep them
+     white so the row reads the same whether it has focus or not. */
+  .lgo-toolbox-tabs [role="tablist"],
+  .lgo-toolbox-tabs [role="tablist"] *,
+  .lgo-toolbox-tabs [role="tab"],
+  .lgo-toolbox-tabs [role="tab"] * {
+    opacity: 1 !important;
+    color: #ffffff !important;
+    filter: none !important;
+  }
 `;
 
 const wrap = (content: ReactNode) => <div className="lgo-toolbox-tab-content">{content}</div>;
