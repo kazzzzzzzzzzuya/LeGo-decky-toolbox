@@ -1098,6 +1098,30 @@ class SmoothMode(TempDirCase):
         auto.step(60.0, t + 3, low=45.0)
         self.assertEqual(auto.step(60.0, t + 4, low=45.0), 16)
 
+    def test_uneven_screen_rate_is_not_rough(self):
+        # 90 fps at 144 Hz: frames of one and two refreshes, slowest 72 fps
+        auto = power.AutoTdp(8, 30, 90, start=16)
+        auto.smooth_floor = 72.0
+        t = 100.0
+        for i in range(20):
+            tdp = auto.step(90.0, t + i, low=72.0)
+        self.assertLessEqual(tdp, 16)
+        self.assertNotIn(auto.state, ("raising", "at_max"))
+
+    def test_unevenness_power_cannot_fix_stops_raising(self):
+        auto = power.AutoTdp(8, 30, 90, start=16)
+        t = 100.0
+        for i in range(60):
+            tdp = auto.step(90.0, t + i * 3, low=50.0)    # on target, always uneven
+        self.assertLess(tdp, 30)
+        self.assertLessEqual(tdp, 16 + auto.ROUGH_TRY_W + 1)
+        # Unevenness that power does fix is still followed
+        auto = power.AutoTdp(8, 30, 60, start=16)
+        tdp = 16
+        for i in range(60):        # every watt makes the slowest frame 4 fps faster
+            tdp = auto.step(60.0, 100.0 + i * 3, low=min(60.0, 40.0 + (tdp - 16) * 4))
+        self.assertGreaterEqual(tdp, 19)
+
     def test_settings(self):
         d = cfg.sanitize({"smooth": {"games": {
             "10": {"fps": 60, "prefix": "DXVK_FRAME_RATE=60", "name": "G"},
@@ -1720,6 +1744,11 @@ class HubTests(TempDirCase):
         st = self.hub.status()["smooth"]
         self.assertEqual((st["fg"], st["fg_setting"], st["output"]), (2, 0, 120))
         self.assertEqual(st["lsfg"]["profile"], "P")
+        # Even-pacing floor for Auto TDP on the 60/144 Hz screen
+        self.assertEqual(self.hub._smooth_floor(90), 72.0)
+        self.assertEqual(self.hub._smooth_floor(120), 72.0)
+        self.assertEqual(self.hub._smooth_floor(60), 60.0)
+        self.assertEqual(self.hub._smooth_floor(72), 72.0)
         self.assertEqual(self.hub._auto.target, 120.0)
         # Changed in decky-lsfg-vk while the game runs: followed within a tick
         lsfg.mult[1293830] = 3

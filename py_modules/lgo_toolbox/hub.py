@@ -797,6 +797,18 @@ class Hub(object):
             "measured": {"fps": self.fps.get(), "low": self.fps.get_low()} if entry else None,
         }
 
+    def _smooth_floor(self, target):
+        """Slowest-frame rate that is still even for `target` on this screen:
+        a screen at a rate the target does not divide holds some frames one
+        refresh longer (90 fps at 144 Hz: 72 fps frames)."""
+        info = self._display
+        if not self.smooth_for() or not info or info["vrr"] or not target:
+            return None
+        rate = smoothmod.screen_rate(int(round(target)), info["rates"])
+        if not rate:
+            return None
+        return rate / float(-(-rate // int(round(target))))
+
     def _auto_step(self, now):
         auto = self._auto
         if auto is None or not self.settings["power"]["enabled"]:
@@ -813,6 +825,7 @@ class Hub(object):
             if detected or float(target) != auto.target:
                 low, top = self._tdp_bounds(profile)
                 auto.retarget(low, top, target)
+            auto.smooth_floor = self._smooth_floor(auto.target)
             want = auto.step(fps, now, self.fps.get_low())
         if want != self._auto_applied:
             with self._hw:

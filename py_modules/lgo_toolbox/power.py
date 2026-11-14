@@ -357,6 +357,12 @@ class AutoTdp(object):
         self._probing_from = None       # tdp we came down from
         self._avoid = {}                # tdp -> (until, penalty seconds)
         self.state = "starting"
+        # Slowest-frame rate that still counts as even. Below the target when
+        # the screen cannot show the target evenly (90 fps at 144 Hz: every
+        # other frame stays two refreshes, i.e. 72 fps); set by the caller.
+        self.smooth_floor = None
+        self._rough_from = None         # (tdp, low) when power was first added for evenness
+        self._ignore_rough_until = 0.0
 
     def retarget(self, tdp_min, tdp_max, target_fps):
         self.tdp_min = int(tdp_min)
@@ -365,6 +371,8 @@ class AutoTdp(object):
             self.target = float(target_fps)
             self._avoid.clear()
             self._good_since = None
+            self._rough_from = None
+            self._ignore_rough_until = 0.0
         self.tdp = int(min(self.tdp_max, max(self.tdp_min, self.tdp)))
 
     def _set(self, tdp, now):
@@ -378,16 +386,21 @@ class AutoTdp(object):
     SMOOTH_RATIO = 0.85      # slowest frame at least this share of the target
     ROUGH_WINDOWS = 2        # this many rough readings in a row add power
 
-    def _rough(self, low):
-        if low is None or self.target <= 0:
+    ROUGH_TRY_W = 3          # watts added for evenness before judging whether it helps
+    ROUGH_GAIN = 1.05        # ... it helps if the slowest frame got this much faster
+    ROUGH_IGNORE_S = 180.0   # unevenness power does not fix is ignored this long
+
+    def _rough(self, low, now):
+        if low is None or self.target <= 0 or now < self._ignore_rough_until:
             return False
-        return low / self.target < self.SMOOTH_RATIO
+        floor = self.smooth_floor or self.target
+        return low / min(floor, self.target) < self.SMOOTH_RATIO
 
     def step(self, fps, now, low=None):
         """`low` is the frame rate of the slowest frame in the reading.
         With it, a setting only counts as holding the target while frames
         also arrive evenly, so power is never cut into stutter."""
-        rough = self._rough(low)
+        rough = self._rough(low, now)
         self._rough_run = (getattr(self, "_rough_run", 0) + 1) if rough else 0
         if fps is None:
             # No measurement (menu, loading, paused): keep what we have.
@@ -420,11 +433,29 @@ class AutoTdp(object):
                 self.state = "at_max"
                 self._good_since = None
                 return self.tdp
+            if ratio >= self.OK_RATIO:
+                # On target but uneven. Frame generation, a CPU-bound game or
+                # shader stutter stay uneven at any power: if a few watts do
+                # not make the slowest frame faster, stop adding power for it.
+                if self._rough_from is None:
+                    self._rough_from = (self.tdp, low)
+                elif self.tdp - self._rough_from[0] >= self.ROUGH_TRY_W:
+                    if low < self._rough_from[1] * self.ROUGH_GAIN:
+                        self._ignore_rough_until = now + self.ROUGH_IGNORE_S
+                        self._rough_from = None
+                        self._rough_run = 0
+                        self._good_since = None
+                        self.state = "holding"
+                        return self.tdp
+                    self._rough_from = (self.tdp, low)
+            else:
+                self._rough_from = None
             self.state = "raising"
             self._rough_run = 0
             return self._set(self.tdp + (3 if ratio < self.LOW_RATIO else 1), now)
 
         # Holding the target
+        self._rough_from = None
         if self._good_since is None:
             self._good_since = now
         self._probing_from = None

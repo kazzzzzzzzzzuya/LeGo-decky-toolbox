@@ -113,7 +113,10 @@ rate**. The plugin then:
   runs (60 fps: 60 Hz, 72 fps: 144 Hz), with gamescope's own limiter left
   off, and hands the refresh rate back when the game closes.
 - makes Auto TDP aim at that cap and judge the slowest frames, not only the
-  average, so it never cuts power into stutter.
+  average, so it never cuts power into stutter. Unevenness the screen causes
+  itself (90 fps at 144 Hz) is not counted, and unevenness a few more watts
+  do not fix (frame generation, shader stutter) does not push power to the
+  maximum.
 
 Caps: 30, 40, 45, 50, 60, 72, 90, 100, 120 and 144 fps (the same list as
 Auto TDP). The ones marked with a screen rate - 30 and 60 at 60 Hz, 72 and
