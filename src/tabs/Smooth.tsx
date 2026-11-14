@@ -14,6 +14,8 @@ import { replaceSettings, useStore } from "../store";
 import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 
 const OFF = 0;
+// The same caps as Auto TDP's target list.
+const CAPS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
 function refreshFor(fps: number, rates: number[]): number | null {
   const sorted = [...rates].sort((a, b) => b - a);
@@ -89,10 +91,19 @@ export const SmoothSection: FC = () => {
   }
 
   const rates = st?.rates ?? [];
-  const choices = st?.choices?.length ? st.choices : [30, 60];
+  const vrr = !!st?.vrr;
+  const choices =
+    current && !CAPS.includes(current.fps)
+      ? [...CAPS, current.fps].sort((a, b) => a - b)
+      : CAPS;
+  // Even: a refresh rate the cap divides, so every frame stays on screen
+  // equally long. Otherwise some frames stay longer (judder) unless the
+  // screen has variable refresh (VRR).
   const label = (f: number) => {
     const r = refreshFor(f, rates);
-    return r ? `${f} fps · screen ${r} Hz` : `${f} fps`;
+    if (r) return `${f} fps · screen ${r} Hz`;
+    if (vrr) return `${f} fps · VRR`;
+    return rates.length ? `${f} fps · uneven on this screen` : `${f} fps`;
   };
   const measured = st?.measured;
   const saved = Object.entries(games).sort((a, b) => a[1].name.localeCompare(b[1].name));
@@ -103,7 +114,11 @@ export const SmoothSection: FC = () => {
         <PanelSectionRow>
           <DropdownItem
             label={app.name || "This game"}
-            description="Even frame pacing: an early frame limiter plus a screen refresh rate the cap divides evenly. Applies from the game's next start."
+            description={
+              current && !refreshFor(current.fps, rates) && !vrr && rates.length
+                ? `${current.fps} fps does not divide this screen's ${rates.join(" / ")} Hz, so some frames stay on screen longer. Caps marked with a screen rate are perfectly even.`
+                : "Even frame pacing: an early frame limiter plus a screen refresh rate the cap divides evenly. Applies from the game's next start."
+            }
             disabled={busy}
             rgOptions={[
               { data: OFF, label: "Off" },

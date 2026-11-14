@@ -112,8 +112,10 @@ rate**. The plugin then:
 - makes Auto TDP aim at that cap and judge the slowest frames, not only the
   average, so it never cuts power into stutter.
 
-Only caps that divide the screen's refresh rates are offered (Legion Go:
-30, 36, 48, 60, 72, 144). Restart the game after changing it. For the best
+Caps: 30, 40, 45, 50, 60, 72, 90, 100, 120 and 144 fps (the same list as
+Auto TDP). The ones marked with a screen rate - 30 and 60 at 60 Hz, 72 and
+144 at 144 Hz on the Legion Go - are perfectly even; the others do not divide
+the screen's refresh rate, so some frames stay on screen longer. Restart the game after changing it. For the best
 result turn off Steam's Framerate limit and the game's own limiter and
 V-Sync for that game. With **lsfg-vk frame generation** use lsfg-vk's own
 frame cap instead: Smooth mode refuses to add a second limiter when a game

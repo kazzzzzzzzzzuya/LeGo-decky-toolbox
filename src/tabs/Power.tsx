@@ -6,7 +6,7 @@ import { replaceSettings, update, useStore } from "../store";
 import { ErrorRow, Info, modeLabel, Unavailable } from "../ui";
 import { SmoothSection } from "./Smooth";
 
-const TARGETS = [30, 40, 45, 50, 60, 72, 90, 120, 144];
+export const TARGETS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
 const AUTO_STATES: Record<string, string> = {
   starting: "starting",

@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.5.4</div>
+    <div class="kicker">User manual · Version 2.5.5</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -220,7 +220,7 @@
   <table>
     <tr><th>Part</th><th>How</th></tr>
     <tr><td class="k">Even frame cap</td><td>MangoHud's limiter in <i>early</i> mode, the Linux counterpart of RTSS's async / front-edge limiter shown in frame-pacing guides. Games without MangoHud's Vulkan layer use DXVK's limiter (DirectX 9-11 games under Proton).</td></tr>
-    <tr><td class="k">Matching refresh rate</td><td>While the game runs the screen switches to a rate the cap divides evenly, so each frame stays on screen for the same time: 30 and 60 fps at 60 Hz; 36, 48, 72 and 144 fps at 144 Hz. gamescope's own limiter stays off, so limiters never stack. The refresh rate is handed back when the game closes.</td></tr>
+    <tr><td class="k">Matching refresh rate</td><td>While the game runs the screen switches to a rate the cap divides evenly, so each frame stays on screen for the same time: 30 and 60 fps at 60 Hz, 72 and 144 fps at 144 Hz. The other caps in the list (40, 45, 50, 90, 100, 120) are offered too, marked <i>uneven on this screen</i>: they do not divide 60 or 144 Hz, so some frames stay on screen longer. gamescope's own limiter stays off, so limiters never stack. The refresh rate is handed back when the game closes.</td></tr>
     <tr><td class="k">Auto TDP</td><td>Aims at the cap and judges the slowest frame of each half second, not only the average. It does not cut power while frames arrive unevenly, and adds power when they keep arriving late.</td></tr>
   </table>
   <p>The <b>Now</b> line shows the measured frame rate and the slowest frame; the closer the two, the smoother. Smooth mode puts its settings at the very start of the launch options, so wrapper commands such as lsfg-vk's <code>~/lsfg</code> or <code>gamemoderun</code> keep working. Your own launch options are kept, and turning Smooth mode off removes exactly what it added. HelixSR, Decky-Framegen and similar plugins keep working; Decky-Framegen and Steam ROM Manager replace the whole launch options when they apply, and the Power tab then offers <b>Add the cap again</b>. For emulators from Steam ROM Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot reach Flatpak apps. <b>Games with Smooth mode</b> lists every game with a cap.</p>
