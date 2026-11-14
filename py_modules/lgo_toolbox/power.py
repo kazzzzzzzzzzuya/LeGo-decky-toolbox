@@ -258,7 +258,14 @@ class FpsMonitor(object):
     def _reader(self, proc):
         try:
             for raw in proc.stdout:
-                parts = raw.decode("ascii", "replace").split()
+                line = raw.decode("utf-8", "replace").strip()
+                if line.startswith("!"):
+                    # Why nothing is measured, from the probe
+                    with self._lock:
+                        if proc is self._proc:
+                            self.error = line[1:].strip()[:200] or None
+                    continue
+                parts = line.split()
                 if len(parts) not in (2, 3):
                     continue
                 try:
@@ -273,6 +280,8 @@ class FpsMonitor(object):
                     if proc is self._proc:
                         self._fps = fps
                         self._low = low
+                        if fps is not None:
+                            self.error = None
                         self._at = time.monotonic()
         except (OSError, ValueError):
             pass

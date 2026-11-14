@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.5.2</div>
+    <div class="kicker">User manual · Version 2.5.3</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -425,7 +425,8 @@
     <tr><td>A feature says "not available"</td><td>The text under it gives the reason. Most often: no <code>acpi_call</code> (fan), not in Gaming Mode (Auto TDP), or InputPlumber not running (buttons, Steam gyro).</td></tr>
     <tr><td>TDP keeps jumping back</td><td>Turn off Steam's own TDP limit (Performance menu) and remove other TDP plugins.</td></tr>
     <tr><td>Auto TDP stays "at your maximum"</td><td>The game cannot reach the target within your Maximum TDP. Raise the maximum or lower the target.</td></tr>
-    <tr><td>Auto TDP says "waiting for the game to draw frames"</td><td>No game is in focus, it is paused, or you are in Desktop Mode.</td></tr>
+    <tr><td>Auto TDP says "waiting for the game to draw frames"</td><td>No game is in focus, it is paused, or you are in Desktop Mode. Otherwise the line names the reason. While streaming (Punktfunk and similar hosts run their own gamescope) the plugin finds the gamescope the game draws on by itself.</td></tr>
+    <tr><td>Stream shows another frame rate than the device</td><td>The stream runs at the client's refresh rate and repeats frames when the game is slower. The game's real frame rate is the one in the Power tab.</td></tr>
     <tr><td>Fan full speed or curve switches itself off</td><td>The firmware drops them when the power mode changes. The plugin restores them within about 5 seconds; the Fan tab's <i>Kept on</i> line shows when it did.</td></tr>
     <tr><td>No fan curve editor</td><td>The <code>acpi_call</code> module is missing (chapter 6).</td></tr>
     <tr><td>Stick lights or remapping: "controllers not found"</td><td>Wake the controllers by pressing a button, then change the setting again.</td></tr>

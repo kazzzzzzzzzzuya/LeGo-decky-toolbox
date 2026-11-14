@@ -141,7 +141,9 @@ export const SmoothSection: FC = () => {
               ? `${measured.fps.toFixed(1)} fps · slowest frame ${measured.low != null ? measured.low.toFixed(0) : "–"} fps${
                   st?.refresh ? ` · screen ${st.refresh} Hz` : ""
                 }`
-              : "Waiting for the game to draw frames"}
+              : status.power.auto.probe_error
+                ? `No frame rate yet: ${status.power.auto.probe_error}`
+                : "Waiting for the game to draw frames"}
           </Info>
           <Info label="For the smoothest result">
             Set Steam's Framerate limit (Performance menu) to off for this game, and turn off the

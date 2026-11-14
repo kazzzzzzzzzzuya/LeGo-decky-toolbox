@@ -835,6 +835,33 @@ class FpsProbe(TempDirCase):
         self.assertTrue(got and all(f is None and n == 0 for f, n in got))
         self.assertEqual(server.requests, 1)        # asked once, never spammed
 
+    def test_finds_the_gamescope_the_game_draws_on(self):
+        # A streaming host (e.g. Punktfunk) runs a second, headless gamescope:
+        # the game only draws on one of them.
+        empty, path1 = self._server()
+        path2 = os.path.join(self.tmp, "1000", "gamescope-1")
+        busy = FakeGamescope(path2)
+        self.addCleanup(busy.close)
+        orig = fps_probe.ROTATE_S
+        fps_probe.ROTATE_S = 0.4
+        self.addCleanup(setattr, fps_probe, "ROTATE_S", orig)
+        got, notes = [], []
+        stop = threading.Event()
+        t = threading.Thread(
+            target=fps_probe.measure,
+            args=(4242, lambda f, n, *low: got.append(f), stop.is_set),
+            kwargs={"socket_paths": lambda: [path1, path2], "window": 0.2,
+                    "note": notes.append}, daemon=True)
+        t.start()
+        end = time.monotonic() + 3.0
+        while time.monotonic() < end and not any(f for f in got if f):
+            busy.present(4242, 1 / 30.0)
+            time.sleep(0.005)
+        stop.set()
+        t.join(3.0)
+        self.assertTrue(any(f and abs(f - 30.0) < 0.1 for f in got))
+        self.assertTrue(any("gamescope-0" in n and "trying the next" in n for n in notes))
+
     def test_display_info_and_refresh(self):
         _, path = self._server()
         gs = smoothmod.Gamescope(sockets=lambda: [path])

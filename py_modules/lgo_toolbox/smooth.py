@@ -96,5 +96,23 @@ class Gamescope(object):
         return info
 
     def set_refresh(self, fps, internal=True):
-        _, ok = self._with(lambda c: c.set_refresh_cycle(fps, internal))
+        """Ask every gamescope: with a streaming host running its own
+        headless gamescope, the game may be on either."""
+        ok = False
+        errors = []
+        for path in self._sockets():
+            try:
+                conn = self._connect(path)
+            except (OSError, fps_probe.ProbeError) as e:
+                errors.append(str(e))
+                continue
+            try:
+                conn.set_refresh_cycle(fps, internal)
+                ok = True
+            except (OSError, fps_probe.ProbeError) as e:
+                errors.append(str(e))
+            finally:
+                conn.close()
+        self.error = None if ok else (
+            errors[0] if errors else "gamescope is not running (Gaming Mode only)")
         return ok

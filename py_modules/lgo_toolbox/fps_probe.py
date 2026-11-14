@@ -219,28 +219,43 @@ class Connection(object):
         return out
 
 
+ROTATE_S = 3.0   # no frame from one gamescope for this long: try the next one
+
+
 def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
-            clock=time.monotonic):
-    """Follow one app until ``stopped()``; calls ``emit(fps, frames)`` once
-    per window (fps is None while no frame arrived)."""
+            clock=time.monotonic, note=None):
+    """Follow one app until ``stopped()``; calls ``emit(fps, frames, low)``
+    once per window (fps is None while no frame arrived).
+
+    There can be more than one gamescope - streaming hosts such as
+    Punktfunk run their own headless one next to SteamOS's. The game draws
+    on only one of them, so a gamescope that sends no frames for the app is
+    left for the next one. ``note(text)`` receives why nothing is measured.
+    """
+    note = note or (lambda text: None)
+    turn = 0
     while not stopped():
         paths = socket_paths() if socket_paths else find_sockets()
-        conn = None
-        for path in paths:
-            try:
-                conn = Connection(path)
-                break
-            except (OSError, ProbeError):
-                conn = None
-        if conn is None:
-            emit(None, 0)
+        if not paths:
+            note("gamescope is not running (frame rates are measured in Gaming Mode only)")
+            emit(None, 0, None)
             _sleep(1.0, stopped)
+            continue
+        path = paths[turn % len(paths)]
+        turn += 1
+        try:
+            conn = Connection(path)
+        except (OSError, ProbeError) as e:
+            note("%s: %s" % (os.path.basename(path), e))
+            emit(None, 0, None)
+            _sleep(0.5 if len(paths) > 1 else 1.0, stopped)
             continue
         try:
             conn.request(app_id)
             frames = 0
             total = 0.0
             worst = 0.0
+            last_frame = clock()
             window_end = clock() + window
             while not stopped():
                 for app, seconds in conn.frames(max(0.0, window_end - clock())):
@@ -248,6 +263,7 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
                         continue
                     # One answer per request: ask for the next frame now.
                     conn.request(app_id)
+                    last_frame = clock()
                     if 0.0 < seconds < 1.0:
                         frames += 1
                         total += seconds
@@ -259,8 +275,16 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
                     total = 0.0
                     worst = 0.0
                     window_end = clock() + window
-        except (OSError, ProbeError):
-            emit(None, 0)
+                if clock() - last_frame >= ROTATE_S:
+                    note("the game (app %d) draws no frames on %s%s" % (
+                        app_id, os.path.basename(path),
+                        "; trying the next gamescope" if len(paths) > 1 else ""))
+                    if len(paths) > 1:
+                        break
+                    last_frame = clock()
+        except (OSError, ProbeError) as e:
+            note("%s: %s" % (os.path.basename(path), e))
+            emit(None, 0, None)
             _sleep(0.5, stopped)
         finally:
             conn.close()
@@ -288,8 +312,12 @@ def main(argv):
         # Stop when the plugin that started us is gone
         return os.getppid() != parent
 
+    def note(text):
+        sys.stdout.write("! %s\n" % text.replace("\n", " "))
+        sys.stdout.flush()
+
     try:
-        measure(app_id, emit, stopped)
+        measure(app_id, emit, stopped, note=note)
     except (KeyboardInterrupt, BrokenPipeError):
         pass
     return 0

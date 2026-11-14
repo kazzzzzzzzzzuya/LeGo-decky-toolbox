@@ -217,7 +217,12 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 - **TDP jumps back** – Steam's own TDP limit is still on, or another TDP
   plugin is installed.
 - **Auto TDP says "waiting for the game to draw frames"** – no game is in
-  focus, or the game is paused.
+  focus, or the game is paused. Otherwise the line shows why no frame rate
+  is measured. While streaming (Punktfunk and other hosts run their own
+  gamescope) the plugin looks for the gamescope the game draws on by itself.
+- **Streaming shows a different frame rate than the device** – the stream
+  runs at the client's refresh rate and repeats frames when the game is
+  slower. The game's real frame rate is what the Power tab shows.
 - **Auto TDP stays at the maximum** – the target frame rate is not reachable
   within your maximum TDP; raise the maximum or lower the target.
 - **Stick lights or remapping report "controllers not found"** – wake the
