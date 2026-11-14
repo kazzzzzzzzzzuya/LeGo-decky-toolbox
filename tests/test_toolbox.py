@@ -837,7 +837,30 @@ class FpsProbe(TempDirCase):
         stop.set()
         t.join(3.0)
         self.assertTrue(got and all(f is None and n == 0 for f, n in got))
-        self.assertEqual(server.requests, 1)        # asked once, never spammed
+        self.assertEqual(server.requests, len(fps_probe.candidate_ids(1)))  # once per id, never spammed
+
+    def test_candidate_ids(self):
+        self.assertEqual(fps_probe.candidate_ids(1091500), [1091500, 0])
+        gameid = (3123456789 << 32) | 0x02000000      # non-Steam shortcut game id
+        self.assertEqual(fps_probe.candidate_ids(gameid), [0x02000000, 3123456789, 0])
+
+    def test_frames_reported_without_app_id(self):
+        # gamescope labels the frames 0 (window without an app id)
+        server, path = self._server()
+        got = []
+        stop = threading.Event()
+        t = threading.Thread(target=fps_probe.measure,
+                             args=(4242, lambda f, n, *low: got.append(f), stop.is_set),
+                             kwargs={"socket_paths": lambda: [path], "window": 0.2}, daemon=True)
+        t.start()
+        self.assertTrue(server.bound.wait(3.0))
+        end = time.monotonic() + 1.5
+        while time.monotonic() < end and not any(got):
+            server.present(0, 1 / 45.0)
+            time.sleep(0.005)
+        stop.set()
+        t.join(3.0)
+        self.assertTrue(any(f and abs(f - 45.0) < 0.1 for f in got))
 
     def test_finds_the_gamescope_the_game_draws_on(self):
         # A streaming host (e.g. Punktfunk) runs a second, headless gamescope:

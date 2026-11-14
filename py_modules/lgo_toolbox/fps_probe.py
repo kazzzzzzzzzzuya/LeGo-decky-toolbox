@@ -234,6 +234,20 @@ class Connection(object):
 ROTATE_S = 3.0   # no frame from one gamescope for this long: try the next one
 
 
+def candidate_ids(app_id):
+    """App ids gamescope may label the game's frames with.
+
+    Steam's id first. A 64-bit game id (non-Steam shortcuts) carries the
+    32-bit app id in its upper half. gamescope reports windows that carry
+    no app id at all as 0.
+    """
+    out = []
+    for c in (app_id & 0xFFFFFFFF, app_id >> 32 if app_id > 0xFFFFFFFF else None, 0):
+        if c is not None and c not in out:
+            out.append(c)
+    return out
+
+
 def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
             clock=time.monotonic, note=None):
     """Follow one app until ``stopped()``; calls ``emit(fps, frames, low)``
@@ -263,7 +277,10 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
             _sleep(0.5 if len(paths) > 1 else 1.0, stopped)
             continue
         try:
-            conn.request(app_id)
+            ids = candidate_ids(app_id)
+            locked = None
+            for i in ids:
+                conn.request(i)
             frames = 0
             total = 0.0
             worst = 0.0
@@ -271,10 +288,14 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
             window_end = clock() + window
             while not stopped():
                 for app, seconds in conn.frames(max(0.0, window_end - clock())):
-                    if app != app_id:
+                    if app not in ids:
                         continue
                     # One answer per request: ask for the next frame now.
-                    conn.request(app_id)
+                    conn.request(app)
+                    if locked is None or (app != 0 and locked == 0):
+                        locked = app     # prefer a real id over 0
+                    if app != locked:
+                        continue
                     last_frame = clock()
                     if 0.0 < seconds < 1.0:
                         frames += 1
@@ -288,8 +309,8 @@ def measure(app_id, emit, stopped, socket_paths=None, window=WINDOW_S,
                     worst = 0.0
                     window_end = clock() + window
                 if clock() - last_frame >= ROTATE_S:
-                    note("the game (app %d) draws no frames on %s%s" % (
-                        app_id, os.path.basename(path),
+                    note("gamescope reports no frames for the game (ids %s) on %s%s" % (
+                        "/".join(str(i) for i in ids), os.path.basename(path),
                         "; trying the next gamescope" if len(paths) > 1 else ""))
                     if len(paths) > 1:
                         break
@@ -312,7 +333,7 @@ def main(argv):
     if len(argv) != 2 or not argv[1].isdigit():
         sys.stderr.write("usage: fps_probe.py <appid>\n")
         return 2
-    app_id = int(argv[1]) & 0xFFFFFFFF
+    app_id = int(argv[1])
     parent = os.getppid()
 
     def emit(fps, frames, low=None):
