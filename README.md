@@ -221,12 +221,13 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   on the game's own frames. Pick a final rate that suits the screen (60 at
   60 Hz, 72 or 144 at 144 Hz) and cap the game at final ÷ multiplier
   (2×: 30 for 60, 72 for 144; 3×: 48 for 144; 4×: 36 for 144).
-  - lsfg-vk: set the base cap in decky-lsfg-vk and leave Smooth mode off.
-  - Decky-Framegen: game / OptiScaler limit at the base rate, or Smooth
-    mode at the base rate. Apply Decky-Framegen first; if it re-applies
-    later, use *Add the cap again*.
-  - Steam: Refresh rate to the final rate where offered, Framerate limit
-    off. Auto TDP target = the **final** rate.
+  - Cap the base rate in the frame-generation tool (lsfg-vk: decky-lsfg-vk's
+    base frame rate; Decky-Framegen: the game's or OptiScaler's limit).
+    Keep Smooth mode **off** for frame-generated games.
+  - Steam: Refresh rate to the final rate where offered, Framerate limit off.
+  - Last, Auto TDP on with the **final** rate as target. If a game still has
+    a Smooth cap and shows far more frames than it, the plugin detects frame
+    generation and aims at the target instead.
 - Not verified on a device yet: whether generated frames are counted the
   same way by every tool. If Auto TDP misbehaves with frame generation,
   set the watts by hand for that game.
@@ -255,7 +256,7 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 
 ## Scope and limits
 
-- Used on a Legion Go (83E1), and verified with simulated hardware (143
+- Used on a Legion Go (83E1), and verified with simulated hardware (144
   automated tests). Every module reads the device state back after a change
   and reports it when a change did not take.
 - Legion Go 2 and Legion Go S are recognised for the parts that are known to

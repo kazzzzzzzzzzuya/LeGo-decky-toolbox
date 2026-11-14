@@ -140,7 +140,9 @@ export const PowerTab: FC = () => {
                     <DropdownItem
                       label="Target frame rate"
                       description={
-                        status.smooth?.fps
+                        status.power.auto.frame_gen
+                          ? "Frame generation detected: Auto TDP aims at this target (the final frame rate), not the Smooth cap. Better: turn Smooth mode off for frame-generated games."
+                          : status.smooth?.fps
                           ? `Ignored while this game has Smooth mode: Auto TDP aims at its ${status.smooth.fps} fps cap.`
                           : "Best with a frame limit at the same number (Smooth mode below sets one per game)."
                       }

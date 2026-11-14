@@ -84,6 +84,8 @@ class Hub(object):
         self._power_source_checked = 0.0
         self._smooth_applied = 0
         self._smooth_sent_at = 0.0
+        self._frame_gen = False
+        self._fg_run = 0
         self._display = None
         self._display_at = -1e9
         self._reapply_controller_at = None
@@ -222,6 +224,8 @@ class Hub(object):
             return
         self._app = app
         self._app_name = str(name or "")[:120]
+        self._frame_gen = False
+        self._fg_run = 0
         self._auto = None
         self._apply_power(force=True)
         self._apply_smooth()
@@ -604,10 +608,29 @@ class Hub(object):
         readout even when Auto TDP is off."""
         return self._app if self.smooth_for() else None
 
+    FG_RATIO = 1.5      # shown frames this far above the cap: frame generation
+    FG_READINGS = 3
+
     def _auto_target(self, profile):
-        """Auto TDP aims at the game's Smooth cap when it has one."""
+        """Auto TDP aims at the game's Smooth cap when it has one - unless
+        frame generation shows more frames than the cap lets the game draw;
+        then the profile's target (the final frame rate) is used."""
         entry = self.smooth_for()
-        return entry["fps"] if entry else profile["target_fps"]
+        if entry and not self._frame_gen:
+            return entry["fps"]
+        return profile["target_fps"]
+
+    def _watch_frame_gen(self, fps):
+        entry = self.smooth_for()
+        if not entry or fps is None or self._frame_gen:
+            return False
+        self._fg_run = self._fg_run + 1 if fps > entry["fps"] * self.FG_RATIO else 0
+        if self._fg_run >= self.FG_READINGS:
+            self._frame_gen = True
+            self._log.info("Frame generation detected (%.0f fps shown, cap %d): "
+                           "Auto TDP uses the target frame rate", fps, entry["fps"])
+            return True
+        return False
 
     def display_info(self, refresh=False):
         now = time.monotonic()
@@ -637,6 +660,8 @@ class Hub(object):
                               "added_command": bool(added_command)}
             self.settings = cfg.sanitize(dict(self.settings, smooth={"games": games}))
             self._save()
+        self._frame_gen = False
+        self._fg_run = 0
         self._apply_smooth(force=True)
         if self._auto is not None:
             _, profile = self.active_profile()
@@ -686,7 +711,12 @@ class Hub(object):
             want = auto.tdp_max
             auto.state = "no_game"
         else:
-            want = auto.step(self.fps.get(), now, self.fps.get_low())
+            fps = self.fps.get()
+            if self._watch_frame_gen(fps):
+                _, profile = self.active_profile()
+                low, top = self._tdp_bounds(profile)
+                auto.retarget(low, top, self._auto_target(profile))
+            want = auto.step(fps, now, self.fps.get_low())
         if want != self._auto_applied:
             with self._hw:
                 if self.limits.set_tdp(want):
@@ -830,6 +860,7 @@ class Hub(object):
                     "fps": self.fps.get() if auto is not None else None,
                     "low": self.fps.get_low() if auto is not None else None,
                     "target": self._auto_target(profile) if auto is not None else None,
+                    "frame_gen": self._frame_gen,
                     "probe_error": self.fps.error,
                 },
             },

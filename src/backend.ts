@@ -121,6 +121,7 @@ export interface HubStatus {
       fps: number | null;
       low: number | null;
       target: number | null;
+      frame_gen?: boolean;
       probe_error: string | null;
     };
   };

@@ -1617,6 +1617,30 @@ class HubTests(TempDirCase):
         self.hub.set_smooth_game(1091500, 72, "Cyberpunk 2077", "DXVK_FRAME_RATE=72", False)
         self.assertIn("Gaming Mode", self.hub.errors["smooth"])
 
+    def test_frame_generation_does_not_starve_power(self):
+        fps = self.mods["fps"]
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 60, "tdp": 25}}}})
+        self.hub.set_running_app(1245620, "Game")
+        self.hub.set_smooth_game(1245620, 30, "Game", "DXVK_FRAME_RATE=30", False)
+        self.assertEqual(self.hub._auto.target, 30.0)
+        now = 2000.0
+        fps.value = 60.0                       # 30 fps x2 frame generation
+        for _ in range(3):
+            self.hub._auto_step(now)
+            now += 1.0
+        self.assertTrue(self.hub.status()["power"]["auto"]["frame_gen"])
+        self.assertEqual(self.hub._auto.target, 60.0)    # the final rate
+        # A game at its cap is not mistaken for frame generation
+        self.hub.set_running_app(7, "Other")
+        self.hub.set_smooth_game(7, 60, "Other", "DXVK_FRAME_RATE=60", False)
+        fps.value = 60.0
+        for _ in range(5):
+            self.hub._auto_step(now)
+            now += 1.0
+        self.assertFalse(self.hub._frame_gen)
+        self.assertEqual(self.hub._auto.target, 60.0)
+
     def test_manual_tdp_and_modes(self):
         limits = self.mods["limits"]
         self.hub.update({"power": {"enabled": True, "profiles": {"default": {"tdp": 12}}}})
