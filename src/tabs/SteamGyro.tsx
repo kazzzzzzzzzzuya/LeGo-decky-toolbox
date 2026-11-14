@@ -1,5 +1,5 @@
 import { ButtonItem, DropdownItem, Field, PanelSection, PanelSectionRow } from "@decky/ui";
-import { FC, useState } from "react";
+import { FC, useRef, useState } from "react";
 
 import { setGameController } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
@@ -20,7 +20,10 @@ const label = (t: string, isDefault = false) =>
 /** Gyro for ordinary Steam games: make Steam see a controller with a gyro. */
 export const SteamGyroSection: FC = () => {
   const { state } = useStore();
-  const [busy, setBusy] = useState(false);
+  // Not "disabled" while busy: disabling the focused control makes Steam
+  // move focus (and the scroll position) back to the top of the tab.
+  const [, setBusy] = useState(false);
+  const busy = useRef(false);
   if (!state) return null;
   const { caps, settings, status } = state;
   const c = settings.controls;
@@ -36,10 +39,13 @@ export const SteamGyroSection: FC = () => {
   const types = ORDER.filter((t) => offered.has(t));
 
   const setGame = async (appId: number, kind: string | null, name: string) => {
+    if (busy.current) return;
+    busy.current = true;
     setBusy(true);
     try {
       replaceSettings(await setGameController(appId, kind, name));
     } finally {
+      busy.current = false;
       setBusy(false);
     }
   };
@@ -76,8 +82,7 @@ export const SteamGyroSection: FC = () => {
           <DropdownItem
             label={gameName}
             description="Remembered for this game: it switches when the game starts and back when it closes."
-            disabled={busy}
-            rgOptions={[
+                        rgOptions={[
               { data: SAME, label: `Same as all games (${label(current)})` },
               ...types.map((t) => ({ data: t, label: label(t) })),
             ]}
@@ -111,8 +116,7 @@ export const SteamGyroSection: FC = () => {
             <PanelSectionRow key={key}>
               <ButtonItem
                 layout="below"
-                disabled={busy}
-                description={label(g.type)}
+                                description={label(g.type)}
                 onClick={() => void setGame(Number(key), null, g.name)}
               >
                 {g.name || `App ${key}`}

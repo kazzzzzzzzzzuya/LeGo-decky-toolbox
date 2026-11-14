@@ -64,6 +64,26 @@ def refresh_for(fps, rates):
     return None
 
 
+def screen_rate(fps, rates, vrr=False):
+    """The refresh rate Smooth mode puts the screen at for `fps` frames on
+    screen: the highest rate `fps` divides; without one (90 or 120 fps on a
+    60/144 Hz screen), the highest rate, so frames are held as evenly as the
+    screen allows; None with variable refresh (the screen follows the game)
+    or when the rates are unknown."""
+    exact = refresh_for(fps, rates)
+    if exact or vrr or not rates:
+        return exact
+    return max(rates)
+
+
+def refresh_request(fps, rates, vrr=False):
+    """What to ask gamescope for. gamescope picks the highest rate that is a
+    multiple of the request; a request no rate is a multiple of is left to
+    gamescope's own fallback, which may pick a rate below the frame rate and
+    hold back frame generation. So ask for a rate the screen has."""
+    return screen_rate(fps, rates, vrr) or fps
+
+
 class Gamescope(object):
     """Short connections to gamescope's control interface."""
 

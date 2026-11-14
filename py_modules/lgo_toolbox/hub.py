@@ -704,7 +704,9 @@ class Hub(object):
         internal = True if info is None else info["internal"]
         if self._auto is None:
             self.fps.set_app(self._measure_app())
-        ok = self.gamescope.set_refresh(want, internal)
+        request = smoothmod.refresh_request(
+            want, info["rates"] if info else [], bool(info and info["vrr"])) if want else 0
+        ok = self.gamescope.set_refresh(request, internal)
         self._smooth_sent_at = time.monotonic()
         if ok:
             self._smooth_applied = want
@@ -723,7 +725,8 @@ class Hub(object):
             "fg_setting": entry.get("fg", cfg.FG_AUTO) if entry else cfg.FG_AUTO,
             "lsfg": lsfg,
             "output": output,
-            "refresh": smoothmod.refresh_for(output, rates) if output and rates else None,
+            "refresh": smoothmod.screen_rate(output, rates, bool(info and info["vrr"]))
+            if output else None,
             "rates": rates,
             "vrr": bool(info and info["vrr"]),
             "choices": smoothmod.fps_choices(rates),

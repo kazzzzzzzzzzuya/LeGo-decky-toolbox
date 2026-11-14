@@ -1060,6 +1060,15 @@ class SmoothMode(TempDirCase):
         self.assertEqual(smoothmod.refresh_for(72, [60, 144]), 144)
         self.assertEqual(smoothmod.refresh_for(30, [60, 120, 144]), 120)
         self.assertIsNone(smoothmod.refresh_for(40, [60, 144]))
+        # What gamescope is asked for: always a rate the screen has
+        self.assertEqual(smoothmod.refresh_request(45, [60, 144]), 144)    # 45 x 1
+        self.assertEqual(smoothmod.refresh_request(90, [60, 144]), 144)    # 45 x 2
+        self.assertEqual(smoothmod.refresh_request(120, [60, 144]), 144)   # 60 x 2
+        self.assertEqual(smoothmod.refresh_request(60, [60, 144]), 60)
+        self.assertEqual(smoothmod.refresh_request(72, [60, 144]), 144)
+        self.assertEqual(smoothmod.refresh_request(90, [60, 144], vrr=True), 90)
+        self.assertEqual(smoothmod.refresh_request(90, []), 90)
+        self.assertEqual(smoothmod.refresh_request(120, [60, 120, 144]), 120)
 
     def test_launch_prefix_and_layer(self):
         self.assertEqual(smoothmod.launch_prefix(60, "MANGOHUD"),
@@ -1673,7 +1682,8 @@ class HubTests(TempDirCase):
         # 60 fps from the game, doubled to 120 by frame generation
         out = self.hub.set_smooth_game(1091500, 60, "Cyberpunk 2077", prefix, True, 2)
         self.assertEqual(out["smooth"]["games"]["1091500"]["fg"], 2)
-        self.assertEqual(gs.sent[-1], 120)                 # screen rate for the output
+        self.assertEqual(gs.sent[-1], 144)       # 120 divides neither 60 nor 144: the highest
+        self.assertEqual(self.hub.status()["smooth"]["refresh"], 144)
         st = self.hub.status()["smooth"]
         self.assertEqual((st["fps"], st["fg"], st["output"]), (60, 2, 120))
         self.assertEqual(self.hub._auto.target, 120.0)     # Auto TDP holds the output
@@ -1702,7 +1712,7 @@ class HubTests(TempDirCase):
         prefix = smoothmod.launch_prefix(60, "MANGOHUD")
         out = self.hub.set_smooth_game(1293830, 60, "Forza Horizon 4", prefix, True)
         self.assertEqual(out["smooth"]["games"]["1293830"]["fg"], 0)    # auto
-        self.assertEqual(gs.sent[-1], 120)
+        self.assertEqual(gs.sent[-1], 144)
         st = self.hub.status()["smooth"]
         self.assertEqual((st["fg"], st["fg_setting"], st["output"]), (2, 0, 120))
         self.assertEqual(st["lsfg"]["profile"], "P")
@@ -1711,7 +1721,7 @@ class HubTests(TempDirCase):
         lsfg.mult[1293830] = 3
         now = 5000.0
         self.hub._tick(now)
-        self.assertEqual(gs.sent[-1], 180)
+        self.assertEqual(self.hub.status()["smooth"]["output"], 180)
         self.assertEqual(self.hub._auto.target, 180.0)
         # lsfg-vk off for the game: the cap itself
         lsfg.mult[1293830] = 1

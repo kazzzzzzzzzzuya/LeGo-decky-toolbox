@@ -235,7 +235,7 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   4. Prefer a fixed value? Pick Off or 2×-4× instead of Auto; the Power tab
      says when it differs from lsfg-vk's setting.
   5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
-     60 × 2 = 120 is marked *uneven on this screen* there, but is even on a
+     60 × 2 = 120 and 45 × 2 = 90 run at 144 Hz there, marked *uneven*; even on a
      120 Hz monitor (for example when streaming).
 - **Decky-Framegen** (OptiScaler frame generation inside the game): its
   generated frames pass the same limiter, so a Smooth cap would cap the

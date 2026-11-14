@@ -1,6 +1,6 @@
 import { ButtonItem, DropdownItem, Field, PanelSection, PanelSectionRow } from "@decky/ui";
 import { toaster } from "@decky/api";
-import { FC, useEffect, useState } from "react";
+import { FC, useEffect, useRef, useState } from "react";
 
 import { setSmoothGame, smoothPlan } from "../backend";
 import {
@@ -27,7 +27,10 @@ function refreshFor(fps: number, rates: number[]): number | null {
 /** Smooth frame rate per game: an even frame cap plus the matching refresh rate. */
 export const SmoothSection: FC = () => {
   const { state } = useStore();
+  // Not "disabled" while busy: disabling the focused control makes Steam
+  // move focus (and the scroll position) back to the top of the tab.
   const [busy, setBusy] = useState(false);
+  const working = useRef(false);
   const [problem, setProblem] = useState<string | null>(null);
   const [wiped, setWiped] = useState(false);
   const app0 = state?.status.app.id ?? null;
@@ -56,6 +59,8 @@ export const SmoothSection: FC = () => {
   /** Change one game's cap: launch options first, then the plugin's record. */
   const apply = async (appId: number, name: string, fps: number) => {
     const fg = games[String(appId)]?.fg ?? FG_AUTO;
+    if (working.current) return;
+    working.current = true;
     setBusy(true);
     setProblem(null);
     try {
@@ -83,6 +88,7 @@ export const SmoothSection: FC = () => {
     } catch (e) {
       setProblem(`${e instanceof Error ? e.message : e}`);
     } finally {
+      working.current = false;
       setBusy(false);
     }
   };
@@ -91,7 +97,8 @@ export const SmoothSection: FC = () => {
    *  game's own cap (and so its launch options) stays as it is. */
   const applyFg = async (appId: number, name: string, fg: number) => {
     const entry = games[String(appId)];
-    if (!entry) return;
+    if (!entry || working.current) return;
+    working.current = true;
     setBusy(true);
     setProblem(null);
     try {
@@ -110,6 +117,7 @@ export const SmoothSection: FC = () => {
     } catch (e) {
       setProblem(`${e instanceof Error ? e.message : e}`);
     } finally {
+      working.current = false;
       setBusy(false);
     }
   };
@@ -139,7 +147,8 @@ export const SmoothSection: FC = () => {
     const r = refreshFor(out, rates);
     if (r) return `${name} · screen ${r} Hz`;
     if (vrr) return `${name} · VRR`;
-    return rates.length ? `${name} · uneven on this screen` : name;
+    // Not divisible: the screen goes to its highest rate (as even as it gets).
+    return rates.length ? `${name} · screen ${Math.max(...rates)} Hz, uneven` : name;
   };
   // Multiplier in effect (with Auto: what lsfg-vk is set to for this game).
   const fg = current ? (st?.fg ?? 1) : 1;
@@ -182,8 +191,7 @@ export const SmoothSection: FC = () => {
                 ? `${out} fps does not divide this screen's ${rates.join(" / ")} Hz, so some frames stay on screen longer. Caps marked with a screen rate are perfectly even.`
                 : "Even frame pacing: an early frame limiter plus a screen refresh rate the cap divides evenly. Applies from the game's next start."
             }
-            disabled={busy}
-            rgOptions={[
+                        rgOptions={[
               { data: OFF, label: "Off" },
               ...choices.map((f) => ({ data: f, label: label(f, fg) })),
             ]}
@@ -197,8 +205,7 @@ export const SmoothSection: FC = () => {
           <DropdownItem
             label="Frame generation"
             description={fgDescription()}
-            disabled={busy}
-            rgOptions={FG_CHOICES.map((m) => ({
+                        rgOptions={FG_CHOICES.map((m) => ({
               data: m,
               label:
                 m === FG_AUTO
@@ -231,8 +238,7 @@ export const SmoothSection: FC = () => {
           <PanelSectionRow>
             <ButtonItem
               layout="below"
-              disabled={busy}
-              onClick={() => void apply(app.id as number, app.name || "This game", current.fps)}
+                            onClick={() => void apply(app.id as number, app.name || "This game", current.fps)}
             >
               Add the cap again
             </ButtonItem>
@@ -272,8 +278,7 @@ export const SmoothSection: FC = () => {
             <PanelSectionRow key={key}>
               <ButtonItem
                 layout="below"
-                disabled={busy}
-                description={label(g.fps, g.fg > 1 ? g.fg : 1)}
+                                description={label(g.fps, g.fg > 1 ? g.fg : 1)}
                 onClick={() => void apply(Number(key), g.name || `App ${key}`, OFF)}
               >
                 {g.name || `App ${key}`}
