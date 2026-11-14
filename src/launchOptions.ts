@@ -70,12 +70,14 @@ export async function writeLaunchOptions(appId: number, value: string): Promise<
 }
 
 const OWN_LIMITERS = /(^|\s)(MANGOHUD_CONFIG|DXVK_FRAME_RATE)=/;
+// Steam accepts %command% in any letter case (Decky-Framegen writes %COMMAND%).
+const COMMAND_RE = /%command%/i;
 
 /**
  * Add `prefix` (environment settings) at the very start of the options.
  * Settings have to come before any wrapper command - lsfg-vk's `~/lsfg`,
- * `gamemoderun`, `mangohud` and the like - or the shell passes them to the
- * wrapper as arguments. %command% is added when missing.
+ * Decky-Framegen's `~/fgmod/fgmod`, `gamemoderun` and the like - or the shell
+ * passes them to the wrapper as arguments. %command% is added when missing.
  */
 export function addPrefix(options: string, prefix: string): { value: string; addedCommand: boolean } {
   const trimmed = options.trim();
@@ -84,23 +86,38 @@ export function addPrefix(options: string, prefix: string): { value: string; add
       "This game's launch options already set a frame limiter (MANGOHUD_CONFIG or DXVK_FRAME_RATE, e.g. from lsfg-vk). Remove it there first.",
     );
   }
-  if (trimmed.includes(COMMAND)) {
+  if (COMMAND_RE.test(trimmed)) {
     return { value: `${prefix} ${trimmed}`, addedCommand: false };
   }
   // Without %command% the existing options are arguments for the game.
   return { value: `${prefix} ${COMMAND}${trimmed ? " " + trimmed : ""}`, addedCommand: true };
 }
 
+/** Remove one whole word and the single space joining it to its neighbour,
+ *  leaving all other text - including spacing inside quoted paths - as is. */
+function removeWord(text: string, word: string, ignoreCase = false): string {
+  const esc = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const m = new RegExp(`(^|\\s)${esc}(?=\\s|$)`, ignoreCase ? "i" : "").exec(text);
+  if (!m) return text;
+  const start = m.index + m[1].length;
+  const end = start + word.length;
+  if (start === 0) return text.slice(end).replace(/^\s/, "");
+  return text.slice(0, start - 1) + text.slice(end);
+}
+
 /**
  * Undo addPrefix: remove each setting it added (the first time it appears,
- * wherever another tool moved it), leaving everything else as it was.
+ * wherever another tool moved it), leaving everything else exactly as it was.
  */
 export function removePrefix(options: string, prefix: string, addedCommand: boolean): string {
-  const words = options.trim().split(/\s+/).filter(Boolean);
-  for (const token of prefix.split(/\s+/).filter(Boolean)) {
-    const at = words.indexOf(token);
-    if (at >= 0) words.splice(at, 1);
-  }
-  if (addedCommand && words[0] === COMMAND) words.shift();
-  return words.join(" ");
+  let value = options.trim();
+  for (const token of prefix.split(/\s+/).filter(Boolean)) value = removeWord(value, token);
+  if (addedCommand && /^%command%(\s|$)/i.test(value)) value = removeWord(value, COMMAND, true);
+  return value.trim();
+}
+
+/** Whether the options still contain the cap Smooth mode added. */
+export function hasPrefix(options: string, prefix: string): boolean {
+  const words = new Set(options.split(/\s+/));
+  return prefix.split(/\s+/).filter(Boolean).every((t) => words.has(t));
 }

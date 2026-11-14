@@ -62,9 +62,7 @@ curve, which is safe.
 ## Installation
 
 1. Install [Decky Loader](https://decky.xyz).
-2. If you have **Legion Go Gyro** installed, uninstall it first (this plugin
-   contains it; its tuning and calibration are carried over automatically).
-   Do the same for other plugins that control the same things (SimpleDeckyTDP,
+2. Uninstall other plugins that control the same things (SimpleDeckyTDP,
    Legion Center, HueSync, DeckyPlumber): two plugins steering the same
    hardware will fight.
 3. Decky → settings → **General → Developer mode** on.
@@ -119,7 +117,14 @@ Only caps that divide the screen's refresh rates are offered (Legion Go:
 result turn off Steam's Framerate limit and the game's own limiter and
 V-Sync for that game. With **lsfg-vk frame generation** use lsfg-vk's own
 frame cap instead: Smooth mode refuses to add a second limiter when a game
-already has one. Shader-compilation and loading stutter come from the
+already has one.
+
+Other launch-option tools: settings from HelixSR, Decky-Framegen and similar
+plugins are kept. Decky-Framegen and Steam ROM Manager *replace* a game's
+whole launch options when they apply; the Power tab then says the cap is
+missing and offers to add it again. For emulators added with Steam ROM
+Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot
+reach Flatpak apps, and the DXVK fallback only works for DirectX games. Shader-compilation and loading stutter come from the
 game and cannot be removed this way.
 
 ### Fan

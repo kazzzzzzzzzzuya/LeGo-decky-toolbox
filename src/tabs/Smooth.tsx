@@ -1,9 +1,15 @@
 import { ButtonItem, DropdownItem, Field, PanelSection, PanelSectionRow } from "@decky/ui";
 import { toaster } from "@decky/api";
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 
 import { setSmoothGame, smoothPlan } from "../backend";
-import { addPrefix, readLaunchOptions, removePrefix, writeLaunchOptions } from "../launchOptions";
+import {
+  addPrefix,
+  hasPrefix,
+  readLaunchOptions,
+  removePrefix,
+  writeLaunchOptions,
+} from "../launchOptions";
 import { replaceSettings, useStore } from "../store";
 import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 
@@ -19,6 +25,22 @@ export const SmoothSection: FC = () => {
   const { state } = useStore();
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
+  const [wiped, setWiped] = useState(false);
+  const app0 = state?.status.app.id ?? null;
+  const entry0 = app0 != null ? state?.settings.smooth?.games?.[String(app0)] : undefined;
+  // Another tool (Decky-Framegen, Steam ROM Manager, ...) may have replaced
+  // the launch options since the cap was added: check when the game runs.
+  useEffect(() => {
+    let alive = true;
+    setWiped(false);
+    if (app0 == null || !entry0) return;
+    readLaunchOptions(app0)
+      .then((o) => alive && setWiped(!hasPrefix(o, entry0.prefix)))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [app0, entry0?.prefix, busy]);
   if (!state) return null;
   const { caps, settings, status } = state;
   const st = status.smooth;
@@ -95,6 +117,23 @@ export const SmoothSection: FC = () => {
         <Info label="Start a game">Smooth mode is set per game while it runs.</Info>
       )}
 
+      {current && wiped && (
+        <>
+          <Info label="Cap missing" warn>
+            Another tool replaced this game's launch options (for example Decky-Framegen or Steam ROM
+            Manager), so the {current.fps} fps cap is gone.
+          </Info>
+          <PanelSectionRow>
+            <ButtonItem
+              layout="below"
+              disabled={busy}
+              onClick={() => void apply(app.id as number, app.name || "This game", current.fps)}
+            >
+              Add the cap again
+            </ButtonItem>
+          </PanelSectionRow>
+        </>
+      )}
       {current && (
         <>
           <Info label="Now">

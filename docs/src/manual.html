@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.5.1</div>
+    <div class="kicker">User manual · Version 2.5.2</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -44,7 +44,7 @@
   <h1>Contents</h1>
   <ol class="toc">
     <li><span class="n">1</span><span><span class="t">Before you start</span><br><span class="d">What the plugin does, what it needs, what it will not touch</span></span></li>
-    <li><span class="n">2</span><span><span class="t">Installing, updating and removing</span><br><span class="d">Decky developer mode, moving over from Legion Go Gyro</span></span></li>
+    <li><span class="n">2</span><span><span class="t">Installing, updating and removing</span><br><span class="d">Decky developer mode, updates, removal</span></span></li>
     <li><span class="n">3</span><span><span class="t">Finding your way around</span><br><span class="d">Tabs, status lines, "not available" messages</span></span></li>
     <li><span class="n">4</span><span><span class="t">Home and battery</span><br><span class="d">Overview, 80 % charge limit, reset</span></span></li>
     <li><span class="n">5</span><span><span class="t">Power</span><br><span class="d">Power modes, TDP, Auto TDP for a frame rate, Smooth frame rate, per-game profiles</span></span></li>
@@ -90,7 +90,7 @@
     <tr><td><b>Custom fan curve</b></td><td><b>The <code>acpi_call</code> module is installed - SteamOS does not include it</b></td></tr>
   </table>
 
-  <div class="warn"><b>One controller of each thing.</b> Two plugins steering the same hardware keep overwriting each other. Remove (or switch off) SimpleDeckyTDP, Legion Center, HueSync, DeckyPlumber, LegionGoRemapper and the stand-alone Legion Go Gyro before using the matching tab here. Also turn off Steam's own <i>TDP limit</i> in the Performance menu if you use the Power tab.</div>
+  <div class="warn"><b>One controller of each thing.</b> Two plugins steering the same hardware keep overwriting each other. Remove (or switch off) SimpleDeckyTDP, Legion Center, HueSync, DeckyPlumber and LegionGoRemapper before using the matching tab here. Also turn off Steam's own <i>TDP limit</i> in the Performance menu if you use the Power tab.</div>
 </section>
 
 <!-- ============================== 2 ============================== -->
@@ -100,7 +100,6 @@
   <h2>Install</h2>
   <ol class="steps">
     <li>Install <a href="https://decky.xyz">Decky Loader</a> if you do not have it yet.</li>
-    <li>If <b>Legion Go Gyro</b> is installed, uninstall it first. Its tuning and calibration are copied over automatically the first time Legion Go Toolbox starts.</li>
     <li>Copy <code>legion-go-toolbox.zip</code> onto the Legion Go (Downloads is fine).</li>
     <li>In Gaming Mode open the Quick Access menu <kbd>…</kbd> → Decky (plug icon) → gear icon → <b>General</b> → turn on <b>Developer mode</b>.</li>
     <li>In the same settings open <b>Developer</b> → <b>Install plugin from ZIP file</b> → choose the zip.</li>
@@ -224,7 +223,7 @@
     <tr><td class="k">Matching refresh rate</td><td>While the game runs the screen switches to a rate the cap divides evenly, so each frame stays on screen for the same time: 30 and 60 fps at 60 Hz; 36, 48, 72 and 144 fps at 144 Hz. gamescope's own limiter stays off, so limiters never stack. The refresh rate is handed back when the game closes.</td></tr>
     <tr><td class="k">Auto TDP</td><td>Aims at the cap and judges the slowest frame of each half second, not only the average. It does not cut power while frames arrive unevenly, and adds power when they keep arriving late.</td></tr>
   </table>
-  <p>The <b>Now</b> line shows the measured frame rate and the slowest frame; the closer the two, the smoother. Smooth mode puts its settings at the very start of the launch options, so wrapper commands such as lsfg-vk's <code>~/lsfg</code> or <code>gamemoderun</code> keep working. Your own launch options are kept, and turning Smooth mode off removes exactly what it added. <b>Games with Smooth mode</b> lists every game with a cap.</p>
+  <p>The <b>Now</b> line shows the measured frame rate and the slowest frame; the closer the two, the smoother. Smooth mode puts its settings at the very start of the launch options, so wrapper commands such as lsfg-vk's <code>~/lsfg</code> or <code>gamemoderun</code> keep working. Your own launch options are kept, and turning Smooth mode off removes exactly what it added. HelixSR, Decky-Framegen and similar plugins keep working; Decky-Framegen and Steam ROM Manager replace the whole launch options when they apply, and the Power tab then offers <b>Add the cap again</b>. For emulators from Steam ROM Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot reach Flatpak apps. <b>Games with Smooth mode</b> lists every game with a cap.</p>
   <div class="note"><b>Limits.</b> Stutter from shader compilation or loading comes from the game itself and cannot be removed by a limiter. Smooth mode works in Gaming Mode only.</div>
 
   <h2>CPU boost</h2>
