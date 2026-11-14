@@ -1398,11 +1398,15 @@ class HubTests(TempDirCase):
         self.ac = False
         self.send_error = None
         self.boost = []
+        self.home = os.path.join(self.tmp, "home")
+        os.makedirs(self.home)
+        self.on_output = True
         self.mods = {
             "limits": FakeLimits(), "fan": FakeFan(), "charge": FakeCharge(),
             "led": FakeLed(), "swap": FakeSwap(), "fps": FakeFps(),
             "steam_pad": FakeSteamPad(), "gamescope": FakeGamescopeCtl(),
             "mangohud_env": lambda: "MANGOHUD", "lsfg": FakeLsfg(),
+            "home": lambda: self.home, "limit_on_output": lambda home: self.on_output,
             "send": self._send, "sensors": lambda: {"temp": 55, "rpm": None},
             "battery_info": lambda: {"percent": 80, "status": "Charging"},
             "set_boost": lambda v: self.boost.append(v) or True,
@@ -1615,7 +1619,7 @@ class HubTests(TempDirCase):
         gs, fps = self.mods["gamescope"], self.mods["fps"]
         plan = self.hub.smooth_plan(60)
         self.assertEqual(plan, {"prefix": smoothmod.launch_prefix(60, "MANGOHUD"),
-                                "limiter": "mangohud"})
+                                "live": False, "limiter": "mangohud"})     # no game: inline
         self.hub.set_running_app(1091500, "Cyberpunk 2077")
         self.assertEqual(gs.sent, [])                     # no cap: refresh untouched
         out = self.hub.set_smooth_game(1091500, 60, "Cyberpunk 2077", plan["prefix"], True)
@@ -1733,6 +1737,54 @@ class HubTests(TempDirCase):
         self.hub.set_smooth_game(1293830, 60, "Forza Horizon 4", prefix, True, 1)
         self.assertEqual(gs.sent[-1], 60)
         self.assertEqual(self.hub.status()["smooth"]["fg"], 1)
+
+    def test_live_cap_file_with_frame_generation(self):
+        fps, lsfg = self.mods["fps"], self.mods["lsfg"]
+        conf = os.path.join(self.home, ".config", "lgo-toolbox", "smooth", "1293830.conf")
+        read = lambda: open(conf).read()
+        self.hub.set_running_app(1293830, "Forza Horizon 4")
+        lsfg.mult[1293830] = 2
+        plan = self.hub.smooth_plan(60, 1293830)
+        self.assertEqual(plan["prefix"], "MANGOHUD=1 MANGOHUD_CONFIGFILE=" + conf)
+        self.assertTrue(plan["live"])
+        # MangoHud after lsfg-vk sees every shown frame: cap 60 x 2 = 120
+        self.assertIn("fps_limit=120\nfps_limit_method=early\nno_display", read())
+        self.hub.set_smooth_game(1293830, 60, "Forza Horizon 4", plan["prefix"], False)
+        # lsfg-vk changed to 3x mid-game: rewritten live
+        lsfg.mult[1293830] = 3
+        self.hub._tick(6000.0)
+        self.assertIn("fps_limit=180\n", read())
+        lsfg.mult[1293830] = 1
+        self.hub._tick(6001.0)
+        self.assertIn("fps_limit=60\n", read())
+        # Measured far above the cap: here MangoHud caps the game's frames
+        lsfg.mult[1293830] = 2
+        self.hub._tick(6002.0)
+        self.assertIn("fps_limit=120\n", read())
+        fps.value = 140.0
+        for i in range(5):
+            self.hub._tick(6003.0 + i)
+        self.assertFalse(self.hub.limit_on_output())
+        self.assertIn("fps_limit=60\n", read())
+        self.assertEqual(self.hub.status()["smooth"]["output"], 120)   # still the aim
+        # A cap change needs no new launch options
+        self.assertEqual(self.hub.smooth_plan(45, 1293830)["prefix"], plan["prefix"])
+
+    def test_cap_file_order_and_failure(self):
+        home = os.path.join(self.tmp, "h")
+        self.assertTrue(smoothmod.limit_on_output(None))
+        self.assertTrue(smoothmod.limit_on_output(home))     # nothing found: assume after
+        user = os.path.join(home, ".local", "share", "vulkan", "implicit_layer.d")
+        os.makedirs(user)
+        open(os.path.join(user, "VkLayer_LSFGVK_frame_generation.json"), "w").close()
+        dirs = smoothmod.loader_dirs(home)
+        self.assertLess(dirs.index(user), dirs.index("/usr/share/vulkan/implicit_layer.d"))
+        self.assertEqual(smoothmod.conf_from_prefix("MANGOHUD=1 MANGOHUD_CONFIGFILE=/a/b.conf"),
+                         "/a/b.conf")
+        self.assertIsNone(smoothmod.conf_from_prefix("DXVK_FRAME_RATE=60"))
+        self.assertEqual(smoothmod.launch_prefix(60, "MANGOHUD", "/a b/c.conf"),
+                         smoothmod.launch_prefix(60, "MANGOHUD"))       # no spaces in a prefix
+        self.assertFalse(smoothmod.write_conf("/proc/nope/x.conf", 60))
 
     def test_manual_tdp_and_modes(self):
         limits = self.mods["limits"]

@@ -48,6 +48,17 @@ export const SmoothSection: FC = () => {
       alive = false;
     };
   }, [app0, entry0?.prefix, busy]);
+  // Caps set before 2.6.4 sit in the launch options as a fixed number.
+  // Move them once to the live cap file, so cap changes and frame
+  // generation apply while the game runs.
+  const applyRef = useRef<((appId: number, name: string, fps: number, moved?: boolean) => Promise<void>) | null>(null);
+  const migrated = useRef(new Set<number>());
+  useEffect(() => {
+    if (app0 == null || !entry0 || !/(^|\s)MANGOHUD_CONFIG=/.test(entry0.prefix)) return;
+    if (migrated.current.has(app0)) return;
+    migrated.current.add(app0);
+    void applyRef.current?.(app0, entry0.name || "This game", entry0.fps, true);
+  }, [app0, entry0?.prefix]);
   if (!state) return null;
   const { caps, settings, status } = state;
   const st = status.smooth;
@@ -57,7 +68,7 @@ export const SmoothSection: FC = () => {
   const current = appKey ? games[appKey] : undefined;
 
   /** Change one game's cap: launch options first, then the plugin's record. */
-  const apply = async (appId: number, name: string, fps: number) => {
+  const apply = async (appId: number, name: string, fps: number, moved = false) => {
     const fg = games[String(appId)]?.fg ?? FG_AUTO;
     if (working.current) return;
     working.current = true;
@@ -65,25 +76,39 @@ export const SmoothSection: FC = () => {
     setProblem(null);
     try {
       const entry = games[String(appId)];
-      let options = await readLaunchOptions(appId);
-      if (entry) options = removePrefix(options, entry.prefix, entry.added_command);
+      const original = await readLaunchOptions(appId);
+      let options = entry ? removePrefix(original, entry.prefix, entry.added_command) : original;
+      let now = false;
       if (fps === OFF) {
         await writeLaunchOptions(appId, options);
         replaceSettings(await setSmoothGame(appId, null, name, "", false, FG_AUTO));
       } else {
-        const plan = await smoothPlan(fps);
-        const next = addPrefix(options, plan.prefix);
-        await writeLaunchOptions(appId, next.value);
-        replaceSettings(
-          await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand, fg),
-        );
+        const plan = await smoothPlan(fps, appId);
+        if (entry && plan.live && entry.prefix === plan.prefix && hasPrefix(original, plan.prefix)) {
+          // Live cap file: the launch options stay as they are.
+          now = true;
+          replaceSettings(
+            await setSmoothGame(appId, fps, name, plan.prefix, entry.added_command, fg),
+          );
+        } else {
+          const next = addPrefix(options, plan.prefix);
+          options = next.value;
+          await writeLaunchOptions(appId, options);
+          replaceSettings(
+            await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand, fg),
+          );
+        }
       }
       toaster.toast({
         title: PLUGIN_NAME,
         body:
           fps === OFF
             ? `Smooth mode off for ${name}. Restart the game to remove the cap.`
-            : `${name}: ${fps} fps. Restart the game for the cap to apply.`,
+            : moved
+              ? `${name}: the cap now updates live (frame generation, cap changes). Restart the game once.`
+              : now
+                ? `${name}: ${fps} fps, applied now.`
+                : `${name}: ${fps} fps. Restart the game for the cap to apply; later changes apply live.`,
       });
     } catch (e) {
       setProblem(`${e instanceof Error ? e.message : e}`);
@@ -121,6 +146,8 @@ export const SmoothSection: FC = () => {
       setBusy(false);
     }
   };
+
+  applyRef.current = apply;
 
   if (!caps.smooth?.available && Object.keys(games).length === 0) {
     return (
@@ -189,7 +216,7 @@ export const SmoothSection: FC = () => {
             description={
               current && !refreshFor(out, rates) && !vrr && rates.length
                 ? `${out} fps does not divide this screen's ${rates.join(" / ")} Hz, so some frames stay on screen longer. Caps marked with a screen rate are perfectly even.`
-                : "Even frame pacing: an early frame limiter plus a screen refresh rate the cap divides evenly. Applies from the game's next start."
+                : "Even frame pacing: an early frame limiter plus a screen refresh rate the cap divides evenly. Restart the game once after first choosing a cap; later changes apply live."
             }
                         rgOptions={[
               { data: OFF, label: "Off" },

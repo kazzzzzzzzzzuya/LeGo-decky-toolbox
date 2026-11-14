@@ -69,7 +69,7 @@ export async function writeLaunchOptions(appId: number, value: string): Promise<
   throw new Error("Steam did not accept the new launch options");
 }
 
-const OWN_LIMITERS = /(^|\s)(MANGOHUD_CONFIG|DXVK_FRAME_RATE)=/;
+const OWN_LIMITERS = /(^|\s)(MANGOHUD_CONFIG|MANGOHUD_CONFIGFILE|DXVK_FRAME_RATE)=/;
 // Steam accepts %command% in any letter case (Decky-Framegen writes %COMMAND%).
 const COMMAND_RE = /%command%/i;
 
@@ -83,7 +83,7 @@ export function addPrefix(options: string, prefix: string): { value: string; add
   const trimmed = options.trim();
   if (OWN_LIMITERS.test(trimmed)) {
     throw new Error(
-      "This game's launch options already set a frame limiter (MANGOHUD_CONFIG or DXVK_FRAME_RATE, e.g. from lsfg-vk). Remove it there first.",
+      "This game's launch options already set a frame limiter (MANGOHUD_CONFIG, MANGOHUD_CONFIGFILE or DXVK_FRAME_RATE). Remove it there first.",
     );
   }
   if (COMMAND_RE.test(trimmed)) {

@@ -40,12 +40,104 @@ def mangohud_env(dirs=LAYER_DIRS):
     return None
 
 
-def launch_prefix(fps, env=None):
-    """Launch-option text that caps a game at `fps` (exact, removable)."""
+def launch_prefix(fps, env=None, conf=None):
+    """Launch-option text that caps a game at `fps` (exact, removable).
+    With `conf` MangoHud takes the cap from that file instead, which the
+    plugin can change while the game runs (MangoHud reloads it)."""
     fps = int(fps)
+    if env and conf and " " not in conf and "'" not in conf and '"' not in conf:
+        return "%s=1 MANGOHUD_CONFIGFILE=%s" % (env, conf)
     if env:
         return "%s=1 MANGOHUD_CONFIG=fps_limit=%d,fps_limit_method=early,no_display" % (env, fps)
     return "DXVK_FRAME_RATE=%d" % fps
+
+
+# ---- live cap file ---------------------------------------------------------
+CONF_DIR = os.path.join(".config", "lgo-toolbox", "smooth")
+CONF_TEXT = ("# Legion Go Toolbox, Smooth mode. Rewritten by the plugin; MangoHud\n"
+             "# applies changes while the game runs.\n"
+             "fps_limit=%d\nfps_limit_method=early\nno_display\n")
+
+
+def conf_path(home, app_id):
+    return os.path.join(home, CONF_DIR, "%d.conf" % int(app_id))
+
+
+def conf_from_prefix(prefix):
+    for word in (prefix or "").split():
+        if word.startswith("MANGOHUD_CONFIGFILE="):
+            return word.partition("=")[2] or None
+    return None
+
+
+def write_conf(path, limit):
+    """Write the cap in place (MangoHud watches the file itself, so it is
+    not replaced), owned by the user whose home it is in."""
+    text = CONF_TEXT % int(limit)
+    try:
+        with open(path, "r") as f:
+            if f.read() == text:
+                return True
+    except (OSError, IOError):
+        pass
+    folder = os.path.dirname(path)
+    try:
+        home_st = None
+        parts = folder.split(os.sep)
+        for i in range(len(parts), 0, -1):
+            base = os.sep.join(parts[:i]) or os.sep
+            if os.path.isdir(base):
+                home_st = os.stat(base)
+                break
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
+        with open(path, "w") as f:
+            f.write(text)
+        if home_st is not None and os.geteuid() == 0:
+            # The game runs as the user: it must be able to read (and the
+            # user to edit) what root wrote.
+            p = folder
+            while p and p != os.sep and os.stat(p).st_uid != home_st.st_uid:
+                os.chown(p, home_st.st_uid, home_st.st_gid)
+                p = os.path.dirname(p)
+            os.chown(path, home_st.st_uid, home_st.st_gid)
+        os.chmod(path, 0o644)
+        return True
+    except (OSError, IOError):
+        return False
+
+
+# ---- where MangoHud's limiter sits relative to lsfg-vk ------------------------
+def loader_dirs(home):
+    """Implicit-layer folders in the Vulkan loader's search order. A layer
+    found earlier sits closer to the game."""
+    sub = os.path.join("vulkan", "implicit_layer.d")
+    return [os.path.join(home, ".config", sub), os.path.join("/etc/xdg", sub),
+            os.path.join("/etc", sub), os.path.join(home, ".local", "share", sub),
+            os.path.join("/usr/local/share", sub), os.path.join("/usr/share", sub)]
+
+
+def _layer_dir(dirs, word):
+    for i, d in enumerate(dirs):
+        if any(word in os.path.basename(p).lower() for p in glob.glob(os.path.join(d, "*.json"))):
+            return i
+    return None
+
+
+def limit_on_output(home):
+    """True when MangoHud's limiter comes after lsfg-vk (it then sees the
+    generated frames too, so its cap is the frame rate on screen). This is
+    the usual setup: decky-lsfg-vk installs lsfg-vk in the user's folder,
+    which the loader searches before the system one with MangoHud. In one
+    folder the order is not defined; the plugin then also assumes this and
+    corrects itself from the measured frame rate."""
+    if not home:
+        return True
+    dirs = loader_dirs(home)
+    mh, lsfg = _layer_dir(dirs, "mangohud"), _layer_dir(dirs, "lsfgvk")
+    if mh is None or lsfg is None:
+        return True
+    return lsfg <= mh
 
 
 def fps_choices(rates):

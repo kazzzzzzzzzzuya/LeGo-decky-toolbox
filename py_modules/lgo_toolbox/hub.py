@@ -7,6 +7,7 @@ watchful eye (automatic TDP, the swapped menu buttons).
 
 import copy
 import logging
+import os
 import threading
 import time
 
@@ -17,7 +18,7 @@ from .plumber import MenuSwap, SteamController
 from .power import CUSTOM, AutoTdp, FpsMonitor, PowerLimits, cpu_boost_state, set_cpu_boost
 from .powerled import PowerLed
 from . import smooth as smoothmod
-from .lsfg import Lsfg
+from .lsfg import Lsfg, homes as user_homes
 
 LEGION_GO = ("83E1",)
 LEGION_GO_2 = ("83N0", "83N1")
@@ -56,6 +57,13 @@ class Hub(object):
         self.gamescope = m.get("gamescope") or smoothmod.Gamescope()
         self._mangohud_env = m.get("mangohud_env", smoothmod.mangohud_env)
         self.lsfg = m.get("lsfg") or Lsfg()
+        self._home = m.get("home") or (lambda: next(
+            (h for h in user_homes() if os.path.isdir(h)), None))
+        self._order = m.get("limit_on_output") or smoothmod.limit_on_output
+        self._on_output = None      # learned at first use, corrected by measurement
+        self._conf_written = {}
+        self._over_run = 0
+        self._cap_error = None
         self.fps = m.get("fps") or FpsMonitor(logger=self._log)
         self._send = m.get("send") or controller.send
         self._sensors = m.get("sensors") or fan.read_sensors
@@ -661,11 +669,84 @@ class Hub(object):
                 self._display = info
         return self._display
 
-    def smooth_plan(self, fps):
-        """Launch-option text for a cap, and which limiter it uses."""
+    def smooth_plan(self, fps, app_id=None):
+        """Launch-option text for a cap, and which limiter it uses. With
+        MangoHud and a game, the cap lives in a file the plugin keeps up to
+        date (cap changes and frame generation apply while the game runs)."""
         env = self._mangohud_env() if callable(self._mangohud_env) else self._mangohud_env
-        return {"prefix": smoothmod.launch_prefix(fps, env),
+        conf = None
+        home = self._home() if env and app_id is not None else None
+        if home:
+            conf = smoothmod.conf_path(home, app_id)
+            entry = {"fps": int(fps), "fg": cfg.FG_AUTO}
+            old = self.settings["smooth"]["games"].get(str(int(app_id)))
+            if old:
+                entry["fg"] = old.get("fg", cfg.FG_AUTO)
+            if not self._write_limit(conf, self._mh_limit(entry, int(app_id))):
+                conf = None
+        prefix = smoothmod.launch_prefix(fps, env, conf)
+        live = "MANGOHUD_CONFIGFILE=" in prefix
+        return {"prefix": prefix, "live": live,
                 "limiter": "mangohud" if env else "dxvk"}
+
+    # ---- MangoHud's cap with frame generation ----------------------------------
+    OVER_RATIO = 1.15   # measured this far above the cap: it limits the game's frames
+    OVER_READINGS = 5
+
+    def limit_on_output(self):
+        if self._on_output is None:
+            try:
+                self._on_output = bool(self._order(self._home()))
+            except Exception:
+                self._on_output = True
+        return self._on_output
+
+    def _mh_limit(self, entry, app=None):
+        """MangoHud's fps_limit for a Smooth entry. Where MangoHud sees the
+        generated frames too (after lsfg-vk), its cap is the frame rate on
+        screen: cap x multiplier. Otherwise it is the game's own cap."""
+        fg = self._fg(entry, app)
+        return entry["fps"] * fg if fg > 1 and self.limit_on_output() else entry["fps"]
+
+    def _write_limit(self, path, limit):
+        if self._conf_written.get(path) == limit:
+            return True
+        ok = smoothmod.write_conf(path, limit)
+        if ok:
+            self._conf_written[path] = limit
+            self._cap_error = None
+        else:
+            self._conf_written.pop(path, None)
+            self._cap_error = "Could not write the frame cap file %s" % path
+        self._err("smooth", self._cap_error)
+        return ok
+
+    def _sync_limit(self):
+        """Keep the running game's live cap file in step (cap, lsfg-vk's
+        multiplier, where the limiter sits)."""
+        entry = self.smooth_for()
+        path = smoothmod.conf_from_prefix(entry["prefix"]) if entry else None
+        if path:
+            self._write_limit(path, self._mh_limit(entry))
+
+    def _check_limit_place(self):
+        """With frame generation the cap is set for the frames on screen. If
+        far more frames arrive, MangoHud sits before lsfg-vk on this system
+        and caps the game's own frames: switch to that, live."""
+        entry = self.smooth_for()
+        if (not entry or not self.limit_on_output() or self._fg(entry) < 2
+                or not smoothmod.conf_from_prefix(entry["prefix"])):
+            self._over_run = 0
+            return
+        fps = self.fps.get()
+        limit = self._mh_limit(entry)
+        self._over_run = self._over_run + 1 if fps and fps > limit * self.OVER_RATIO else 0
+        if self._over_run >= self.OVER_READINGS:
+            self._over_run = 0
+            self._on_output = False
+            self._log.info("%.0f fps with a %d fps cap: MangoHud limits the game's own "
+                           "frames here; capping at %d", fps, limit, entry["fps"])
+            self._sync_limit()
 
     def set_smooth_game(self, app_id, fps, name="", prefix="", added_command=False,
                         fg=cfg.FG_AUTO):
@@ -694,6 +775,7 @@ class Hub(object):
     def _apply_smooth(self, force=False):
         """Switch the refresh rate for the running game's cap, or hand the
         refresh rate back when it has none."""
+        self._sync_limit()
         entry = self.smooth_for()
         want = self._smooth_output(entry) if entry else 0
         if want == self._smooth_applied and not force:
@@ -710,7 +792,7 @@ class Hub(object):
         self._smooth_sent_at = time.monotonic()
         if ok:
             self._smooth_applied = want
-        self._err("smooth", None if ok else self.gamescope.error)
+        self._err("smooth", self._cap_error if ok else self.gamescope.error)
 
     def _smooth_status(self):
         info = self._display
@@ -810,6 +892,7 @@ class Hub(object):
             self._apply_smooth(force=True)
         elif self._smooth_applied:
             self._apply_smooth()   # follows lsfg-vk's multiplier changing mid-game
+        self._check_limit_place()
 
         # Controllers that (re)appear get their lights and mapping again
         if self._controller_status is not None:

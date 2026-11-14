@@ -179,7 +179,10 @@ export interface LsfgInfo {
   error: string | null;
 }
 
-export const smoothPlan = callable<[fps: number], { prefix: string; limiter: string }>(
+export const smoothPlan = callable<
+  [fps: number, appId: number],
+  { prefix: string; limiter: string; live: boolean }
+>(
   "smooth_plan",
 );
 export const setSmoothGame = callable<

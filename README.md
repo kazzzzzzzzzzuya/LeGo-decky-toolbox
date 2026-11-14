@@ -102,10 +102,13 @@ rate**. The plugin then:
 
 - adds MangoHud's limiter with `fps_limit_method=early` to the game's launch
   options (the Linux counterpart of RTSS's async / front-edge limiter; games
-  without MangoHud's Vulkan layer fall back to DXVK's limiter). The settings
-  go at the very start, so wrappers you use (lsfg-vk's `~/lsfg`,
-  `gamemoderun`, ...) keep working; your own launch options are kept, and
-  switching off removes exactly what was added.
+  without MangoHud's Vulkan layer fall back to DXVK's limiter). The launch
+  options point MangoHud at a small cap file
+  (`~/.config/lgo-toolbox/smooth/<appid>.conf`) that the plugin keeps up to
+  date, so after the first start cap changes and frame generation apply
+  while the game runs. The settings go at the very start, so wrappers you
+  use (lsfg-vk's `~/lsfg`, `gamemoderun`, ...) keep working; your own launch
+  options are kept, and switching off removes exactly what was added.
 - switches the screen to a refresh rate the cap divides evenly while the game
   runs (60 fps: 60 Hz, 72 fps: 144 Hz), with gamescope's own limiter left
   off, and hands the refresh rate back when the game closes.
@@ -115,7 +118,7 @@ rate**. The plugin then:
 Caps: 30, 40, 45, 50, 60, 72, 90, 100, 120 and 144 fps (the same list as
 Auto TDP). The ones marked with a screen rate - 30 and 60 at 60 Hz, 72 and
 144 at 144 Hz on the Legion Go - are perfectly even; the others do not divide
-the screen's refresh rate, so some frames stay on screen longer. Restart the game after changing it. For the best
+the screen's refresh rate, so some frames stay on screen longer. Restart the game once after first choosing a cap. For the best
 result turn off Steam's Framerate limit and the game's own limiter and
 V-Sync for that game. With **lsfg-vk frame generation** nothing extra is
 needed: **Frame generation** (below the cap) is on *Auto* and reads the
@@ -220,9 +223,12 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 
 - **HelixSR** (upscaling only): use Smooth mode and Auto TDP as usual; both
   keep HelixSR's launch settings. Auto TDP settles at fewer watts.
-- **lsfg-vk 2.0** (frame generation): Smooth mode caps the game's own frames
-  and lsfg-vk multiplies them (tested on a Legion Go: a 30 cap with 2× shows
-  60).
+- **lsfg-vk 2.0** (frame generation): MangoHud's limiter usually comes after
+  lsfg-vk and sees the generated frames too, so the plugin sets it to the
+  frame rate on screen (cap × multiplier: 120 for 60 × 2) and the game
+  settles at the cap. If more frames than that arrive (MangoHud before
+  lsfg-vk on some setups), it switches to capping the game's own frames by
+  itself, live.
   1. In decky-lsfg-vk turn it on for the game with the multiplier you want
      (for example 2×) and leave its **Base FPS cap off** (the Power tab
      warns when it is on: two limiters).

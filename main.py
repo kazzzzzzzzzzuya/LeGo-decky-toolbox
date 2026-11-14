@@ -122,8 +122,9 @@ class Plugin:
     async def delete_power_profile(self, key):
         return await _bg(Plugin._hub().delete_power_profile, str(key))
 
-    async def smooth_plan(self, fps):
-        return await _bg(Plugin._hub().smooth_plan, int(fps))
+    async def smooth_plan(self, fps, app_id=None):
+        return await _bg(Plugin._hub().smooth_plan, int(fps),
+                         None if app_id is None else int(app_id))
 
     async def set_smooth_game(self, app_id, fps, name, prefix, added_command, fg=0):
         return await _bg(Plugin._hub().set_smooth_game, app_id,

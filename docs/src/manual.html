@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.6.3</div>
+    <div class="kicker">User manual · Version 2.6.4</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -214,14 +214,14 @@
   <ol class="steps">
     <li>Start the game and open the Power tab.</li>
     <li>Under <b>Smooth frame rate</b> choose a cap, for example <i>60 fps · screen 60 Hz</i> or <i>72 fps · screen 144 Hz</i>.</li>
-    <li>Quit and start the game again - the cap goes into its launch options and applies from the next start.</li>
+    <li>Quit and start the game again once - the cap goes into its launch options. From then on, changing the cap or frame generation applies while the game runs.</li>
     <li>In Steam's Performance menu set <b>Framerate limit</b> off for this game, and switch off the game's own frame limiter and V-Sync.</li>
     <li>Using lsfg-vk frame generation? <b>Frame generation</b> below the cap reads its multiplier by itself (chapter 10).</li>
   </ol>
   <h3>What it does</h3>
   <table>
     <tr><th>Part</th><th>How</th></tr>
-    <tr><td class="k">Even frame cap</td><td>MangoHud's limiter in <i>early</i> mode, the Linux counterpart of RTSS's async / front-edge limiter shown in frame-pacing guides. Games without MangoHud's Vulkan layer use DXVK's limiter (DirectX 9-11 games under Proton).</td></tr>
+    <tr><td class="k">Even frame cap</td><td>MangoHud's limiter in <i>early</i> mode, read from a small cap file the plugin keeps up to date (<code>~/.config/lgo-toolbox/smooth/&lt;appid&gt;.conf</code>), so changes apply while the game runs; the Linux counterpart of RTSS's async / front-edge limiter shown in frame-pacing guides. Games without MangoHud's Vulkan layer use DXVK's limiter (DirectX 9-11 games under Proton).</td></tr>
     <tr><td class="k">Matching refresh rate</td><td>While the game runs the screen switches to a rate the cap divides evenly, so each frame stays on screen for the same time: 30 and 60 fps at 60 Hz, 72 and 144 fps at 144 Hz. The other caps in the list (40, 45, 50, 90, 100, 120) are offered too, marked <i>screen 144 Hz, uneven</i>: they do not divide 60 or 144 Hz, so the screen runs at its highest rate and some frames stay on screen a little longer. gamescope's own limiter stays off, so limiters never stack. The refresh rate is handed back when the game closes.</td></tr>
     <tr><td class="k">Auto TDP</td><td>Aims at the cap and judges the slowest frame of each half second, not only the average. It does not cut power while frames arrive unevenly, and adds power when they keep arriving late.</td></tr>
   </table>
@@ -440,7 +440,7 @@
   <p>Because the game renders fewer pixels, Auto TDP settles at fewer watts for the same frame rate - the main gain.</p>
 
   <h2>lsfg-vk 2.0: Smooth mode with frame generation</h2>
-  <p>Smooth mode's cap holds the <b>game's own</b> frames, and lsfg-vk multiplies them afterwards (checked on a Legion Go: a 30 fps cap with 2× shows 60). So one limiter does the whole job.</p>
+  <p>One limiter does the whole job. MangoHud's limiter usually comes <i>after</i> lsfg-vk (decky-lsfg-vk installs lsfg-vk in your user folder, which Vulkan loads first), so it sees the generated frames too. The plugin therefore sets it to the frame rate on screen - cap × multiplier, 120 for 60 × 2 - and the game itself settles at the cap. If more frames arrive than that (MangoHud before lsfg-vk on some setups), the plugin switches to capping the game's own frames by itself, while the game runs.</p>
   <ol class="steps">
     <li>In decky-lsfg-vk turn it on for the game with the multiplier you want, for example <b>2×</b>, and leave its <b>Base FPS cap</b> <i>off</i>. The Power tab warns <i>Two frame limiters</i> when it is on.</li>
     <li>Power tab → <b>Smooth frame rate</b>: choose the game's cap, for example <i>60</i>.</li>
@@ -522,7 +522,7 @@
   </table>
 
   <h2>Testing status</h2>
-  <p>Besides use on a Legion Go (83E1), every module is covered by automated tests with simulated hardware (150 tests), and every module reads the hardware back after a change and reports it when a change did not take.</p>
+  <p>Besides use on a Legion Go (83E1), every module is covered by automated tests with simulated hardware (152 tests), and every module reads the hardware back after a change and reports it when a change did not take.</p>
 
   <h2>Credits</h2>
   <p class="muted">Legion Go Toolbox is its own code, built on what these projects worked out about the hardware: Handheld Daemon and hwinfo (controller protocol, Lenovo firmware methods and fan minimum), Legion Center and LegionGoRemapper (remapping, fan table, charge limit), HueSync (power light), SimpleDeckyTDP (power limits), DeckyPlumber and InputPlumber (menu-button swap), Panel de Control (frame times from gamescope), decky-lsfg-vk (tabs) and Legion Go 2 Companion (overview layout).</p>
