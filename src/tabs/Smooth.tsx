@@ -14,7 +14,8 @@ import { replaceSettings, useStore } from "../store";
 import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 
 const OFF = 0;
-const FG_CHOICES = [1, 2, 3, 4];
+const FG_AUTO = 0;
+const FG_CHOICES = [FG_AUTO, 1, 2, 3, 4];
 // The same caps as Auto TDP's target list.
 const CAPS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
@@ -54,7 +55,7 @@ export const SmoothSection: FC = () => {
 
   /** Change one game's cap: launch options first, then the plugin's record. */
   const apply = async (appId: number, name: string, fps: number) => {
-    const fg = games[String(appId)]?.fg ?? 1;
+    const fg = games[String(appId)]?.fg ?? FG_AUTO;
     setBusy(true);
     setProblem(null);
     try {
@@ -63,7 +64,7 @@ export const SmoothSection: FC = () => {
       if (entry) options = removePrefix(options, entry.prefix, entry.added_command);
       if (fps === OFF) {
         await writeLaunchOptions(appId, options);
-        replaceSettings(await setSmoothGame(appId, null, name, "", false, 1));
+        replaceSettings(await setSmoothGame(appId, null, name, "", false, FG_AUTO));
       } else {
         const plan = await smoothPlan(fps);
         const next = addPrefix(options, plan.prefix);
@@ -100,9 +101,11 @@ export const SmoothSection: FC = () => {
       toaster.toast({
         title: PLUGIN_NAME,
         body:
-          fg > 1
-            ? `${name}: ${entry.fps} fps × ${fg} = ${entry.fps * fg} fps on screen. Set ${fg}× in your frame-generation tool too.`
-            : `${name}: no frame generation, ${entry.fps} fps on screen.`,
+          fg === FG_AUTO
+            ? `${name}: frame generation follows lsfg-vk's setting for this game.`
+            : fg > 1
+              ? `${name}: ${entry.fps} fps × ${fg} = ${entry.fps * fg} fps on screen. Set ${fg}× in lsfg-vk too.`
+              : `${name}: no frame generation, ${entry.fps} fps on screen.`,
       });
     } catch (e) {
       setProblem(`${e instanceof Error ? e.message : e}`);
@@ -138,8 +141,33 @@ export const SmoothSection: FC = () => {
     if (vrr) return `${name} · VRR`;
     return rates.length ? `${name} · uneven on this screen` : name;
   };
-  const fg = current?.fg ?? 1;
+  // Multiplier in effect (with Auto: what lsfg-vk is set to for this game).
+  const fg = current ? (st?.fg ?? 1) : 1;
+  const fgSetting = current?.fg ?? FG_AUTO;
   const out = current ? current.fps * fg : 0;
+  const lsfg = st?.lsfg ?? null;
+  const lsfgMult = lsfg?.installed ? lsfg.multiplier : 1;
+  const autoLabel = (f: number) =>
+    !lsfg?.installed
+      ? "Auto · lsfg-vk not installed"
+      : lsfgMult > 1
+        ? `Auto · lsfg-vk ${lsfgMult}× · ${label(f, lsfgMult)}`
+        : "Auto · lsfg-vk off for this game";
+  const fgDescription = (): string => {
+    if (!current) return "";
+    if (lsfg?.error) return `Could not read lsfg-vk's settings (${lsfg.error}). Pick the multiplier by hand.`;
+    if (fgSetting === FG_AUTO) {
+      if (!lsfg?.installed) return "Follows lsfg-vk's setting for this game once lsfg-vk is installed. Nothing to do without frame generation.";
+      if (lsfgMult > 1)
+        return `Follows lsfg-vk (profile "${lsfg.profile}"): the game makes ${current.fps} fps, the screen shows ${out}. Auto TDP aims at ${out}. Changes in decky-lsfg-vk are picked up within seconds.`;
+      return "Follows lsfg-vk: it has no profile for this game, so the screen shows the cap. Turn lsfg-vk on for the game in decky-lsfg-vk and this follows within seconds.";
+    }
+    if (lsfg?.installed && fgSetting !== lsfgMult)
+      return `lsfg-vk is set to ${lsfgMult > 1 ? `${lsfgMult}×` : "off"} for this game, not ${fgSetting > 1 ? `${fgSetting}×` : "off"}. Choose Auto to follow it.`;
+    return fgSetting > 1
+      ? `Fixed: the game makes ${current.fps} fps, the screen shows ${out}. Auto TDP aims at ${out}.`
+      : "Fixed off: the screen shows the cap, whatever lsfg-vk is set to.";
+  };
   const measured = st?.measured;
   const saved = Object.entries(games).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
@@ -168,20 +196,27 @@ export const SmoothSection: FC = () => {
         <PanelSectionRow>
           <DropdownItem
             label="Frame generation"
-            description={
-              fg > 1
-                ? `The game makes ${current.fps} fps, frame generation shows ${out}. Set ${fg}× in lsfg-vk (or your frame-generation tool) as well, with its own frame cap off. Auto TDP aims at ${out} fps.`
-                : "Using lsfg-vk? Pick its multiplier here: the cap stays on the game's own frames, and the screen rate and Auto TDP follow the doubled (or more) frame rate."
-            }
+            description={fgDescription()}
             disabled={busy}
             rgOptions={FG_CHOICES.map((m) => ({
               data: m,
-              label: m === 1 ? "Off" : `${m}× · ${label(current.fps, m)}`,
+              label:
+                m === FG_AUTO
+                  ? autoLabel(current.fps)
+                  : m === 1
+                    ? "Off"
+                    : `${m}× · ${label(current.fps, m)}`,
             }))}
-            selectedOption={fg}
+            selectedOption={fgSetting}
             onChange={(o) => void applyFg(app.id as number, app.name || "This game", o.data as number)}
           />
         </PanelSectionRow>
+      ) : null}
+      {current && lsfg?.base_cap ? (
+        <Info label="Two frame limiters" warn>
+          decky-lsfg-vk's Base FPS cap ({lsfg.base_cap}) is on for this game. Turn it off there:
+          Smooth mode already caps the game at {current.fps}, and two limiters cause uneven frames.
+        </Info>
       ) : null}
       {app.id == null && (
         <Info label="Start a game">Smooth mode is set per game while it runs.</Info>
@@ -238,7 +273,7 @@ export const SmoothSection: FC = () => {
               <ButtonItem
                 layout="below"
                 disabled={busy}
-                description={label(g.fps, g.fg ?? 1)}
+                description={label(g.fps, g.fg > 1 ? g.fg : 1)}
                 onClick={() => void apply(Number(key), g.name || `App ${key}`, OFF)}
               >
                 {g.name || `App ${key}`}

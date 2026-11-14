@@ -14,13 +14,14 @@ POWER_PROFILE_DEFAULT = {
     "target_fps": 60,
     "min_tdp": 8,
 }
-SETTINGS_VERSION = 2
+SETTINGS_VERSION = 3
 # Controller InputPlumber presents to Steam. "xbox" is InputPlumber's own
 # choice (no gyro in Steam); the default here is the Steam Deck controller.
 STEAM_CONTROLLERS = ("deck-uhid", "xbox", "ds5-edge", "ds5")
 DEFAULT_STEAM_CONTROLLER = "deck-uhid"
 SWAP_LAYOUTS = ("steam_menu", "steam_view")
-FG_MULTIPLIERS = (1, 2, 3, 4)
+FG_AUTO = 0
+FG_MULTIPLIERS = (FG_AUTO, 1, 2, 3, 4)
 TARGET_FPS_CHOICES = (30, 40, 45, 48, 50, 60, 72, 90, 120, 144)
 TDP_ABS_MIN = 4
 TDP_ABS_MAX = 40
@@ -56,7 +57,8 @@ def defaults():
         },
         # Smooth mode per game: {appid: {"fps", "fg", "name", "prefix", "added_command"}}
         # "fps" is the game's own cap; "fg" the frame-generation multiplier
-        # (1 = none), so the screen shows fps * fg.
+        # (0 = follow lsfg-vk's settings, 1 = none, 2-4 = fixed), so the
+        # screen shows fps * multiplier.
         "smooth": {"games": {}},
         "controls": {
             "swap_menu": False,
@@ -132,6 +134,7 @@ def sanitize(data):
         return out
     version = data.get("version")
     old = not isinstance(version, int) or isinstance(version, bool) or version < 2
+    before_v3 = old or version < 3
 
     light = data.get("lighting")
     if isinstance(light, dict):
@@ -208,9 +211,11 @@ def sanitize(data):
                 continue
             name = v.get("name")
             fg = v.get("fg")
+            if before_v3 and fg == 1:
+                fg = FG_AUTO   # 2.6.0 stored 1 by default; following lsfg-vk is the new default
             out["smooth"]["games"][key] = {
                 "fps": fps, "prefix": prefix,
-                "fg": fg if fg in FG_MULTIPLIERS and not isinstance(fg, bool) else 1,
+                "fg": fg if fg in FG_MULTIPLIERS and not isinstance(fg, bool) else FG_AUTO,
                 "added_command": _flag(v.get("added_command"), False),
                 "name": name[:120] if isinstance(name, str) else "",
             }

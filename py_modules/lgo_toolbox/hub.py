@@ -17,6 +17,7 @@ from .plumber import MenuSwap, SteamController
 from .power import CUSTOM, AutoTdp, FpsMonitor, PowerLimits, cpu_boost_state, set_cpu_boost
 from .powerled import PowerLed
 from . import smooth as smoothmod
+from .lsfg import Lsfg
 
 LEGION_GO = ("83E1",)
 LEGION_GO_2 = ("83N0", "83N1")
@@ -54,6 +55,7 @@ class Hub(object):
         self.steam_pad = m.get("steam_pad") or SteamController()
         self.gamescope = m.get("gamescope") or smoothmod.Gamescope()
         self._mangohud_env = m.get("mangohud_env", smoothmod.mangohud_env)
+        self.lsfg = m.get("lsfg") or Lsfg()
         self.fps = m.get("fps") or FpsMonitor(logger=self._log)
         self._send = m.get("send") or controller.send
         self._sensors = m.get("sensors") or fan.read_sensors
@@ -603,12 +605,20 @@ class Hub(object):
             return None
         return self.settings["smooth"]["games"].get(str(app))
 
-    @staticmethod
-    def _smooth_output(entry):
+    def _fg(self, entry, app=None):
+        """The game's frame-generation multiplier: fixed in Smooth mode, or
+        (setting 0, the default) read from lsfg-vk's own settings."""
+        fg = entry.get("fg", cfg.FG_AUTO)
+        if fg == cfg.FG_AUTO:
+            app = self._app if app is None else app
+            return self.lsfg.for_app(app)["multiplier"] if app is not None else 1
+        return fg
+
+    def _smooth_output(self, entry):
         """Frames on screen: the game's cap times the frame-generation
         multiplier (lsfg-vk sits after MangoHud's limiter, so the cap holds
         the game's own frames and the generated ones come on top)."""
-        return entry["fps"] * entry.get("fg", 1)
+        return entry["fps"] * self._fg(entry)
 
     def _measure_app(self):
         """The game whose frame rate is measured: needed for Smooth mode's
@@ -624,7 +634,7 @@ class Hub(object):
         frame generation it was not told about (more frames shown than the
         cap allows), the profile's target (the final frame rate) is used."""
         entry = self.smooth_for()
-        if entry and entry.get("fg", 1) > 1:
+        if entry and self._fg(entry) > 1:
             return self._smooth_output(entry)
         if entry and not self._frame_gen:
             return entry["fps"]
@@ -632,7 +642,7 @@ class Hub(object):
 
     def _watch_frame_gen(self, fps):
         entry = self.smooth_for()
-        if not entry or fps is None or self._frame_gen or entry.get("fg", 1) > 1:
+        if not entry or fps is None or self._frame_gen or self._fg(entry) > 1:
             return False
         self._fg_run = self._fg_run + 1 if fps > entry["fps"] * self.FG_RATIO else 0
         if self._fg_run >= self.FG_READINGS:
@@ -657,7 +667,8 @@ class Hub(object):
         return {"prefix": smoothmod.launch_prefix(fps, env),
                 "limiter": "mangohud" if env else "dxvk"}
 
-    def set_smooth_game(self, app_id, fps, name="", prefix="", added_command=False, fg=1):
+    def set_smooth_game(self, app_id, fps, name="", prefix="", added_command=False,
+                        fg=cfg.FG_AUTO):
         """Store a game's Smooth cap (fps None removes it) and its frame-
         generation multiplier. The frontend has already changed the game's
         launch options accordingly."""
@@ -705,9 +716,12 @@ class Hub(object):
         entry = self.smooth_for()
         fps = entry["fps"] if entry else None
         output = self._smooth_output(entry) if entry else None
+        lsfg = self.lsfg.for_app(self._app) if self._app is not None else None
         return {
             "fps": fps,
-            "fg": entry.get("fg", 1) if entry else 1,
+            "fg": self._fg(entry) if entry else 1,           # in effect
+            "fg_setting": entry.get("fg", cfg.FG_AUTO) if entry else cfg.FG_AUTO,
+            "lsfg": lsfg,
             "output": output,
             "refresh": smoothmod.refresh_for(output, rates) if output and rates else None,
             "rates": rates,
@@ -726,10 +740,13 @@ class Hub(object):
             auto.state = "no_game"
         else:
             fps = self.fps.get()
-            if self._watch_frame_gen(fps):
-                _, profile = self.active_profile()
+            detected = self._watch_frame_gen(fps)
+            _, profile = self.active_profile()
+            target = self._auto_target(profile)
+            # Also follows lsfg-vk's multiplier changing while the game runs.
+            if detected or float(target) != auto.target:
                 low, top = self._tdp_bounds(profile)
-                auto.retarget(low, top, self._auto_target(profile))
+                auto.retarget(low, top, target)
             want = auto.step(fps, now, self.fps.get_low())
         if want != self._auto_applied:
             with self._hw:
@@ -788,6 +805,8 @@ class Hub(object):
         # settings: keep the game's Smooth refresh rate in place.
         if self._smooth_applied and now - self._smooth_sent_at >= SMOOTH_REASSERT_S:
             self._apply_smooth(force=True)
+        elif self._smooth_applied:
+            self._apply_smooth()   # follows lsfg-vk's multiplier changing mid-game
 
         # Controllers that (re)appear get their lights and mapping again
         if self._controller_status is not None:

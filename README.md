@@ -117,11 +117,12 @@ Auto TDP). The ones marked with a screen rate - 30 and 60 at 60 Hz, 72 and
 144 at 144 Hz on the Legion Go - are perfectly even; the others do not divide
 the screen's refresh rate, so some frames stay on screen longer. Restart the game after changing it. For the best
 result turn off Steam's Framerate limit and the game's own limiter and
-V-Sync for that game. With **lsfg-vk frame generation** pick its multiplier
-under **Frame generation** (below the cap): the cap stays on the game's own
-frames, and the screen rate and Auto TDP follow the generated rate (60 × 2 =
-120). Smooth mode refuses to add a second limiter when a game already has
-one.
+V-Sync for that game. With **lsfg-vk frame generation** nothing extra is
+needed: **Frame generation** (below the cap) is on *Auto* and reads the
+game's multiplier from lsfg-vk's own settings. The cap stays on the game's
+own frames, and the screen rate and Auto TDP follow the generated rate
+(60 × 2 = 120). Smooth mode refuses to add a second limiter when a game
+already has one.
 
 Other launch-option tools: settings from HelixSR, Decky-Framegen and similar
 plugins are kept. Decky-Framegen and Steam ROM Manager *replace* a game's
@@ -222,13 +223,18 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 - **lsfg-vk 2.0** (frame generation): Smooth mode caps the game's own frames
   and lsfg-vk multiplies them (tested on a Legion Go: a 30 cap with 2× shows
   60).
-  1. In decky-lsfg-vk set the multiplier (for example 2×) and leave its own
-     frame cap **off**.
+  1. In decky-lsfg-vk turn it on for the game with the multiplier you want
+     (for example 2×) and leave its **Base FPS cap off** (the Power tab
+     warns when it is on: two limiters).
   2. Power tab → Smooth frame rate: choose the game's cap, for example 60.
-     Below it set **Frame generation** to the same multiplier: *60 → 120*.
+     **Frame generation** below it stays on *Auto* and shows what it read,
+     for example *Auto · lsfg-vk 2× · 60 → 120 fps*. A multiplier changed in
+     decky-lsfg-vk is followed within seconds, even mid-game.
   3. Steam's Framerate limit off. The plugin sets the screen rate for the
      final rate and Auto TDP aims at it (120), not at the cap.
-  4. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
+  4. Prefer a fixed value? Pick Off or 2×-4× instead of Auto; the Power tab
+     says when it differs from lsfg-vk's setting.
+  5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
      60 × 2 = 120 is marked *uneven on this screen* there, but is even on a
      120 Hz monitor (for example when streaming).
 - **Decky-Framegen** (OptiScaler frame generation inside the game): its

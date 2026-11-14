@@ -125,10 +125,10 @@ class Plugin:
     async def smooth_plan(self, fps):
         return await _bg(Plugin._hub().smooth_plan, int(fps))
 
-    async def set_smooth_game(self, app_id, fps, name, prefix, added_command, fg=1):
+    async def set_smooth_game(self, app_id, fps, name, prefix, added_command, fg=0):
         return await _bg(Plugin._hub().set_smooth_game, app_id,
                          None if fps is None else int(fps), name, prefix, added_command,
-                         int(fg) if fg in (1, 2, 3, 4) else 1)
+                         int(fg) if fg in (0, 1, 2, 3, 4) else 0)
 
     async def delete_fan_profile(self, key):
         return await _bg(Plugin._hub().delete_fan_profile, str(key))

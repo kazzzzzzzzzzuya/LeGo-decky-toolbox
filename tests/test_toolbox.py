@@ -15,6 +15,7 @@ import helpers  # noqa: F401  (sets up sys.path)
 from lgo_toolbox import acpi, battery, config as cfg, controller, fan, fps_probe
 from lgo_toolbox import plumber, power, powerled
 from lgo_toolbox import smooth as smoothmod
+from lgo_toolbox import lsfg as lsfgmod
 from lgo_toolbox.hub import Hub
 
 DEFAULT_PROFILE_YAML = """# comment
@@ -1094,12 +1095,17 @@ class SmoothMode(TempDirCase):
             "11": {"fps": 5, "prefix": "x"}, "12": {"fps": 60}, "x": {"fps": 60, "prefix": "y"}}}})
         self.assertEqual(d["smooth"]["games"], {"10": {
             "fps": 60, "prefix": "DXVK_FRAME_RATE=60", "added_command": False, "name": "G",
-            "fg": 1}})
-        # Frame-generation multiplier: 1-4, anything else means none
-        for fg, want in ((2, 2), (4, 4), (5, 1), (True, 1), ("2", 1), (None, 1)):
-            d = cfg.sanitize({"smooth": {"games": {
+            "fg": 0}})
+        # Frame generation: 0 follows lsfg-vk (default), 1 none, 2-4 fixed
+        for fg, want in ((2, 2), (4, 4), (1, 1), (0, 0), (5, 0), (True, 0), ("2", 0), (None, 0)):
+            d = cfg.sanitize({"version": 3, "smooth": {"games": {
                 "10": {"fps": 60, "prefix": "x", "fg": fg}}}})
             self.assertEqual(d["smooth"]["games"]["10"]["fg"], want, fg)
+        # 2.6.0 stored 1 for every game: those follow lsfg-vk now; 2-4 stay
+        d = cfg.sanitize({"version": 2, "smooth": {"games": {
+            "10": {"fps": 60, "prefix": "x", "fg": 1}, "11": {"fps": 60, "prefix": "x", "fg": 2}}}})
+        self.assertEqual([d["smooth"]["games"][k]["fg"] for k in ("10", "11")], [0, 2])
+        self.assertEqual(d["version"], 3)
 
 
 class Config(unittest.TestCase):
@@ -1144,7 +1150,7 @@ class Config(unittest.TestCase):
     def test_migration_to_version_2(self):
         old = {"version": 1, "controls": {"steam_controller": "default", "swap_menu": True}}
         d = cfg.sanitize(old)
-        self.assertEqual(d["version"], 2)
+        self.assertEqual(d["version"], cfg.SETTINGS_VERSION)
         self.assertEqual(d["controls"]["steam_controller"], "deck-uhid")
         self.assertEqual(d["controls"]["swap_layout"], "steam_menu")
         self.assertTrue(d["controls"]["swap_menu"])
@@ -1343,6 +1349,16 @@ class FakeGamescopeCtl(object):
         return self.ok
 
 
+class FakeLsfg(object):
+    def __init__(self):
+        self.mult = {}      # app id -> multiplier
+
+    def for_app(self, app_id):
+        m = self.mult.get(app_id, 1)
+        return {"installed": True, "multiplier": m, "profile": "P" if m > 1 else None,
+                "base_cap": 0, "error": None}
+
+
 class FakeFps(object):
     def __init__(self):
         self.app = None
@@ -1377,7 +1393,7 @@ class HubTests(TempDirCase):
             "limits": FakeLimits(), "fan": FakeFan(), "charge": FakeCharge(),
             "led": FakeLed(), "swap": FakeSwap(), "fps": FakeFps(),
             "steam_pad": FakeSteamPad(), "gamescope": FakeGamescopeCtl(),
-            "mangohud_env": lambda: "MANGOHUD",
+            "mangohud_env": lambda: "MANGOHUD", "lsfg": FakeLsfg(),
             "send": self._send, "sensors": lambda: {"temp": 55, "rpm": None},
             "battery_info": lambda: {"percent": 80, "status": "Charging"},
             "set_boost": lambda v: self.boost.append(v) or True,
@@ -1677,6 +1693,37 @@ class HubTests(TempDirCase):
         self.assertEqual(gs.sent[-1], 60)
         self.assertEqual(self.hub._auto.target, 60.0)
 
+    def test_smooth_follows_lsfg_vk(self):
+        gs, lsfg = self.mods["gamescope"], self.mods["lsfg"]
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 45, "tdp": 25}}}})
+        self.hub.set_running_app(1293830, "Forza Horizon 4")
+        lsfg.mult[1293830] = 2
+        prefix = smoothmod.launch_prefix(60, "MANGOHUD")
+        out = self.hub.set_smooth_game(1293830, 60, "Forza Horizon 4", prefix, True)
+        self.assertEqual(out["smooth"]["games"]["1293830"]["fg"], 0)    # auto
+        self.assertEqual(gs.sent[-1], 120)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["fg"], st["fg_setting"], st["output"]), (2, 0, 120))
+        self.assertEqual(st["lsfg"]["profile"], "P")
+        self.assertEqual(self.hub._auto.target, 120.0)
+        # Changed in decky-lsfg-vk while the game runs: followed within a tick
+        lsfg.mult[1293830] = 3
+        now = 5000.0
+        self.hub._tick(now)
+        self.assertEqual(gs.sent[-1], 180)
+        self.assertEqual(self.hub._auto.target, 180.0)
+        # lsfg-vk off for the game: the cap itself
+        lsfg.mult[1293830] = 1
+        self.hub._tick(now + 1)
+        self.assertEqual(gs.sent[-1], 60)
+        self.assertEqual(self.hub._auto.target, 60.0)
+        # A fixed setting wins over lsfg-vk's
+        lsfg.mult[1293830] = 2
+        self.hub.set_smooth_game(1293830, 60, "Forza Horizon 4", prefix, True, 1)
+        self.assertEqual(gs.sent[-1], 60)
+        self.assertEqual(self.hub.status()["smooth"]["fg"], 1)
+
     def test_manual_tdp_and_modes(self):
         limits = self.mods["limits"]
         self.hub.update({"power": {"enabled": True, "profiles": {"default": {"tdp": 12}}}})
@@ -1919,6 +1966,88 @@ class HubTests(TempDirCase):
         time.sleep(0.2)
         self.hub.stop()
         self.assertIsNone(self.hub._thread)
+
+
+class LsfgSettings(TempDirCase):
+    CONF = """version = 2
+
+[global]
+allow_fp16 = true
+
+[[profile]]
+name = "Forza Horizon 4"
+active_in = [ "1293830" ]
+pacing_mode = "vsync"
+multiplier = 3
+flow_scale = 0.8
+performance_mode = false
+
+[[profile]]
+name = "Shortcut"
+active_in = [ "-1234567890" ]
+multiplier = 2
+"""
+
+    def _home(self, conf=None, layer=True, work=None):
+        home = os.path.join(self.tmp, "home", "deck")
+        os.makedirs(os.path.join(home, ".config", "lsfg-vk"), exist_ok=True)
+        layers = os.path.join(home, ".local", "share", "vulkan", "implicit_layer.d")
+        os.makedirs(layers, exist_ok=True)
+        if layer:
+            open(os.path.join(layers, "VkLayer_LSFGVK_frame_generation.json"), "w").close()
+        if conf is not None:
+            with open(os.path.join(home, ".config", "lsfg-vk", "conf.toml"), "w") as f:
+                f.write(conf)
+        if work is not None:
+            with open(os.path.join(home, ".config", "lsfg-vk", "workarounds.json"), "w") as f:
+                f.write(work)
+        return lsfgmod.Lsfg(homes_fn=lambda: [os.path.join(self.tmp, "nobody"), home],
+                            system_layers=(), clock=lambda: self.now)
+
+    def setUp(self):
+        TempDirCase.setUp(self)
+        self.now = 0.0
+
+    def test_reads_the_games_multiplier(self):
+        for toml in (lsfgmod.tomllib, None):
+            saved, lsfgmod.tomllib = lsfgmod.tomllib, toml
+            try:
+                l = self._home(self.CONF)
+                r = l.for_app(1293830)
+                self.assertEqual((r["installed"], r["multiplier"], r["profile"], r["error"]),
+                                 (True, 3, "Forza Horizon 4", None))
+                self.assertEqual(l.for_app(7)["multiplier"], 1)          # no profile
+                # Non-Steam shortcut: Steam's unsigned id, lsfg-vk's signed one
+                self.assertEqual(l.for_app(2**32 - 1234567890)["multiplier"], 2)
+            finally:
+                lsfgmod.tomllib = saved
+
+    def test_no_layer_no_frame_generation(self):
+        l = self._home(self.CONF, layer=False)
+        r = l.for_app(1293830)
+        self.assertEqual((r["installed"], r["multiplier"]), (False, 1))
+
+    def test_bad_or_old_files_never_crash(self):
+        r = self._home("this is [ not toml").for_app(1293830)
+        self.assertEqual(r["multiplier"], 1)
+        self.assertIn("conf.toml", r["error"])
+        self.now += 10
+        r = self._home('version = 1\n[[game]]\nexe = "x"\nmultiplier = 4\n').for_app(1)
+        self.assertEqual(r["multiplier"], 1)
+        self.assertIn("by hand", r["error"])
+        self.assertIsNone(lsfgmod.Lsfg(homes_fn=lambda: []).for_app(1)["error"])
+
+    def test_base_cap_and_change_detection(self):
+        l = self._home(self.CONF, work='{"version": 2, "apps": {"1293830": '
+                                       '{"state": {"dxvkFrameRate": 40}}}}')
+        self.assertEqual(l.for_app(1293830)["base_cap"], 40)
+        # Edited in decky-lsfg-vk: seen after the recheck interval
+        path = os.path.join(self.tmp, "home", "deck", ".config", "lsfg-vk", "conf.toml")
+        with open(path, "w") as f:
+            f.write(self.CONF.replace("multiplier = 3", "multiplier = 4") + "\n")
+        self.assertEqual(l.for_app(1293830)["multiplier"], 3)            # cached
+        self.now += 3
+        self.assertEqual(l.for_app(1293830)["multiplier"], 4)
 
 
 if __name__ == "__main__":

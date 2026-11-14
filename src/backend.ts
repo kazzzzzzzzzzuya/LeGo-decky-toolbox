@@ -40,7 +40,7 @@ export interface Settings {
   };
   battery: { charge_limit: boolean | null };
   smooth: {
-    /** fps: the game's own cap; fg: frame-generation multiplier (1 = none). */
+    /** fps: the game's own cap; fg: frame generation (0 = follow lsfg-vk, 1 = none, 2-4 fixed). */
     games: Record<
       string,
       { fps: number; fg: number; name: string; prefix: string; added_command: boolean }
@@ -105,8 +105,11 @@ export interface HubStatus {
   steam_controller: { type: string; source: "game" | "default" };
   smooth: {
     fps: number | null;
-    /** Frame-generation multiplier and the resulting frames on screen. */
+    /** Frame-generation multiplier in effect, the game's setting (0 =
+     *  follow lsfg-vk), lsfg-vk's own settings, and the frames on screen. */
     fg: number;
+    fg_setting: number;
+    lsfg: LsfgInfo | null;
     output: number | null;
     refresh: number | null;
     rates: number[];
@@ -167,6 +170,15 @@ export const deletePowerProfile = callable<[key: string], Settings>("delete_powe
 export const setRunningApp = callable<[appId: number | null, name: string], void>(
   "set_running_app",
 );
+export interface LsfgInfo {
+  installed: boolean;
+  multiplier: number;
+  profile: string | null;
+  /** decky-lsfg-vk's "Base FPS cap" for the game (0 = off). */
+  base_cap: number;
+  error: string | null;
+}
+
 export const smoothPlan = callable<[fps: number], { prefix: string; limiter: string }>(
   "smooth_plan",
 );

@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.6.0</div>
+    <div class="kicker">User manual · Version 2.6.1</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -216,7 +216,7 @@
     <li>Under <b>Smooth frame rate</b> choose a cap, for example <i>60 fps · screen 60 Hz</i> or <i>72 fps · screen 144 Hz</i>.</li>
     <li>Quit and start the game again - the cap goes into its launch options and applies from the next start.</li>
     <li>In Steam's Performance menu set <b>Framerate limit</b> off for this game, and switch off the game's own frame limiter and V-Sync.</li>
-    <li>Using lsfg-vk frame generation? Set <b>Frame generation</b> below the cap to its multiplier (chapter 10).</li>
+    <li>Using lsfg-vk frame generation? <b>Frame generation</b> below the cap reads its multiplier by itself (chapter 10).</li>
   </ol>
   <h3>What it does</h3>
   <table>
@@ -442,11 +442,12 @@
   <h2>lsfg-vk 2.0: Smooth mode with frame generation</h2>
   <p>Smooth mode's cap holds the <b>game's own</b> frames, and lsfg-vk multiplies them afterwards (checked on a Legion Go: a 30 fps cap with 2× shows 60). So one limiter does the whole job.</p>
   <ol class="steps">
-    <li>In decky-lsfg-vk set the multiplier, for example <b>2×</b>, and leave its own frame cap <i>off</i>.</li>
+    <li>In decky-lsfg-vk turn it on for the game with the multiplier you want, for example <b>2×</b>, and leave its <b>Base FPS cap</b> <i>off</i>. The Power tab warns <i>Two frame limiters</i> when it is on.</li>
     <li>Power tab → <b>Smooth frame rate</b>: choose the game's cap, for example <i>60</i>.</li>
-    <li>Below it set <b>Frame generation</b> to the same multiplier. The list shows the result, for example <i>2× · 60 → 120 fps</i>. No restart is needed for this setting.</li>
+    <li><b>Frame generation</b> below it stays on <i>Auto</i>: the plugin reads the game's multiplier from lsfg-vk's own settings (<code>~/.config/lsfg-vk/conf.toml</code>) and shows it, for example <i>Auto · lsfg-vk 2× · 60 → 120 fps</i>. A multiplier changed in decky-lsfg-vk is followed within seconds, even while the game runs.</li>
     <li>Steam's Framerate limit off. The plugin sets the screen rate for the final rate, and Auto TDP aims at it (120) instead of the cap.</li>
   </ol>
+  <p>Prefer a fixed value? Choose <i>Off</i> or <i>2×-4×</i> instead of Auto. The Power tab says when it differs from lsfg-vk's setting. The plugin only reads lsfg-vk's files and never changes them.</p>
   <table>
     <tr><th>Cap × multiplier</th><th>On screen</th><th>Legion Go screen (60 / 144 Hz)</th></tr>
     <tr><td>30 × 2</td><td>60</td><td>Even at 60 Hz</td></tr>
@@ -521,7 +522,7 @@
   </table>
 
   <h2>Testing status</h2>
-  <p>Besides use on a Legion Go (83E1), every module is covered by automated tests with simulated hardware (145 tests), and every module reads the hardware back after a change and reports it when a change did not take.</p>
+  <p>Besides use on a Legion Go (83E1), every module is covered by automated tests with simulated hardware (150 tests), and every module reads the hardware back after a change and reports it when a change did not take.</p>
 
   <h2>Credits</h2>
   <p class="muted">Legion Go Toolbox is its own code, built on what these projects worked out about the hardware: Handheld Daemon and hwinfo (controller protocol, Lenovo firmware methods and fan minimum), Legion Center and LegionGoRemapper (remapping, fan table, charge limit), HueSync (power light), SimpleDeckyTDP (power limits), DeckyPlumber and InputPlumber (menu-button swap), Panel de Control (frame times from gamescope), decky-lsfg-vk (tabs) and Legion Go 2 Companion (overview layout).</p>
