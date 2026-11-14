@@ -792,6 +792,10 @@ class FpsProbe(TempDirCase):
     def test_find_sockets(self):
         _, path = self._server()
         write(path + ".lock", "")
+        ei = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)   # libei socket
+        ei.bind(path + "-ei")
+        self.addCleanup(ei.close)
+        write(os.path.join(self.tmp, "1000", "gamescope-7"), "")    # not a socket
         self.assertEqual(fps_probe.find_sockets(self.tmp), [path])
         self.assertEqual(fps_probe.find_sockets("/nonexistent"), [])
 

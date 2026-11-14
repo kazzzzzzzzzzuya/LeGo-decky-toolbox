@@ -19,6 +19,8 @@ interpreter is busy, and it needs nothing but the standard library.
 
 import glob
 import os
+import re
+import stat
 import socket
 import struct
 import sys
@@ -51,8 +53,18 @@ class ProbeError(Exception):
 
 def find_sockets(root="/run/user"):
     """gamescope's Wayland sockets, newest first."""
-    paths = [p for p in glob.glob(os.path.join(root, "*", "gamescope-[0-9]*"))
-             if not p.endswith(".lock")]
+    # Only the Wayland sockets themselves: gamescope-0, gamescope-1, ...
+    # Not gamescope-0.lock, nor gamescope-0-ei (its input-emulation socket,
+    # which does not speak Wayland).
+    paths = []
+    for p in glob.glob(os.path.join(root, "*", "gamescope-*")):
+        if not re.fullmatch(r"gamescope-\d+", os.path.basename(p)):
+            continue
+        try:
+            if stat.S_ISSOCK(os.stat(p).st_mode):
+                paths.append(p)
+        except OSError:
+            continue
 
     def mtime(p):
         try:
