@@ -19,8 +19,10 @@ const FG_CHOICES = [FG_AUTO, 1, 2, 3, 4];
 // Decky-Framegen's wrapper in the launch options: OptiScaler is set up, and
 // frame generation switched on in the game is made inside the game.
 const FGMOD_RE = /(^|[\s/])fgmod(\s|$)/;
-// The same caps as Auto TDP's target list.
-const CAPS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
+// Auto TDP's target list, with 36 in place of 40: doubled by frame
+// generation every cap then lands on a target (36 -> 72; 40 -> 80 is none),
+// and 36 divides the 144 Hz screen evenly.
+const CAPS = [30, 36, 45, 50, 60, 72, 90, 100, 120, 144];
 
 function refreshFor(fps: number, rates: number[]): number | null {
   const sorted = [...rates].sort((a, b) => b - a);

@@ -125,9 +125,9 @@ rate**. The plugin then:
   do not fix (frame generation, shader stutter) does not push power to the
   maximum.
 
-Caps: 30, 40, 45, 50, 60, 72, 90, 100, 120 and 144 fps (the same list as
-Auto TDP). The ones marked with a screen rate - 30 and 60 at 60 Hz, 72 and
-144 at 144 Hz on the Legion Go - are perfectly even; the others do not divide
+Caps: 30, 36, 45, 50, 60, 72, 90, 100, 120 and 144 fps (36 instead of
+Auto TDP's 40, so 2× frame generation gives 72). The ones marked with a
+screen rate - 30 and 60 at 60 Hz, 36, 72 and 144 at 144 Hz on the Legion Go - are perfectly even; the others do not divide
 the screen's refresh rate, so some frames stay on screen longer. Restart the game once after first choosing a cap. For the best
 result turn off Steam's Framerate limit and the game's own limiter and
 V-Sync for that game. With **lsfg-vk frame generation** nothing extra is
