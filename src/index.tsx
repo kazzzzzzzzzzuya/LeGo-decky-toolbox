@@ -1,4 +1,4 @@
-import { Router, Tabs, staticClasses } from "@decky/ui";
+import { Router, Tabs, gamepadTabbedPageClasses, staticClasses } from "@decky/ui";
 import { definePlugin } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
 import { FaBolt, FaFan, FaGamepad, FaHome, FaLightbulb } from "react-icons/fa";
@@ -48,17 +48,33 @@ const TAB_STYLES = `
     display: block;
     margin: 0;
   }
-  /* Steam greys the tab icons while focus is in the page below; keep them
-     white so the row reads the same whether it has focus or not. */
+  /* Steam dims the tab row while focus is in the page below, and the
+     current tab turns from a white pill into a grey one. Keep the current
+     tab's white pill (dark icon) and the other icons undimmed, so the row
+     looks the same with or without focus. */
   .lgo-toolbox-tabs [role="tablist"],
-  .lgo-toolbox-tabs [role="tablist"] *,
-  .lgo-toolbox-tabs [role="tab"],
-  .lgo-toolbox-tabs [role="tab"] * {
+  .lgo-toolbox-tabs [role="tab"] {
     opacity: 1 !important;
-    color: #ffffff !important;
     filter: none !important;
   }
 `;
+
+// The current tab, marked through its own title (works whatever Steam's
+// generated class names are) and through Steam's "Selected" class.
+const CURRENT_TAB_LOOK = `
+    background: #ffffff !important;
+    color: #0e141b !important;
+    opacity: 1 !important;
+    filter: none !important;
+`;
+const currentTabStyles = () => {
+  let css = `.lgo-toolbox-tabs [role="tab"]:has(.lgo-tab-current) {${CURRENT_TAB_LOOK}}\n`;
+  css += `.lgo-toolbox-tabs .lgo-tab-current, .lgo-toolbox-tabs .lgo-tab-current svg { color: #0e141b !important; }\n`;
+  const selected = gamepadTabbedPageClasses?.Selected;
+  const tab = gamepadTabbedPageClasses?.Tab;
+  if (selected && tab) css += `.lgo-toolbox-tabs .${tab}.${selected} {${CURRENT_TAB_LOOK}}\n`;
+  return css;
+};
 
 const wrap = (content: ReactNode) => <div className="lgo-toolbox-tab-content">{content}</div>;
 
@@ -93,13 +109,18 @@ const Content: FC = () => {
     );
   }
 
+  const icon = (id: string, node: ReactNode) => (
+    <span className={id === tab ? "lgo-tab-current" : undefined} style={{ display: "flex" }}>
+      {node}
+    </span>
+  );
   const tabs = [
-    { id: "Home", title: <FaHome size={18} />, content: wrap(<HomeTab go={setTab} />) },
-    { id: "Power", title: <FaBolt size={18} />, content: wrap(<PowerTab />) },
-    { id: "Fan", title: <FaFan size={18} />, content: wrap(<FanTab />) },
-    { id: "Lights", title: <FaLightbulb size={18} />, content: wrap(<LightsTab />) },
-    { id: "Controls", title: <FaGamepad size={18} />, content: wrap(<ControlsTab />) },
-    { id: "Gyro", title: <MdScreenRotation size={18} />, content: wrap(
+    { id: "Home", title: icon("Home", <FaHome size={18} />), content: wrap(<HomeTab go={setTab} />) },
+    { id: "Power", title: icon("Power", <FaBolt size={18} />), content: wrap(<PowerTab />) },
+    { id: "Fan", title: icon("Fan", <FaFan size={18} />), content: wrap(<FanTab />) },
+    { id: "Lights", title: icon("Lights", <FaLightbulb size={18} />), content: wrap(<LightsTab />) },
+    { id: "Controls", title: icon("Controls", <FaGamepad size={18} />), content: wrap(<ControlsTab />) },
+    { id: "Gyro", title: icon("Gyro", <MdScreenRotation size={18} />), content: wrap(
         <>
           <SteamGyroSection />
           <GyroTab />
@@ -114,7 +135,7 @@ const Content: FC = () => {
       className="lgo-toolbox-tabs"
       style={{ height: "95%", width: "300px", position: "fixed", marginTop: "-12px", overflow: "hidden" }}
     >
-      <style>{TAB_STYLES}</style>
+      <style>{TAB_STYLES + currentTabStyles()}</style>
       <Tabs activeTab={tab} onShowTab={(next: string) => setTab(next)} tabs={tabs} />
     </div>
   );
