@@ -103,7 +103,9 @@ export const SmoothSection: FC = () => {
         title: PLUGIN_NAME,
         body:
           fps === OFF
-            ? `Smooth mode off for ${name}. Restart the game to remove the cap.`
+            ? games[String(appId)]?.prefix.includes("MANGOHUD_CONFIGFILE=")
+              ? `Smooth mode off for ${name}. The cap is lifted now.`
+              : `Smooth mode off for ${name}. Restart the game to remove the cap.`
             : moved
               ? `${name}: the cap now updates live (frame generation, cap changes). Restart the game once.`
               : now
@@ -173,6 +175,9 @@ export const SmoothSection: FC = () => {
     const name = fg > 1 ? `${f} → ${out} fps` : `${f} fps`;
     const r = refreshFor(out, rates);
     if (r) return `${name} · screen ${r} Hz`;
+    // More frames than the screen can show: they are dropped, not seen.
+    if (rates.length && !vrr && out > Math.max(...rates))
+      return `${name} · above the screen's ${Math.max(...rates)} Hz`;
     if (vrr) return `${name} · VRR`;
     // Not divisible: the screen goes to its highest rate (as even as it gets).
     return rates.length ? `${name} · screen ${Math.max(...rates)} Hz, uneven` : name;

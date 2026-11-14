@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.6.4</div>
+    <div class="kicker">User manual · Version 2.6.5</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -440,7 +440,7 @@
   <p>Because the game renders fewer pixels, Auto TDP settles at fewer watts for the same frame rate - the main gain.</p>
 
   <h2>lsfg-vk 2.0: Smooth mode with frame generation</h2>
-  <p>One limiter does the whole job. MangoHud's limiter usually comes <i>after</i> lsfg-vk (decky-lsfg-vk installs lsfg-vk in your user folder, which Vulkan loads first), so it sees the generated frames too. The plugin therefore sets it to the frame rate on screen - cap × multiplier, 120 for 60 × 2 - and the game itself settles at the cap. If more frames arrive than that (MangoHud before lsfg-vk on some setups), the plugin switches to capping the game's own frames by itself, while the game runs.</p>
+  <p>One limiter does the whole job. MangoHud's limiter usually comes <i>after</i> lsfg-vk (decky-lsfg-vk installs lsfg-vk in your user folder, which Vulkan loads first), so it sees the generated frames too. The plugin therefore sets it to the frame rate on screen - cap × multiplier, 120 for 60 × 2 - and the game itself settles at the cap. Where MangoHud comes first (lsfg-vk installed system-wide), it caps the game's own frames instead; the plugin tells the two apart from where each is installed. Turning Smooth mode off lifts the cap at once, also in a running game.</p>
   <ol class="steps">
     <li>In decky-lsfg-vk turn it on for the game with the multiplier you want, for example <b>2×</b>, and leave its <b>Base FPS cap</b> <i>off</i>. The Power tab warns <i>Two frame limiters</i> when it is on.</li>
     <li>Power tab → <b>Smooth frame rate</b>: choose the game's cap, for example <i>60</i>.</li>

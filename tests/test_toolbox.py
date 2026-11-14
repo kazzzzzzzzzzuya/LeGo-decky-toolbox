@@ -1757,18 +1757,26 @@ class HubTests(TempDirCase):
         lsfg.mult[1293830] = 1
         self.hub._tick(6001.0)
         self.assertIn("fps_limit=60\n", read())
-        # Measured far above the cap: here MangoHud caps the game's frames
+        # Frames above the cap (menus, launchers) never move the cap
         lsfg.mult[1293830] = 2
-        self.hub._tick(6002.0)
+        fps.value = 200.0
+        for i in range(30):
+            self.hub._tick(6002.0 + i)
+        self.assertTrue(self.hub.limit_on_output())
         self.assertIn("fps_limit=120\n", read())
-        fps.value = 140.0
-        for i in range(5):
-            self.hub._tick(6003.0 + i)
-        self.assertFalse(self.hub.limit_on_output())
-        self.assertIn("fps_limit=60\n", read())
-        self.assertEqual(self.hub.status()["smooth"]["output"], 120)   # still the aim
+        # Leaving and starting the game again keeps it
+        self.hub.set_running_app(None, "")
+        self.hub.set_running_app(1293830, "Forza Horizon 4")
+        self.assertIn("fps_limit=120\n", read())
         # A cap change needs no new launch options
         self.assertEqual(self.hub.smooth_plan(45, 1293830)["prefix"], plan["prefix"])
+        # MangoHud before lsfg-vk: the game's own cap
+        self.hub._on_output = False
+        self.hub._tick(6100.0)
+        self.assertIn("fps_limit=60\n", read())
+        # Smooth off: the running game is uncapped at once
+        self.hub.set_smooth_game(1293830, None)
+        self.assertIn("fps_limit=0\n", read())
 
     def test_cap_file_order_and_failure(self):
         home = os.path.join(self.tmp, "h")

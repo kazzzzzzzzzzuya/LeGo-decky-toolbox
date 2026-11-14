@@ -226,9 +226,9 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
 - **lsfg-vk 2.0** (frame generation): MangoHud's limiter usually comes after
   lsfg-vk and sees the generated frames too, so the plugin sets it to the
   frame rate on screen (cap × multiplier: 120 for 60 × 2) and the game
-  settles at the cap. If more frames than that arrive (MangoHud before
-  lsfg-vk on some setups), it switches to capping the game's own frames by
-  itself, live.
+  settles at the cap. Where MangoHud comes first (lsfg-vk installed
+  system-wide), it caps the game's own frames instead; the plugin tells the
+  two apart from where each is installed.
   1. In decky-lsfg-vk turn it on for the game with the multiplier you want
      (for example 2×) and leave its **Base FPS cap off** (the Power tab
      warns when it is on: two limiters).
