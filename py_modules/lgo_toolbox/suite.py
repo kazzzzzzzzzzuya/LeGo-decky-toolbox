@@ -15,19 +15,28 @@ Decky-Framegen's ``fgmod`` wrapper in the launch options), and whether the
 game's own frame generation is switched on, which Frame Suite's user tells it.
 lsfg-vk's multiplier is still read from lsfg-vk's own settings (``lsfg.py``).
 
-Only reads; never writes Frame Suite's file. The file belongs to the user and
-this plugin runs as root: links are not followed, the size is limited and
-every value is checked.
+Battery playtime asks Frame Suite for frame generation through a file of
+its own, ``~/.config/lgo-toolbox/framegen.json`` (see ``write_requests``):
+"standby" has Frame Suite give a game an lsfg-vk profile at 1x (off), which
+lsfg-vk only picks up when the game starts; "multiplier" then switches it on
+while the game runs. Frame Suite reports back in its own file, per game under
+"toolbox", and whether it may do this at all under "lsfg_ready".
+
+Never writes Frame Suite's file. Both files belong to the user and this
+plugin runs as root: links are not followed, the size is limited and every
+value is checked.
 """
 
 import json
 import os
 import stat
+import tempfile
 import time
 
 from .lsfg import MAX_BYTES, homes
 
 BRIDGE = os.path.join(".config", "frame-suite", "bridge.json")
+REQUESTS = os.path.join(".config", "lgo-toolbox", "framegen.json")
 VERSION = 1
 MAX_MULT = 4          # what Smooth mode's own list offers
 
@@ -59,7 +68,7 @@ class Suite(object):
     def __init__(self, homes_fn=homes, clock=time.monotonic):
         self._homes = homes_fn
         self._clock = clock
-        self._cache = None      # (path, (mtime_ns, size), games, error)
+        self._cache = None      # (path, (mtime_ns, size), games, error, top)
         self._last = None       # (app_id, checked_at, result)
 
     def _path(self):
@@ -83,7 +92,7 @@ class Suite(object):
         hit = self._cache
         if hit and hit[0] == path and hit[1] == key:
             return hit[2], hit[3]
-        games, err = None, None
+        games, err, top = None, None, {}
         try:
             text = _read(path)
             data = json.loads(text) if text else None
@@ -91,14 +100,22 @@ class Suite(object):
                 err = "bridge.json: not readable"
             elif data.get("version") != VERSION:
                 err = "bridge.json: version %r is not known to this plugin" % (data.get("version"),)
-            elif isinstance(data.get("games"), dict):
-                games = data["games"]
             else:
-                games = {}
+                games = data["games"] if isinstance(data.get("games"), dict) else {}
+                top = {"lsfg_ready": data.get("lsfg_ready") is True,
+                       "toolbox_fg": data.get("toolbox_fg") is True}
         except (ValueError, RecursionError) as e:  # malformed file: report, never crash
             err = "bridge.json: %s" % e
-        self._cache = (path, key, games, err)
+        self._cache = (path, key, games, err, top)
         return games, err
+
+    def home(self):
+        """The home folder Frame Suite writes to (else Decky's user's)."""
+        path = self._path()
+        if path:
+            return path[:-len(BRIDGE) - 1]
+        homes = self._homes()
+        return homes[0] if homes else None
 
     def for_app(self, app_id):
         """{"present", "optiscaler", "multiplier", "route", "error"} for a game.
@@ -118,12 +135,15 @@ class Suite(object):
         return dict(out)
 
     def _lookup(self, app_id):
-        out = {"present": False, "optiscaler": False, "multiplier": 1, "route": None, "error": None}
+        out = {"present": False, "optiscaler": False, "multiplier": 1, "route": None, "error": None,
+               "lsfg_ready": False, "standby_since": None, "fg_applied": None, "fg_refused": None}
         if app_id is None:
             return out
         games, err = self._games()
         out["present"] = games is not None or err is not None
         out["error"] = err
+        top = self._cache[4] if self._cache else {}
+        out["lsfg_ready"] = bool(top.get("lsfg_ready") and top.get("toolbox_fg"))
         try:
             game = (games or {}).get(str(int(app_id)))
         except (TypeError, ValueError):
@@ -138,6 +158,69 @@ class Suite(object):
         if out["optiscaler"] and isinstance(fg, dict) and fg.get("source") == "optiscaler" \
                 and fg.get("in_game") is True:
             mult = fg.get("multiplier")
-            if isinstance(mult, int) and not isinstance(mult, bool) and 1 < mult <= MAX_MULT:
+            if _int(mult) and 1 < mult <= MAX_MULT:
                 out["multiplier"] = mult
+        tb = game.get("toolbox")
+        if isinstance(tb, dict):
+            since = tb.get("since")
+            if tb.get("standby") is True and isinstance(since, (int, float)) and \
+                    not isinstance(since, bool) and 0 <= since < 4e9:
+                out["standby_since"] = float(since)
+            if _int(tb.get("multiplier")) and 1 < tb["multiplier"] <= MAX_MULT:
+                out["fg_applied"] = tb["multiplier"]
+            if isinstance(tb.get("refused"), str):
+                out["fg_refused"] = tb["refused"][:200]
         return out
+
+
+def _int(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def write_requests(home, games, clock=time.time):
+    """Ask Frame Suite for frame generation: {appid: {"standby": bool,
+    "multiplier": int or None}}. An empty dict removes the file. Written
+    atomically, owned by the home's owner, only inside that home. Returns
+    None or an error text."""
+    if not home:
+        return None if not games else "no home folder"
+    path = os.path.join(home, REQUESTS)
+    folder = os.path.dirname(path)
+    try:
+        real_home = os.path.realpath(home)
+        for p in (os.path.dirname(folder), folder):
+            if os.path.islink(p):
+                return "%s is a link" % p
+        if os.path.isdir(folder) and not os.path.realpath(folder).startswith(real_home + os.sep):
+            return "%s is outside the home folder" % folder
+        if not games:
+            if os.path.lexists(path) and not os.path.isdir(path):
+                os.unlink(path)
+            return None
+        home_st = os.stat(home)
+        for p in (os.path.dirname(folder), folder):
+            if not os.path.isdir(p):
+                os.mkdir(p, 0o755)
+                if os.geteuid() == 0:
+                    os.chown(p, home_st.st_uid, home_st.st_gid)
+        data = {"version": VERSION, "updated": int(clock()),
+                "games": {str(k): {"standby": bool(v.get("standby")),
+                                   "multiplier": v.get("multiplier") if _int(v.get("multiplier")) else None}
+                          for k, v in sorted(games.items())}}
+        fd, tmp = tempfile.mkstemp(dir=folder, prefix=".framegen-")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(data, f, indent=1, sort_keys=True)
+            os.chmod(tmp, 0o644)
+            if os.geteuid() == 0:
+                os.chown(tmp, home_st.st_uid, home_st.st_gid)
+            os.replace(tmp, path)
+        except BaseException:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
+        return None
+    except OSError as e:
+        return "could not write %s: %s" % (path, e.strerror or e)

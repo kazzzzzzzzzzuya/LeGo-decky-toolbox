@@ -22,7 +22,7 @@ cannot do says so, with the reason, instead of pretending.
 | Tab | What you can do |
 |---|---|
 | **Home** | See every module at a glance, limit charging to 80 %, reset |
-| **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose |
+| **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose. **Battery playtime** makes a game last the hours you choose on battery |
 | **Fan** | Draw a ten-point fan curve, presets, full speed, live temperature, per game and on battery vs charger |
 | **Lights** | Stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
 | **Controls** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off |
@@ -146,6 +146,47 @@ Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot
 reach Flatpak apps, and the DXVK fallback only works for DirectX games. Shader-compilation and loading stutter come from the
 game and cannot be removed this way.
 
+### Battery playtime (per game)
+
+Choose how long the running game should last on battery, for example
+**4 h**, or **As long as possible**. Before you choose, the section shows how
+long the battery lasts at the current draw and the **longest this game can
+reach** from the current charge at your lowest frame rate. That estimate
+learns what the game draws at each power limit while you play on battery, so
+it gets more exact over time.
+
+With a goal the plugin works out a power budget (energy left ÷ hours to go)
+and checks the battery's real draw against it every few seconds:
+
+1. **Power limit first.** Too much drawn: the TDP comes down, a watt or a few
+   at a time. Plenty to spare for two minutes: it goes back up.
+2. **Then the frame rate, evenly.** When the game can no longer keep its
+   Smooth cap on that budget, the cap steps down to the next even one the
+   screen divides (60 → 48 → 36 → 30), never below your **Lowest frame
+   rate** (30 by default). Your own cap in Smooth mode stays as you set it;
+   the lower one is used only while the goal needs it.
+3. **Frame generation, with Frame Suite.** If the Frame Suite plugin is
+   installed with lsfg-vk set up, the first step down is "half the frames,
+   doubled by lsfg-vk" instead (60 → 30 × 2 = 60 on screen), which looks
+   the same and costs far less. Frame Suite prepares lsfg-vk for the game
+   (off until needed), which lsfg-vk picks up from the game's **next start**;
+   from then on the plugin switches it on and off while you play. If even
+   that is too much, frame generation's own cost goes too (30 fps without it).
+   Switch **Frame generation for battery time** off to keep it out.
+4. **Your lowest frame rate wins.** If the goal is out of reach at that frame
+   rate, the plugin says so and makes the battery last as long as it can
+   without going lower.
+
+The goal counts only while the game runs on battery; on the charger
+everything goes back to your own settings and the count waits. After charging
+(10 % or more), the count starts again. Setting a goal switches **Manage
+power** on, since the goal works through the power limit. Screen brightness
+matters a lot: the screen alone draws several watts.
+
+Without a Smooth frame rate for the game only the power limit is used, and the
+frame rate falls unevenly instead of stepping to an even cap: set one first.
+Not verified on a device yet.
+
 ### Fan
 
 Needs `acpi_call` (see above). The firmware keeps control of the fan and of
@@ -263,7 +304,9 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   60 → 120 fps* within seconds, also mid-game. The plugin reads this from
   Frame Suite's own file (`~/.config/frame-suite/bridge.json`) and never
   writes to it. With lsfg-vk on for the same game, lsfg-vk's multiplier
-  counts instead, so frames are never multiplied twice. Not verified on a
+  counts instead, so frames are never multiplied twice. **Battery playtime**
+  asks Frame Suite for lsfg-vk through `~/.config/lgo-toolbox/framegen.json`
+  (Frame Suite's switch *Let the Legion Go Toolbox use lsfg-vk*, on by default). Not verified on a
   device yet.
 - **Decky-Framegen** (OptiScaler frame generation inside the game): the
   plugin sees its wrapper or its DLL override in the game's launch options

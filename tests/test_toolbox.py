@@ -173,7 +173,7 @@ class Battery(TempDirCase):
         self.assertEqual(limit.set(False)["enabled"], False)
         self.assertEqual(battery.battery_info(self.tmp),
                          {"percent": 77, "status": "Discharging", "watts": None,
-                          "minutes": None})
+                          "minutes": None, "energy_wh": None, "full_wh": None})
 
     def test_watts_and_time_left(self):
         self._supply("[Standard] Long_Life\n")
@@ -183,6 +183,7 @@ class Battery(TempDirCase):
             write(os.path.join(bat, name), "%d\n" % value)
         info = battery.battery_info(self.tmp)
         self.assertEqual((info["watts"], info["minutes"]), (20.0, 90))     # 30 Wh / 20 W
+        self.assertEqual((info["energy_wh"], info["full_wh"]), (30.0, 50.0))
         write(os.path.join(bat, "status"), "Charging\n")
         self.assertEqual(battery.battery_info(self.tmp)["minutes"], 60)    # 20 Wh to go
         # Batteries that report current and charge instead

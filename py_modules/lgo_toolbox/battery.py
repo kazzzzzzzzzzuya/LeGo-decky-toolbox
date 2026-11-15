@@ -142,8 +142,11 @@ def _flow(base, status):
             minutes = now / watts * 60.0
         elif status == "Charging" and full is not None and full > now:
             minutes = (full - now) / watts * 60.0
-    return {"watts": round(watts, 1) if watts is not None else None,
-            "minutes": int(round(minutes)) if minutes is not None and minutes < 6000 else None}
+    return {"watts": round(watts, 2) if watts is not None else None,
+            "minutes": int(round(minutes)) if minutes is not None and minutes < 6000 else None,
+            # Energy left and when full, in watt-hours (None where the battery does not say).
+            "energy_wh": round(now, 2) if now is not None else None,
+            "full_wh": round(full, 2) if full is not None else None}
 
 
 def on_external_power(root=POWER_SUPPLY):

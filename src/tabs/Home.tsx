@@ -12,6 +12,7 @@ import {
 } from "../backend";
 import { replaceGyroSettings, replaceSettings, update, useStore } from "../store";
 import { ErrorRow, Info, modeLabel, PLUGIN_NAME, Unavailable } from "../ui";
+import { hours } from "./Playtime";
 
 const MODELS: Record<string, string> = {
   "83E1": "Legion Go",
@@ -302,7 +303,16 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
                 .join(" · ")
             : "No reading"}
         </Info>
-        {caps.charge_limit.available ? (
+        {status.playtime?.app != null && status.playtime.on_battery && (status.playtime.goal || status.playtime.max_h != null) ? (
+          <Info label="Playtime" warn={status.playtime.reachable === false}>
+            {status.playtime.goal
+              ? status.playtime.goal.hours >= 24
+                ? `Goal: as long as possible · about ${hours(status.playtime.max_h)}`
+                : `Goal ${hours(status.playtime.goal.hours)}: ${hours(status.playtime.left_h)} to go${status.playtime.reachable === false ? " · out of reach" : ""}`
+              : `This game: up to about ${hours(status.playtime.max_h)} (set a goal in the Power tab)`}
+          </Info>
+        ) : null}
+                {caps.charge_limit.available ? (
           <>
             <PanelSectionRow>
               <ToggleField
