@@ -16,9 +16,11 @@ import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 const OFF = 0;
 const FG_AUTO = 0;
 const FG_CHOICES = [FG_AUTO, 1, 2, 3, 4];
-// Decky-Framegen's wrapper in the launch options: OptiScaler is set up, and
-// frame generation switched on in the game is made inside the game.
-const FGMOD_RE = /(^|[\s/])fgmod(\s|$)/;
+// OptiScaler in the launch options: Decky-Framegen's wrapper, or the DLL
+// override its direct patch (and Frame Suite) sets. Frame generation switched
+// on in the game is then made inside the game.
+const FGMOD_RE =
+  /(^|[\s/])fgmod(\s|$)|(^|\s)WINEDLLOVERRIDES=\S*\b(dxgi|winmm|version|dbghelp|winhttp|wininet|d3d12)=n,b/;
 // Auto TDP's target list, with 36 in place of 40: doubled by frame
 // generation every cap then lands on a target (36 -> 72; 40 -> 80 is none),
 // and 36 divides the 144 Hz screen evenly.
@@ -156,7 +158,7 @@ export const SmoothSection: FC = () => {
         title: PLUGIN_NAME,
         body:
           fg === FG_AUTO
-            ? `${name}: frame generation follows lsfg-vk's setting for this game.`
+            ? `${name}: frame generation follows lsfg-vk's (or Frame Suite's) setting for this game.`
             : fg > 1
               ? `${name}: ${entry.fps} fps × ${fg} = ${entry.fps * fg} fps on screen. Set ${fg}× in lsfg-vk too.`
               : `${name}: no frame generation, ${entry.fps} fps on screen.`,
@@ -213,20 +215,34 @@ export const SmoothSection: FC = () => {
   const out = current ? current.fps * fg : 0;
   const lsfg = st?.lsfg ?? null;
   const lsfgMult = lsfg?.installed ? lsfg.multiplier : 1;
+  // Frame Suite's record: OptiScaler in the game, and its frame generation as the user set it there.
+  const suite = st?.suite ?? null;
+  const suiteMult = lsfgMult <= 1 && suite?.optiscaler ? suite.multiplier : 1;
   const autoLabel = (f: number) =>
-    !lsfg?.installed
-      ? "Auto · lsfg-vk not installed"
-      : lsfgMult > 1
-        ? `Auto · lsfg-vk ${lsfgMult}× · ${label(f, lsfgMult)}`
-        : "Auto · lsfg-vk off for this game";
+    lsfgMult > 1
+      ? `Auto · lsfg-vk ${lsfgMult}× · ${label(f, lsfgMult)}`
+      : suiteMult > 1
+        ? `Auto · in-game ${suiteMult}× (Frame Suite) · ${label(f, suiteMult)}`
+        : suite?.optiscaler
+          ? "Auto · no frame generation"
+          : !lsfg?.installed
+            ? "Auto · lsfg-vk not installed"
+            : "Auto · lsfg-vk off for this game";
   const fgDescription = (): string => {
     if (!current) return "";
     if (lsfg?.error) return `Could not read lsfg-vk's settings (${lsfg.error}). Pick the multiplier by hand.`;
-    const viaGame = !!current.fgmod && lsfgMult <= 1;
+    const viaGame = (!!current.fgmod || !!st?.fgmod) && lsfgMult <= 1;
+    // Frame Suite knows the game: Auto follows the switch its user sets there.
+    if (suite?.optiscaler && lsfgMult <= 1 && fgSetting === FG_AUTO)
+      return suiteMult > 1
+        ? `Follows Frame Suite, where frame generation is marked on for this game: the game makes ${current.fps} fps, the screen shows ${out}. Auto TDP aims at ${out}. Switch it off there when you turn frame generation off in the game.`
+        : "OptiScaler is set up for this game. When you switch frame generation on in the game's settings, also turn on \"Frame generation is on in the game\" in Frame Suite: this follows within seconds. Otherwise the cap would halve the game's own frame rate.";
+    if (suite?.optiscaler && lsfgMult <= 1 && suiteMult !== (fgSetting > 1 ? fgSetting : 1))
+      return `Fixed at ${fgSetting > 1 ? `${fgSetting}×` : "off"}, while Frame Suite has this game's frame generation marked ${suiteMult > 1 ? `on (${suiteMult}×)` : "off"}. Choose Auto to follow it.`;
     if (viaGame && fgSetting <= 1)
-      return "Decky-Framegen is set up for this game. If its frame generation is switched on in the game's settings, choose 2× here: the plugin cannot see that switch, and the cap would otherwise halve the game's own frame rate.";
+      return "OptiScaler (Decky-Framegen) is set up for this game. If its frame generation is switched on in the game's settings, choose 2× here: the plugin cannot see that switch, and the cap would otherwise halve the game's own frame rate.";
     if (viaGame)
-      return `Decky-Framegen: the game makes ${current.fps} fps, its frame generation shows ${out}. Auto TDP aims at ${out}. Set this back to Off when you turn frame generation off in the game.`;
+      return `OptiScaler: the game makes ${current.fps} fps, its frame generation shows ${out}. Auto TDP aims at ${out}. Set this back to Off when you turn frame generation off in the game.`;
     if (fgSetting === FG_AUTO) {
       if (!lsfg?.installed) return "Follows lsfg-vk's setting for this game once lsfg-vk is installed. Nothing to do without frame generation.";
       if (lsfgMult > 1)
@@ -294,8 +310,8 @@ export const SmoothSection: FC = () => {
       {current && wiped && (
         <>
           <Info label="Cap missing" warn>
-            Another tool replaced this game's launch options (for example Decky-Framegen or Steam ROM
-            Manager), so the {current.fps} fps cap is gone.
+            Another tool replaced this game's launch options (for example Decky-Framegen's own
+            panel or Steam ROM Manager), so the {current.fps} fps cap is gone.
           </Info>
           <PanelSectionRow>
             <ButtonItem

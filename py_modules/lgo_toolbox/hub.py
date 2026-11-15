@@ -19,6 +19,8 @@ from .power import CUSTOM, AutoTdp, FpsMonitor, PowerLimits, cpu_boost_state, se
 from .powerled import PowerLed
 from . import smooth as smoothmod
 from .lsfg import Lsfg, homes as user_homes
+from .suite import Suite, write_requests
+from . import playtime as ptmod
 
 LEGION_GO = ("83E1",)
 LEGION_GO_2 = ("83N0", "83N1")
@@ -34,7 +36,9 @@ SMOOTH_REASSERT_S = 10.0
 RECONNECT_DELAY_S = 2.0
 RESUME_DELAY_S = 3.0
 
-SECTIONS = ("lighting", "battery", "fan", "power", "controls")
+SECTIONS = ("lighting", "battery", "fan", "power", "controls", "playtime")
+PLAYTIME_SAVE_S = 60.0
+REQUEST_REFRESH_S = 60.0     # a live frame-generation request is renewed this often (Frame Suite drops stale ones)
 
 
 class Hub(object):
@@ -67,6 +71,7 @@ class Hub(object):
         self.gamescope = m.get("gamescope") or smoothmod.Gamescope()
         self._mangohud_env = m.get("mangohud_env", smoothmod.mangohud_env)
         self.lsfg = m.get("lsfg") or Lsfg()
+        self.suite = m.get("suite") or Suite()
         self._home = m.get("home") or (lambda: next(
             (h for h in user_homes() if os.path.isdir(h)), None))
         self._order = m.get("limit_on_output") or smoothmod.limit_on_output
@@ -80,6 +85,8 @@ class Hub(object):
         self._read_on_ac = m.get("on_ac") or on_external_power
         self._set_boost = m.get("set_boost") or set_cpu_boost
         self._boost_state = m.get("boost_state") or cpu_boost_state
+        self._write_requests = m.get("write_requests") or write_requests
+        self._wall = m.get("wall") or time.time
 
         self._lock = threading.RLock()      # settings
         self._hw = threading.RLock()        # one hardware operation at a time
@@ -114,6 +121,18 @@ class Hub(object):
         self._caps = None
         self._caps_at = 0.0
         self._slow = {}
+        # Battery playtime (see playtime.py)
+        self._pt = None              # Planner for the running game
+        self._pt_app = None
+        self._pt_ceiling = None      # power limit it allows, None: not limiting
+        self._pt_cap = None          # frame cap it uses instead of the Smooth one
+        self._pt_fg = None           # frame generation it asked Frame Suite for
+        self._pt_last = None
+        self._pt_saved_at = 0.0
+        self._pt_session = None      # wall-clock time the running game was first seen
+        self._pt_sent = None         # last requests written
+        self._pt_sent_at = 0.0
+        self._pt_error = None
 
     # ------------------------------------------------------------------
     # lifecycle
@@ -266,8 +285,10 @@ class Hub(object):
             app = None
         if app == self._app:
             return
+        self._pt_leave()
         self._app = app
         self._app_name = str(name or "")[:120]
+        self._pt_session = self._wall() if app is not None else None
         self._frame_gen = False
         self._fg_run = 0
         self._auto = None
@@ -339,6 +360,8 @@ class Hub(object):
             self._apply_fan(was_enabled=old["fan"]["enabled"])
         elif section == "power":
             self._apply_power(force=True, was_enabled=old["power"]["enabled"])
+        elif section == "playtime":
+            self._pt_reset_if_changed(old["playtime"])
         elif section == "controls":
             o, n = old["controls"], self.settings["controls"]
             changed_pad = (o["steam_controller"], o["steam_controller_games"]) != (
@@ -575,6 +598,17 @@ class Hub(object):
     # ---- power ---------------------------------------------------------------
     def active_profile(self):
         """(key, profile) the power module uses right now."""
+        key, profile = self._own_profile()
+        if self._pt_ceiling is not None and self._app is not None:
+            # Battery playtime: its power limit, set in watts whatever mode the profile uses.
+            rng = self.limits.tdp_range() or (cfg.TDP_ABS_MIN, cfg.TDP_ABS_MAX)
+            top = profile["tdp"] if profile["mode"] == CUSTOM else rng[1]
+            ceiling = min(top, self._pt_ceiling)
+            profile = dict(profile, mode=CUSTOM, tdp=ceiling,
+                           min_tdp=min(profile["min_tdp"], ceiling))
+        return key, profile
+
+    def _own_profile(self):
         power = self.settings["power"]
         key = str(self._app) if self._app is not None else None
         if power["per_game"] and key and key in power["profiles"]:
@@ -646,19 +680,40 @@ class Hub(object):
 
     # ---- smooth mode ---------------------------------------------------------
     def smooth_for(self, app=None):
+        """The game's Smooth entry as it applies now: with a lower cap while
+        Battery playtime uses one."""
         app = self._app if app is None else app
         if app is None:
             return None
-        return self.settings["smooth"]["games"].get(str(app))
+        entry = self.settings["smooth"]["games"].get(str(app))
+        if entry and self._pt_cap is not None and app == self._app and self._pt_cap < entry["fps"]:
+            entry = dict(entry, fps=self._pt_cap)
+        return entry
 
     def _fg(self, entry, app=None):
         """The game's frame-generation multiplier: fixed in Smooth mode, or
-        (setting 0, the default) read from lsfg-vk's own settings."""
+        (setting 0, the default) read from lsfg-vk's own settings and, where
+        lsfg-vk is off for the game, from what Frame Suite was told about
+        the game's own frame generation."""
         fg = entry.get("fg", cfg.FG_AUTO)
         if fg == cfg.FG_AUTO:
             app = self._app if app is None else app
-            return self.lsfg.for_app(app)["multiplier"] if app is not None else 1
+            if app is None:
+                return 1
+            mult = self.lsfg.for_app(app)["multiplier"]
+            return mult if mult > 1 else self.suite.for_app(app)["multiplier"]
         return fg
+
+    def _in_game(self, entry, app=None):
+        """Frame generation, if on, is made inside the game (OptiScaler, set
+        up by Decky-Framegen or Frame Suite) and not by lsfg-vk: a limiter
+        then sees the generated frames too, wherever it sits."""
+        app = self._app if app is None else app
+        if app is None:
+            return bool(entry.get("fgmod"))
+        if self.lsfg.for_app(app)["multiplier"] > 1:
+            return False
+        return bool(entry.get("fgmod")) or self.suite.for_app(app)["optiscaler"]
 
     def _smooth_output(self, entry):
         """Frames on screen: the game's cap times the frame-generation
@@ -669,7 +724,7 @@ class Hub(object):
     def _measure_app(self):
         """The game whose frame rate is measured: needed for Smooth mode's
         readout even when Auto TDP is off."""
-        return self._app if self.smooth_for() else None
+        return self._app if self.smooth_for() or self._pt_goal() else None
 
     FG_RATIO = 1.5      # shown frames this far above the cap: frame generation
     FG_READINGS = 3
@@ -752,10 +807,7 @@ class Hub(object):
         shown = self._shown(entry, app)
         if fg <= 1:
             return shown
-        app = self._app if app is None else app
-        in_game = entry.get("fgmod") and (
-            app is None or self.lsfg.for_app(app)["multiplier"] <= 1)
-        if in_game or self.limit_on_output():
+        if self._in_game(entry, app) or self.limit_on_output():
             return shown
         return min(entry["fps"], shown // fg)
 
@@ -838,11 +890,13 @@ class Hub(object):
         fps = entry["fps"] if entry else None
         output = self._shown(entry) if entry else None
         lsfg = self.lsfg.for_app(self._app) if self._app is not None else None
+        suite = self.suite.for_app(self._app) if self._app is not None else None
         return {
             "fps": fps,
             "fg": self._fg(entry) if entry else 1,           # in effect
             "fg_setting": entry.get("fg", cfg.FG_AUTO) if entry else cfg.FG_AUTO,
-            "fgmod": bool(entry and entry.get("fgmod")),
+            "fgmod": bool(entry and (entry.get("fgmod") or (suite and suite["optiscaler"]))),
+            "suite": suite,
             "shown": self._shown(entry) if entry else None,   # after the VRR cap
             "lsfg": lsfg,
             "output": output,
@@ -854,6 +908,284 @@ class Hub(object):
             "active": bool(self._smooth_applied),
             "measured": {"fps": self.fps.get(), "low": self.fps.get_low()} if entry else None,
         }
+
+    # ---- battery playtime ---------------------------------------------------------
+    def _pt_goal(self, app=None):
+        app = self._app if app is None else app
+        return self.settings["playtime"]["games"].get(str(app)) if app is not None else None
+
+    def set_playtime_goal(self, app_id, hours, floor=30, allow_fg=True, name=""):
+        """Set (hours None: remove) a game's battery goal. Counting starts again."""
+        key = str(int(app_id))
+        info = self._battery_info() or {}
+        power_was = self.settings["power"]["enabled"]
+        with self._lock:
+            pt = copy.deepcopy(self.settings["playtime"])
+            if hours is None:
+                pt["games"].pop(key, None)
+            else:
+                old = pt["games"].get(key) or {}
+                pt["games"][key] = {
+                    "hours": float(hours), "floor": int(floor), "allow_fg": bool(allow_fg),
+                    "name": str(name or old.get("name") or "")[:120],
+                    "played_s": 0.0 if float(hours) != old.get("hours") else old.get("played_s", 0.0),
+                    "last_pct": info.get("percent"),
+                }
+            new = dict(self.settings, playtime=pt)
+            if hours is not None and not power_was:
+                # The goal works through the power limit: power management comes on with it.
+                new["power"] = dict(new["power"], enabled=True)
+            self.settings = cfg.sanitize(new)
+            self._save()
+        self._pt_drop()
+        if hours is not None and not power_was:
+            self._apply_power(force=True)
+        return self.get_settings()      # the next tick (within a second) takes it from here
+
+    def restart_playtime(self, app_id):
+        key = str(int(app_id))
+        with self._lock:
+            goal = self.settings["playtime"]["games"].get(key)
+            if goal:
+                goal["played_s"] = 0.0
+                self._save()
+        return self.get_settings()
+
+    def _pt_reset_if_changed(self, old):
+        new = self.settings["playtime"]
+        key = str(self._app) if self._app is not None else None
+        if key and (old["games"].get(key) or {}).get("hours") != (new["games"].get(key) or {}).get("hours"):
+            self._pt_drop()
+
+    def _pt_save(self, force=False):
+        """Played time and what the game draws, kept across restarts."""
+        pt, app = self._pt, self._pt_app
+        if pt is None or app is None:
+            return
+        with self._lock:
+            data = copy.deepcopy(self.settings["playtime"])
+            data["learned"][str(app)] = pt.model.to_json()
+            if data != self.settings["playtime"] or force:
+                self.settings = dict(self.settings, playtime=data)
+                self._save()
+
+    def _pt_drop(self):
+        """Forget the running game's planner (goal changed): start fresh."""
+        had = self._pt_ceiling is not None or self._pt_cap is not None or self._pt_fg is not None
+        if self._pt is not None:
+            self._pt_save()
+        self._pt = None
+        self._pt_ceiling = self._pt_cap = self._pt_fg = None
+        if had:
+            self._apply_power()
+            self._apply_smooth(force=True)
+
+    def _pt_leave(self):
+        self._pt_drop()
+        self._pt_app = None
+
+    def _even(self, fps):
+        info = self._display
+        if not info or info["vrr"] or not info["rates"]:
+            return True
+        return any(r % int(fps) == 0 for r in info["rates"])
+
+    def _pt_steps(self, app, goal):
+        """The settings the planner may step through for this game, and why
+        frame generation is not among them (or None)."""
+        entry = self.settings["smooth"]["games"].get(str(app))
+        if not entry or not smoothmod.conf_from_prefix(entry["prefix"]):
+            return [(None, None)], "no_cap"
+        suite = self.suite.for_app(app)
+        lsfg = self.lsfg.for_app(app)
+        own_fg = lsfg["multiplier"] if not suite["fg_applied"] else 1
+        why = None
+        if not goal["allow_fg"]:
+            why = "off"
+        elif app >= 0x80000000:
+            why = "shortcut"
+        elif not suite["lsfg_ready"]:
+            why = "no_suite"
+        elif suite["multiplier"] > 1 or entry["fg"] > 1 or own_fg > 1:
+            why = "has_fg"
+        elif entry["fg"] != cfg.FG_AUTO:
+            why = "fixed_off"
+        elif suite["standby_since"] is None:
+            why = "preparing" if not suite["fg_refused"] else "refused"
+        elif self._pt_session is not None and suite["standby_since"] > self._pt_session - 5:
+            why = "next_start"     # lsfg-vk only looks at its settings when the game starts
+        fg_ready = why is None
+        return ptmod.steps(entry["fps"], own_fg, goal["floor"], smoothmod.CANDIDATES,
+                           self._even, fg_ready), (why if why != "has_fg" else None)
+
+    def _current_tdp(self):
+        """The power limit in effect: the one this plugin set, else what the system
+        reports (read at most every 10 s), so the estimate also works without
+        power management."""
+        if self.settings["power"]["enabled"] and self._auto_applied is not None:
+            return self._auto_applied
+        value = self._cached("tdp", self.limits.tdp, ttl=10.0)
+        return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else None
+
+    def _game_fps(self):
+        """Frames the game itself makes: the measured (shown) rate without
+        what frame generation adds."""
+        fps = self.fps.get()
+        entry = self.smooth_for()
+        fg = self._fg(entry) if entry else 1
+        return fps / fg if fps is not None and fg > 1 else fps
+
+    def _pt_requests(self):
+        """What Frame Suite is asked for: lsfg-vk on standby for every game
+        with a goal that may use frame generation, switched on for the
+        running one while its step needs it."""
+        out = {}
+        for key, goal in self.settings["playtime"]["games"].items():
+            if goal["allow_fg"] and int(key) < 0x80000000:
+                out[key] = {"standby": True, "multiplier": None}
+        if self._pt_fg and self._app is not None and str(self._app) in out:
+            out[str(self._app)]["multiplier"] = int(self._pt_fg)
+        return out
+
+    def _pt_send(self, now):
+        want = self._pt_requests()
+        live = any(v["multiplier"] for v in want.values())
+        if want == self._pt_sent and not (live and now - self._pt_sent_at >= REQUEST_REFRESH_S):
+            return
+        home = self.suite.home() if hasattr(self.suite, "home") else None
+        err = self._write_requests(home, want)
+        self._pt_error = err
+        if err:
+            self._log.warning("Frame generation request: %s", err)
+            return
+        self._pt_sent = want
+        self._pt_sent_at = now
+
+    def _playtime_step(self, now):
+        dt = 0.0 if self._pt_last is None else min(5.0, max(0.0, now - self._pt_last))
+        self._pt_last = now
+        app = self._app
+        goal = self._pt_goal()
+        self._pt_send(now)
+        if app is None:
+            return
+        info = self._battery_info() or {}
+        on_battery = info.get("status") == "Discharging" or (
+            info.get("status") not in ("Charging", "Full") and not self.on_ac())
+        _, own = self._own_profile()
+        rng = self.limits.tdp_range() or (cfg.TDP_ABS_MIN, cfg.TDP_ABS_MAX)
+        tdp_max = self._tdp_bounds(own)[1] if own["mode"] == CUSTOM else rng[1]
+        if self._pt is None or self._pt_app != app:
+            learned = self.settings["playtime"]["learned"].get(str(app))
+            start = self._auto_applied or tdp_max
+            self._pt = ptmod.Planner(goal["hours"] if goal else ptmod.MAX_HOURS,
+                                     goal["floor"] if goal else 30, rng[0], tdp_max,
+                                     min(start, tdp_max), ptmod.Model(learned))
+            self._pt_app = app
+        pt = self._pt
+        pt.tdp_max = int(tdp_max)
+        pt.ceiling = min(pt.ceiling, pt.tdp_max)
+        if on_battery:
+            pt.add(now, info.get("watts"))
+        applied = self._current_tdp()
+        fps = self._game_fps()
+
+        if goal and on_battery:
+            pct = info.get("percent")
+            with self._lock:
+                g = self.settings["playtime"]["games"].get(str(app))
+                if g is not None:
+                    last = g.get("last_pct")
+                    if isinstance(pct, int) and isinstance(last, int) and pct >= last + 10:
+                        g["played_s"] = 0.0          # charged since: a new battery, a new count
+                    g["played_s"] = min(g["played_s"] + dt, 7 * 86400.0)
+                    if isinstance(pct, int):
+                        g["last_pct"] = pct
+        if now - self._pt_saved_at >= PLAYTIME_SAVE_S:
+            self._pt_saved_at = now
+            self._pt_save(force=bool(goal and on_battery))
+
+        active = bool(goal) and on_battery and self.settings["power"]["enabled"] and \
+            self.limits.available()
+        if not active:
+            if on_battery:
+                pt.observe(now, applied, fps)
+            if self._pt_ceiling is not None or self._pt_cap is not None or self._pt_fg is not None:
+                self._pt_ceiling = self._pt_cap = self._pt_fg = None
+                pt.step = 0
+                pt.ceiling = pt.tdp_max
+                self._apply_power()
+                self._apply_smooth(force=True)
+                self._pt_send(now)
+            return
+
+        steps, _ = self._pt_steps(app, goal)
+        usable = ptmod.usable_wh(info.get("energy_wh"), info.get("full_wh"))
+        played_h = goal["played_s"] / 3600.0
+        entry = self.smooth_for()
+        cap = entry["fps"] if entry else None
+        ceiling, step = pt.tick(now, usable, played_h, applied, fps, cap, len(steps))
+        step = min(step, len(steps) - 1)
+        pt.step = step
+        want_cap, want_fg = steps[step]
+        want_cap = want_cap if step > 0 else None
+        changed = False
+        if ceiling != self._pt_ceiling:
+            self._pt_ceiling = ceiling
+            self._apply_power()
+        if want_fg != self._pt_fg:
+            if want_fg or self.lsfg.for_app(app)["multiplier"] <= 1 or not self._pt_fg:
+                self._pt_fg = want_fg
+                changed = True
+            else:
+                # Switching frame generation off: keep the low cap until lsfg-vk is back
+                # at 1x, or the game would briefly run at twice the frames.
+                self._pt_fg = None
+                want_cap = self._pt_cap
+                changed = True
+        elif self._pt_fg is None and self._pt_cap is not None and want_cap != self._pt_cap and \
+                self.lsfg.for_app(app)["multiplier"] > 1 and self.suite.for_app(app)["fg_applied"]:
+            want_cap = self._pt_cap        # still waiting for lsfg-vk to switch off
+        if want_cap != self._pt_cap:
+            self._pt_cap = want_cap
+            changed = True
+        if changed:
+            self._pt_send(now)
+            self._apply_smooth(force=True)
+            if self._auto is not None:
+                _, profile = self.active_profile()
+                low, top = self._tdp_bounds(profile)
+                self._auto.retarget(low, top, self._auto_target(profile))
+
+    def _playtime_status(self):
+        app = self._app
+        info = self._battery_info() or {}
+        goal = self._pt_goal()
+        pt = self._pt if self._pt_app == app else None
+        usable = ptmod.usable_wh(info.get("energy_wh"), info.get("full_wh"))
+        out = {"app": app, "goal": None, "draw_w": None, "budget_w": None, "now_h": None,
+               "max_h": None, "left_h": None, "reachable": None, "state": None,
+               "step": None, "ceiling": self._pt_ceiling, "cap": self._pt_cap,
+               "fg": self._pt_fg, "fg_why": None, "steps": [],
+               "on_battery": info.get("status") == "Discharging",
+               "power_enabled": self.settings["power"]["enabled"],
+               "error": self._pt_error}
+        if usable is not None and info.get("watts") and out["on_battery"]:
+            out["now_h"] = ptmod.fmt_hours(usable / max(0.5, info["watts"]))
+        if app is None or pt is None:
+            return out
+        played_h = goal["played_s"] / 3600.0 if goal else 0.0
+        applied = self._current_tdp()
+        est = pt.estimate(usable, played_h, applied, self._game_fps())
+        out.update(est)
+        if not goal:
+            out["left_h"] = out["budget_w"] = out["reachable"] = None
+        else:
+            steps, why = self._pt_steps(app, goal)
+            out.update(goal=dict(goal), state=pt.state if self._pt_ceiling is not None else None,
+                       step=pt.step if self._pt_ceiling is not None else None,
+                       steps=[[c, f] for c, f in steps], fg_why=why)
+        return out
 
     # ---- Auto TDP memory -----------------------------------------------------------
     def _learn_key(self):
@@ -929,6 +1261,10 @@ class Hub(object):
 
     def _tick(self, now):
         self._auto_step(now)
+        try:
+            self._playtime_step(now)
+        except Exception:
+            self._log.exception("Battery playtime")
 
         power = self.settings["power"]
         if power["enabled"] and now - self._power_applied_at >= REASSERT_S:
@@ -1051,6 +1387,7 @@ class Hub(object):
             "acpi": self.acpi_installer.status() if self.acpi_installer is not None
             and self.product in LEGION_GO + LEGION_GO_2 + LEGION_GO_S else None,
             "smooth": self._smooth_status(),
+            "playtime": self._playtime_status(),
             "steam_controller": dict(zip(("type", "source"), self.steam_controller_for())),
             "power": {
                 "profile_key": key,

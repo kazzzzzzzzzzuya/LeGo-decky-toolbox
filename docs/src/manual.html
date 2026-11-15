@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.7.1</div>
+    <div class="kicker">User manual · Version 2.9.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -47,12 +47,12 @@
     <li><span class="n">2</span><span><span class="t">Installing, updating and removing</span><br><span class="d">Decky developer mode, updates, removal</span></span></li>
     <li><span class="n">3</span><span><span class="t">Finding your way around</span><br><span class="d">Tabs, status lines, "not available" messages</span></span></li>
     <li><span class="n">4</span><span><span class="t">Home and battery</span><br><span class="d">Overview, 80 % charge limit, reset</span></span></li>
-    <li><span class="n">5</span><span><span class="t">Power</span><br><span class="d">Power modes, TDP, Auto TDP for a frame rate, Smooth frame rate, per-game profiles</span></span></li>
+    <li><span class="n">5</span><span><span class="t">Power</span><br><span class="d">Power modes, TDP, Auto TDP for a frame rate, Smooth frame rate, battery playtime, per-game profiles</span></span></li>
     <li><span class="n">6</span><span><span class="t">Fan</span><br><span class="d">Custom curve, presets, full speed, safety limits</span></span></li>
     <li><span class="n">7</span><span><span class="t">Lights</span><br><span class="d">Stick lights, power-button light</span></span></li>
     <li><span class="n">8</span><span><span class="t">Controls</span><br><span class="d">Swapped menu buttons, back-button remapping, touchpad</span></span></li>
     <li><span class="n">9</span><span><span class="t">Gyro</span><br><span class="d">Gyro in Steam games, gyro in emulators (Wii Sports, Switch Sports)</span></span></li>
-    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, Decky-Framegen, HelixSR</span></span></li>
+    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
     <li><span class="n">11</span><span><span class="t">Troubleshooting</span><br><span class="d">Symptoms and fixes</span></span></li>
     <li><span class="n">12</span><span><span class="t">Reference</span><br><span class="d">Files, limits, what is re-applied when, credits</span></span></li>
   </ol>
@@ -245,6 +245,26 @@
   </table>
   <p>The <b>Now</b> line shows the measured frame rate and the slowest frame; the closer the two, the smoother. Smooth mode puts its settings at the very start of the launch options, so wrapper commands such as lsfg-vk's <code>~/lsfg</code> or <code>gamemoderun</code> keep working. Your own launch options are kept, and turning Smooth mode off removes exactly what it added. HelixSR, Decky-Framegen and similar plugins keep working; Decky-Framegen and Steam ROM Manager replace the whole launch options when they apply, and the Power tab then offers <b>Add the cap again</b>. For emulators from Steam ROM Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot reach Flatpak apps. <b>Games with Smooth mode</b> lists every game with a cap.</p>
   <div class="note"><b>Limits.</b> Stutter from shader compilation or loading comes from the game itself and cannot be removed by a limiter. Smooth mode works in Gaming Mode only.</div>
+
+  <h2>Battery playtime</h2>
+  <p>Choose how long the running game should last on battery, for example <b>4 h</b>, or <b>As long as possible</b>. The section first shows how long the battery lasts at the current draw and the <b>longest this game can reach</b> from the current charge at your lowest frame rate. That estimate learns what the game draws at each power limit while you play on battery and gets more exact over time.</p>
+  <p>With a goal, the plugin works out a power budget - energy left ÷ hours to go - and checks the battery's real draw against it every few seconds. It gives up as little as possible, in this order:</p>
+  <ol class="steps">
+    <li><b>Power limit.</b> Too much drawn: the TDP comes down a watt or a few at a time. Plenty to spare for two minutes: it goes back up.</li>
+    <li><b>Frame rate, evenly.</b> When the game cannot keep its Smooth cap on that budget, the cap steps to the next even one the screen divides (60 → 48 → 36 → 30), never below your <b>Lowest frame rate</b> (30 by default). Your own cap stays as you set it; the lower one is only used while the goal needs it.</li>
+    <li><b>Frame generation, with Frame Suite.</b> With Frame Suite installed and lsfg-vk set up, the first step down is "half the frames, doubled by lsfg-vk" instead: 60 → 30 × 2 = 60 on screen, for far less power. Frame Suite prepares lsfg-vk for the game (off until needed); lsfg-vk picks that up from the game's <b>next start</b>, and from then on it is switched on and off while you play. If even that is too much, frame generation's own cost goes too.</li>
+    <li><b>Your lowest frame rate wins.</b> If the goal is out of reach at that rate, the plugin says so and makes the battery last as long as it can without going lower.</li>
+  </ol>
+  <table>
+    <tr><th>Setting</th><th>What it does</th></tr>
+    <tr><td class="k">Goal</td><td>Hours on battery from now, or as long as possible. The list marks which goals are within reach of the current charge.</td></tr>
+    <tr><td class="k">Lowest frame rate</td><td>Fewest frames the game itself makes. Frame generation can double them on screen.</td></tr>
+    <tr><td class="k">Frame generation for battery time</td><td>Lets the plugin ask Frame Suite for lsfg-vk. The description says when it is ready, or why not.</td></tr>
+    <tr><td class="k">Count from now again</td><td>Starts the goal's hours again without changing it.</td></tr>
+  </table>
+  <p>The count runs only while the game runs on battery. On the charger everything goes back to your own settings and the count waits; after charging by 10 % or more it starts again. Setting a goal switches <b>Manage power</b> on. The Home tab shows the goal's time to go.</p>
+  <div class="tip"><b>Set a Smooth frame rate first.</b> Without one only the power limit is lowered, and the frame rate falls unevenly instead of stepping to an even cap. Screen brightness counts too: the screen alone draws several watts.</div>
+  <div class="note">Not verified on a device yet.</div>
 
   <h2>CPU boost</h2>
   <p>Turning boost off keeps the processor at its base clock. It runs cooler and quieter and often costs only a few frames, especially together with a frame limit.</p>
@@ -441,13 +461,14 @@
 <section class="chapter">
   <h1><span class="chap-num">10</span>With frame generation and upscalers</h1>
 
-  <p>The plugin works alongside lsfg-vk (Lossless Scaling frame generation), Decky-Framegen (OptiScaler) and HelixSR. The key is to know which frame rate each part controls.</p>
+  <p>The plugin works alongside lsfg-vk (Lossless Scaling frame generation), Decky-Framegen (OptiScaler), HelixSR, and Frame Suite, which bundles the three. The key is to know which frame rate each part controls.</p>
 
   <table>
     <tr><th>Tool</th><th>What it does</th><th>Frame rate it changes</th></tr>
     <tr><td class="k">HelixSR</td><td>Upscaler: renders at lower resolution and scales up</td><td>None - the game simply needs less power for the same frame rate</td></tr>
     <tr><td class="k">lsfg-vk 2.0</td><td>Frame generation as a Vulkan layer</td><td>Shown frames = game frames × multiplier</td></tr>
     <tr><td class="k">Decky-Framegen</td><td>OptiScaler frame generation inside the game</td><td>Shown frames = game frames × 2</td></tr>
+    <tr><td class="k">Frame Suite</td><td>The three above in one plugin, set up per game</td><td>Whichever of them it set up for the game</td></tr>
   </table>
 
   <h2>HelixSR (upscaling only)</h2>
@@ -474,8 +495,18 @@
   </table>
   <div class="tip"><b>The cap must be reachable.</b> Frame generation only doubles what the game delivers: a 72 cap the game holds at 45 shows about 90, not 144. Choose a cap the game holds steadily - the <b>Now</b> line shows the shown frame rate.</div>
 
+  <h2>Frame Suite</h2>
+  <p>Frame Suite tells the plugin what it set up for each game, so there is nothing to choose here. Games it gave lsfg-vk are followed like any lsfg-vk game. For games it gave OptiScaler:</p>
+  <ol class="steps">
+    <li>Choose the game's cap under <b>Smooth frame rate</b>, for example <i>60</i>, and leave <b>Frame generation</b> on <i>Auto</i>.</li>
+    <li>When you turn frame generation on in the game's own settings, also turn on <b>Frame generation is on in the game</b> for that game in Frame Suite. Within seconds, also mid-game, Auto shows <i>Auto · in-game 2× (Frame Suite) · 60 → 120 fps</i>: the cap counts the frames on screen (120), the game makes 60, and Auto TDP aims at 120.</li>
+    <li>Turn that switch off again when you turn frame generation off in the game.</li>
+  </ol>
+  <p>With lsfg-vk switched on for the same game, lsfg-vk's multiplier counts instead, so frames are never multiplied twice. The plugin only reads Frame Suite's file (<code>~/.config/frame-suite/bridge.json</code>) and never writes to it; Frame Suite adds its launch settings next to the cap instead of replacing it.</p>
+  <div class="note">Not verified on a device yet.</div>
+
   <h2>Decky-Framegen</h2>
-  <p>OptiScaler generates frames inside the game, so the plugin cannot see whether frame generation is switched on. It does see Decky-Framegen's wrapper in the game's launch options and says so under <b>Frame generation</b>.</p>
+  <p>OptiScaler generates frames inside the game, so the plugin cannot see whether frame generation is switched on. It does see Decky-Framegen's wrapper, or the DLL override of its direct patch, in the game's launch options and says so under <b>Frame generation</b>.</p>
   <ol class="steps">
     <li>Choose the game's cap under <b>Smooth frame rate</b>, for example <i>60</i>.</li>
     <li>When you turn frame generation on in the game's own settings, set <b>Frame generation</b> to <b>2×</b>. The cap then counts the frames on screen (120), the game makes 60, and Auto TDP aims at 120.</li>
@@ -523,6 +554,7 @@
     <tr><td>Gyro settings and calibration</td><td><code>~/homebrew/settings/Legion Go Toolbox/gyro.json</code></td></tr>
     <tr><td>Settings backup</td><td><code>~/legion-go-toolbox-backup.json</code></td></tr>
     <tr><td>Smooth mode's cap files</td><td><code>~/.config/lgo-toolbox/smooth/</code></td></tr>
+    <tr><td>Battery playtime's requests to Frame Suite</td><td><code>~/.config/lgo-toolbox/framegen.json</code></td></tr>
     <tr><td>acpi_call module built on the device</td><td><code>~/homebrew/settings/Legion Go Toolbox/acpi_call/</code></td></tr>
     <tr><td>Logs</td><td><code>~/homebrew/logs/Legion Go Toolbox/</code></td></tr>
   </table>

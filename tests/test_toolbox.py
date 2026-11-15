@@ -1,5 +1,6 @@
 """Tests of the hardware modules. Run: python3 -m unittest discover -s tests"""
 
+import json
 import logging
 import os
 import shutil
@@ -16,6 +17,7 @@ from lgo_toolbox import acpi, battery, config as cfg, controller, fan, fps_probe
 from lgo_toolbox import plumber, power, powerled
 from lgo_toolbox import smooth as smoothmod
 from lgo_toolbox import lsfg as lsfgmod
+from lgo_toolbox import suite as suitemod
 from lgo_toolbox import acpi_install, backup
 from lgo_toolbox.hub import Hub
 
@@ -171,7 +173,7 @@ class Battery(TempDirCase):
         self.assertEqual(limit.set(False)["enabled"], False)
         self.assertEqual(battery.battery_info(self.tmp),
                          {"percent": 77, "status": "Discharging", "watts": None,
-                          "minutes": None})
+                          "minutes": None, "energy_wh": None, "full_wh": None})
 
     def test_watts_and_time_left(self):
         self._supply("[Standard] Long_Life\n")
@@ -181,6 +183,7 @@ class Battery(TempDirCase):
             write(os.path.join(bat, name), "%d\n" % value)
         info = battery.battery_info(self.tmp)
         self.assertEqual((info["watts"], info["minutes"]), (20.0, 90))     # 30 Wh / 20 W
+        self.assertEqual((info["energy_wh"], info["full_wh"]), (30.0, 50.0))
         write(os.path.join(bat, "status"), "Charging\n")
         self.assertEqual(battery.battery_info(self.tmp)["minutes"], 60)    # 20 Wh to go
         # Batteries that report current and charge instead
@@ -1417,6 +1420,18 @@ class FakeLsfg(object):
                 "base_cap": 0, "error": None}
 
 
+class FakeSuite(object):
+    """Frame Suite's record: OptiScaler in the game, in-game frame generation."""
+
+    def __init__(self):
+        self.games = {}     # app id -> (optiscaler, multiplier)
+
+    def for_app(self, app_id):
+        opti, mult = self.games.get(app_id, (False, 1))
+        return {"present": bool(self.games), "optiscaler": opti, "multiplier": mult,
+                "route": "optiscaler" if opti else None, "error": None}
+
+
 class FakeFps(object):
     def __init__(self):
         self.app = None
@@ -1454,7 +1469,7 @@ class HubTests(TempDirCase):
             "limits": FakeLimits(), "fan": FakeFan(), "charge": FakeCharge(),
             "led": FakeLed(), "swap": FakeSwap(), "fps": FakeFps(),
             "steam_pad": FakeSteamPad(), "gamescope": FakeGamescopeCtl(),
-            "mangohud_env": lambda: "MANGOHUD", "lsfg": FakeLsfg(),
+            "mangohud_env": lambda: "MANGOHUD", "lsfg": FakeLsfg(), "suite": FakeSuite(),
             "home": lambda: self.home, "limit_on_output": lambda home: self.on_output,
             "send": self._send, "sensors": lambda: {"temp": 55, "rpm": None},
             "battery_info": lambda: {"percent": 80, "status": "Charging"},
@@ -1918,6 +1933,56 @@ class HubTests(TempDirCase):
         self.hub._tick(101.0)
         self.assertIn("fps_limit=58\n", read())
 
+    def test_smooth_follows_frame_suite(self):
+        gs, lsfg, suite = self.mods["gamescope"], self.mods["lsfg"], self.mods["suite"]
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 45, "tdp": 25}}}})
+        conf = os.path.join(self.home, ".config", "lgo-toolbox", "smooth", "7.conf")
+        read = lambda: open(conf).read()
+        self.hub.set_running_app(7, "Game")
+        plan = self.hub.smooth_plan(60, 7)
+        # OptiScaler in the game, its frame generation off: the cap itself.
+        # Frame Suite patches directly, so the launch options show no wrapper.
+        suite.games[7] = (True, 1)
+        self.hub.set_smooth_game(7, 60, "Game", plan["prefix"], False)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["fg"], st["fg_setting"], st["output"]), (1, 0, 60))
+        self.assertTrue(st["fgmod"])                          # known without the wrapper
+        self.assertEqual(st["suite"]["route"], "optiscaler")
+        self.assertIn("fps_limit=60\n", read())
+        self.assertEqual(self.hub._auto.target, 60.0)
+        # Marked on in Frame Suite while the game runs: followed within a tick
+        suite.games[7] = (True, 2)
+        self.hub._tick(6000.0)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["fg"], st["output"]), (2, 120))
+        self.assertEqual(gs.sent[-1], 144)
+        self.assertEqual(self.hub._auto.target, 120.0)
+        # Made inside the game: the limiter sees the generated frames wherever it sits
+        self.assertIn("fps_limit=120\n", read())
+        self.hub._on_output = False
+        self.hub._tick(6001.0)
+        self.assertIn("fps_limit=120\n", read())
+        # lsfg-vk on for the game does the generating instead (never both)
+        lsfg.mult[7] = 3
+        self.hub._tick(6002.0)
+        self.assertEqual(self.hub.status()["smooth"]["output"], 180)
+        self.assertIn("fps_limit=60\n", read())               # before lsfg-vk: the game's own frames
+        lsfg.mult[7] = 1
+        # A fixed setting wins over Frame Suite's
+        self.hub.set_smooth_game(7, 60, "Game", plan["prefix"], False, 1)
+        self.assertEqual(self.hub.status()["smooth"]["fg"], 1)
+        self.assertIn("fps_limit=60\n", read())
+        # Marked off again, back on Auto: the cap itself
+        suite.games[7] = (True, 1)
+        self.hub.set_smooth_game(7, 60, "Game", plan["prefix"], False, 0)
+        self.assertEqual(self.hub.status()["smooth"]["output"], 60)
+        # A game Frame Suite does not know is untouched by all this
+        self.hub.set_running_app(8, "Other")
+        self.hub.set_smooth_game(8, 60, "Other", self.hub.smooth_plan(60, 8)["prefix"], False)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["fg"], st["fgmod"]), (1, False))
+
     def test_restore_from_backup(self):
         path = os.path.join(self.tmp, "backup.json")
         self.assertFalse(backup.info(path)["exists"])
@@ -2265,6 +2330,121 @@ multiplier = 2
         self.assertEqual(l.for_app(1293830)["multiplier"], 3)            # cached
         self.now += 3
         self.assertEqual(l.for_app(1293830)["multiplier"], 4)
+
+
+class FrameSuiteBridge(TempDirCase):
+    """The file Frame Suite writes; the user owns it and this plugin is root."""
+
+    GAMES = {
+        "1091500": {"name": "Cyberpunk 2077", "boost": True, "route": "optiscaler",
+                    "frame_generation": {"source": "optiscaler", "multiplier": 2, "in_game": True},
+                    "optiscaler": {"patched": True, "fsr4_variant": "rdna4-native"},
+                    "lsfg": {"multiplier": 1}},
+        "20": {"name": "Upscaling only", "boost": True, "route": "optiscaler",
+               "frame_generation": {"source": "none", "multiplier": 1, "in_game": False},
+               "optiscaler": {"patched": True}, "lsfg": {"multiplier": 1}},
+        "30": {"name": "lsfg", "boost": True, "route": "lsfg",
+               "frame_generation": {"source": "lsfg", "multiplier": 3, "in_game": False},
+               "optiscaler": {"patched": False}, "lsfg": {"multiplier": 3}},
+    }
+
+    def setUp(self):
+        TempDirCase.setUp(self)
+        self.now = 0.0
+        self.home = os.path.join(self.tmp, "home", "deck")
+        self.path = os.path.join(self.home, ".config", "frame-suite", "bridge.json")
+        os.makedirs(os.path.dirname(self.path))
+
+    def _suite(self, data=None, text=None):
+        if text is None and data is not None:
+            text = json.dumps(data)
+        if text is not None:
+            with open(self.path, "w") as f:
+                f.write(text)
+        return suitemod.Suite(homes_fn=lambda: [os.path.join(self.tmp, "nobody"), self.home],
+                              clock=lambda: self.now)
+
+    def test_reads_a_game(self):
+        s = self._suite({"version": 1, "games": self.GAMES})
+        r = s.for_app(1091500)
+        self.assertEqual((r["present"], r["optiscaler"], r["multiplier"], r["route"], r["error"]),
+                         (True, True, 2, "optiscaler", None))
+        self.assertEqual(s.for_app(20)["multiplier"], 1)          # OptiScaler, no frame generation
+        self.assertTrue(s.for_app(20)["optiscaler"])
+        r = s.for_app(30)                                         # lsfg-vk's is read from lsfg-vk itself
+        self.assertEqual((r["optiscaler"], r["multiplier"], r["route"]), (False, 1, "lsfg"))
+        r = s.for_app(99)
+        self.assertEqual((r["present"], r["optiscaler"], r["multiplier"]), (True, False, 1))
+        self.assertEqual(s.for_app(None)["multiplier"], 1)
+
+    def test_no_frame_suite(self):
+        r = self._suite().for_app(1091500)
+        self.assertEqual((r["present"], r["optiscaler"], r["multiplier"], r["error"]),
+                         (False, False, 1, None))
+        self.assertFalse(suitemod.Suite(homes_fn=lambda: []).for_app(1)["present"])
+
+    def test_bad_values_never_crash_or_count(self):
+        bad = [
+            "not json {", "[]", '"text"', "null", "",
+            '{"version": 2, "games": {}}', '{"version": 1, "games": []}', '{"version": 1}',
+        ]
+        for text in bad:
+            self.now += 10
+            r = self._suite(text=text).for_app(1091500)
+            self.assertEqual((r["optiscaler"], r["multiplier"]), (False, 1), text)
+        self.now += 10
+        self.assertIn("version", self._suite(text='{"version": 2, "games": {}}').for_app(1)["error"])
+        game = dict(self.GAMES["1091500"])
+        for fg in (None, [], "2", {"source": "optiscaler", "multiplier": True, "in_game": True},
+                   {"source": "optiscaler", "multiplier": 99, "in_game": True},
+                   {"source": "optiscaler", "multiplier": 2.0, "in_game": True},
+                   {"source": "optiscaler", "multiplier": -2, "in_game": True},
+                   {"source": "optiscaler", "multiplier": 2, "in_game": "yes"},
+                   {"source": "lsfg", "multiplier": 2, "in_game": True}):
+            self.now += 10
+            r = self._suite({"version": 1, "games": {"1091500": dict(game, frame_generation=fg)}}).for_app(1091500)
+            self.assertEqual(r["multiplier"], 1, fg)
+            self.assertTrue(r["optiscaler"])
+        for opti in (None, "yes", {"patched": "true"}, {"patched": 1}, []):
+            self.now += 10
+            r = self._suite({"version": 1, "games": {"1091500": dict(game, optiscaler=opti)}}).for_app(1091500)
+            self.assertEqual((r["optiscaler"], r["multiplier"]), (False, 1), opti)   # no OptiScaler: nothing in-game
+        for entry in (None, [], "x", 5):
+            self.now += 10
+            self.assertFalse(self._suite({"version": 1, "games": {"1091500": entry}}).for_app(1091500)["optiscaler"])
+        self.now += 10
+        deep = "[" * 100000 + "]" * 100000
+        self.assertEqual(self._suite(text=deep).for_app(1091500)["multiplier"], 1)
+
+    def test_links_and_huge_files_are_not_read(self):
+        secret = os.path.join(self.tmp, "secret.json")
+        with open(secret, "w") as f:
+            json.dump({"version": 1, "games": self.GAMES}, f)
+        os.symlink(secret, self.path)
+        r = self._suite().for_app(1091500)
+        self.assertEqual((r["present"], r["optiscaler"], r["multiplier"]), (False, False, 1))
+        os.unlink(self.path)
+        self.assertIsNone(suitemod._read(os.path.dirname(self.path)))      # a folder
+        self.now += 10
+        pad = {"version": 1, "games": self.GAMES, "pad": "x" * (suitemod.MAX_BYTES + 10)}
+        r = self._suite(pad).for_app(1091500)
+        self.assertEqual((r["optiscaler"], r["multiplier"]), (False, 1))
+        self.assertIsNotNone(r["error"])
+
+    def test_changes_are_seen_after_the_recheck_interval(self):
+        s = self._suite({"version": 1, "games": self.GAMES})
+        self.assertEqual(s.for_app(1091500)["multiplier"], 2)
+        off = json.loads(json.dumps(self.GAMES))
+        off["1091500"]["frame_generation"] = {"source": "none", "multiplier": 1, "in_game": False}
+        with open(self.path, "w") as f:
+            json.dump({"version": 1, "games": off, "updated": 1}, f)
+        self.assertEqual(s.for_app(1091500)["multiplier"], 2)            # cached
+        self.now += 3
+        self.assertEqual(s.for_app(1091500)["multiplier"], 1)
+        os.unlink(self.path)                                              # Frame Suite removed
+        self.now += 3
+        r = s.for_app(1091500)
+        self.assertEqual((r["present"], r["optiscaler"]), (False, False))
 
 
 class AcpiInstall(TempDirCase):

@@ -22,6 +22,7 @@ DEFAULT_STEAM_CONTROLLER = "deck-uhid"
 SWAP_LAYOUTS = ("steam_menu", "steam_view")
 FG_AUTO = 0
 FG_MULTIPLIERS = (FG_AUTO, 1, 2, 3, 4)
+PLAYTIME_FLOORS = (30, 36, 40, 45, 48, 60)
 TARGET_FPS_CHOICES = (30, 40, 45, 48, 50, 60, 72, 90, 120, 144)
 TDP_ABS_MIN = 4
 TDP_ABS_MAX = 40
@@ -63,6 +64,10 @@ def defaults():
         # (0 = follow lsfg-vk's settings, 1 = none, 2-4 = fixed), so the
         # screen shows fps * multiplier.
         "smooth": {"games": {}},
+        # Battery playtime per game: {appid: {"hours", "floor", "allow_fg",
+        # "name", "played_s", "last_pct"}}; "learned": what each game draws
+        # per power limit, {appid: {tdp: [watts, fps_ok]}}.
+        "playtime": {"games": {}, "learned": {}},
         "controls": {
             "swap_menu": False,
             "swap_layout": SWAP_LAYOUTS[0],
@@ -237,6 +242,35 @@ def sanitize(data):
                 "fgmod": _flag(v.get("fgmod"), False),
                 "name": name[:120] if isinstance(name, str) else "",
             }
+
+    pt = data.get("playtime")
+    if isinstance(pt, dict):
+        games = pt.get("games")
+        for key, v in (list(games.items())[:200] if isinstance(games, dict) else []):
+            if not (isinstance(key, str) and key.isdigit() and len(key) <= 12 and isinstance(v, dict)):
+                continue
+            hours, floor, played = v.get("hours"), v.get("floor"), v.get("played_s", 0.0)
+            if isinstance(hours, bool) or not isinstance(hours, (int, float)) or not 0.5 <= hours <= 24:
+                continue
+            if floor not in PLAYTIME_FLOORS or isinstance(floor, bool):
+                floor = PLAYTIME_FLOORS[0]
+            if isinstance(played, bool) or not isinstance(played, (int, float)) or not 0 <= played <= 7 * 86400:
+                played = 0.0
+            last = v.get("last_pct")
+            name = v.get("name")
+            out["playtime"]["games"][key] = {
+                "hours": float(hours), "floor": floor, "allow_fg": _flag(v.get("allow_fg"), True),
+                "name": name[:120] if isinstance(name, str) else "",
+                "played_s": float(played),
+                "last_pct": last if isinstance(last, int) and not isinstance(last, bool) and 0 <= last <= 100 else None,
+            }
+        learned = pt.get("learned")
+        for key, v in (list(learned.items())[:500] if isinstance(learned, dict) else []):
+            if isinstance(key, str) and key.isdigit() and len(key) <= 12 and isinstance(v, dict):
+                from .playtime import Model
+                bins = Model(dict(list(v.items())[:64])).to_json()
+                if bins:
+                    out["playtime"]["learned"][key] = bins
 
     c = data.get("controls")
     if isinstance(c, dict):

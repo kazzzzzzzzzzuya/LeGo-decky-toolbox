@@ -5,6 +5,7 @@ import { deletePowerProfile, PowerProfile } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
 import { ErrorRow, Info, modeLabel, Unavailable } from "../ui";
 import { SmoothSection } from "./Smooth";
+import { PlaytimeSection } from "./Playtime";
 
 export const TARGETS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
@@ -194,6 +195,8 @@ export const PowerTab: FC = () => {
       )}
 
       <SmoothSection />
+
+      <PlaytimeSection />
 
       {p.enabled && boost != null && (
         <PanelSection title="Processor">

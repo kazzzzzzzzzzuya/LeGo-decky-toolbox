@@ -22,7 +22,7 @@ cannot do says so, with the reason, instead of pretending.
 | Tab | What you can do |
 |---|---|
 | **Home** | See every module at a glance, limit charging to 80 %, reset |
-| **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose |
+| **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose. **Battery playtime** makes a game last the hours you choose on battery |
 | **Fan** | Draw a ten-point fan curve, presets, full speed, live temperature, per game and on battery vs charger |
 | **Lights** | Stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
 | **Controls** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off |
@@ -137,13 +137,55 @@ own frames, and the screen rate and Auto TDP follow the generated rate
 (60 × 2 = 120). Smooth mode refuses to add a second limiter when a game
 already has one.
 
-Other launch-option tools: settings from HelixSR, Decky-Framegen and similar
-plugins are kept. Decky-Framegen and Steam ROM Manager *replace* a game's
-whole launch options when they apply; the Power tab then says the cap is
+Other launch-option tools: settings from HelixSR, Frame Suite, Decky-Framegen
+and similar plugins are kept. Decky-Framegen's own panel and Steam ROM Manager
+*replace* a game's whole launch options when they apply (Frame Suite adds its
+settings next to the cap instead); the Power tab then says the cap is
 missing and offers to add it again. For emulators added with Steam ROM
 Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot
 reach Flatpak apps, and the DXVK fallback only works for DirectX games. Shader-compilation and loading stutter come from the
 game and cannot be removed this way.
+
+### Battery playtime (per game)
+
+Choose how long the running game should last on battery, for example
+**4 h**, or **As long as possible**. Before you choose, the section shows how
+long the battery lasts at the current draw and the **longest this game can
+reach** from the current charge at your lowest frame rate. That estimate
+learns what the game draws at each power limit while you play on battery, so
+it gets more exact over time.
+
+With a goal the plugin works out a power budget (energy left ÷ hours to go)
+and checks the battery's real draw against it every few seconds:
+
+1. **Power limit first.** Too much drawn: the TDP comes down, a watt or a few
+   at a time. Plenty to spare for two minutes: it goes back up.
+2. **Then the frame rate, evenly.** When the game can no longer keep its
+   Smooth cap on that budget, the cap steps down to the next even one the
+   screen divides (60 → 48 → 36 → 30), never below your **Lowest frame
+   rate** (30 by default). Your own cap in Smooth mode stays as you set it;
+   the lower one is used only while the goal needs it.
+3. **Frame generation, with Frame Suite.** If the Frame Suite plugin is
+   installed with lsfg-vk set up, the first step down is "half the frames,
+   doubled by lsfg-vk" instead (60 → 30 × 2 = 60 on screen), which looks
+   the same and costs far less. Frame Suite prepares lsfg-vk for the game
+   (off until needed), which lsfg-vk picks up from the game's **next start**;
+   from then on the plugin switches it on and off while you play. If even
+   that is too much, frame generation's own cost goes too (30 fps without it).
+   Switch **Frame generation for battery time** off to keep it out.
+4. **Your lowest frame rate wins.** If the goal is out of reach at that frame
+   rate, the plugin says so and makes the battery last as long as it can
+   without going lower.
+
+The goal counts only while the game runs on battery; on the charger
+everything goes back to your own settings and the count waits. After charging
+(10 % or more), the count starts again. Setting a goal switches **Manage
+power** on, since the goal works through the power limit. Screen brightness
+matters a lot: the screen alone draws several watts.
+
+Without a Smooth frame rate for the game only the power limit is used, and the
+frame rate falls unevenly instead of stepping to an even cap: set one first.
+Not verified on a device yet.
 
 ### Fan
 
@@ -253,9 +295,22 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
      60 × 2 = 120 and 45 × 2 = 90 run at 144 Hz there, marked *uneven*; even on a
      120 Hz monitor (for example when streaming).
+- **Frame Suite** (decky-lsfg-vk, Decky-Framegen and HelixSR Manager in one
+  plugin): nothing to set. Its lsfg-vk games are followed like any other
+  lsfg-vk game. For games it set up with OptiScaler, **Frame generation**
+  on *Auto* follows the switch **Frame generation is on in the game** in
+  Frame Suite: turn that on when you enable frame generation in the game's
+  settings and the Power tab shows *Auto · in-game 2× (Frame Suite) ·
+  60 → 120 fps* within seconds, also mid-game. The plugin reads this from
+  Frame Suite's own file (`~/.config/frame-suite/bridge.json`) and never
+  writes to it. With lsfg-vk on for the same game, lsfg-vk's multiplier
+  counts instead, so frames are never multiplied twice. **Battery playtime**
+  asks Frame Suite for lsfg-vk through `~/.config/lgo-toolbox/framegen.json`
+  (Frame Suite's switch *Let the Legion Go Toolbox use lsfg-vk*, on by default). Not verified on a
+  device yet.
 - **Decky-Framegen** (OptiScaler frame generation inside the game): the
-  plugin sees its wrapper in the game's launch options and says so under
-  **Frame generation**. Its frames are made inside the game, so the plugin
+  plugin sees its wrapper or its DLL override in the game's launch options
+  and says so under **Frame generation**. Its frames are made inside the game, so the plugin
   cannot see whether frame generation is switched on there: when you turn it
   on in the game's settings, choose **2×** under Frame generation. The cap
   then counts the frames on screen (60 → 120) and Auto TDP aims at them. Not

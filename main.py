@@ -86,6 +86,13 @@ class Plugin:
         decky.logger.info("Legion Go Toolbox unloaded")
 
     async def _uninstall(self):
+        # Battery playtime's requests to Frame Suite: without the file it takes
+        # back the lsfg-vk profiles it made for them.
+        try:
+            from lgo_toolbox.suite import Suite, write_requests
+            write_requests(Suite().home(), {})
+        except Exception:
+            pass
         for path in (GYRO_SETTINGS, HUB_SETTINGS):
             try:
                 os.remove(path)
@@ -133,6 +140,15 @@ class Plugin:
         return await _bg(Plugin._hub().set_smooth_game, app_id,
                          None if fps is None else int(fps), name, prefix, added_command,
                          int(fg) if fg in (0, 1, 2, 3, 4) else 0, bool(fgmod))
+
+    async def set_playtime_goal(self, app_id, hours, floor=30, allow_fg=True, name=""):
+        return await _bg(Plugin._hub().set_playtime_goal, int(app_id),
+                         None if hours is None else float(hours),
+                         int(floor) if floor in (30, 36, 40, 45, 48, 60) else 30,
+                         bool(allow_fg), str(name or "")[:120])
+
+    async def restart_playtime(self, app_id):
+        return await _bg(Plugin._hub().restart_playtime, int(app_id))
 
     async def acpi_install_start(self):
         return await _bg(Plugin._hub().acpi_install_start)

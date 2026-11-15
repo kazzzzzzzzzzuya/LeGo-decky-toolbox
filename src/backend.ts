@@ -20,6 +20,39 @@ export interface PowerProfile {
   min_tdp: number;
 }
 
+export interface PlaytimeGoal {
+  hours: number;
+  /** Fewest frames the game itself may make. */
+  floor: number;
+  allow_fg: boolean;
+  name: string;
+  played_s: number;
+  last_pct: number | null;
+}
+
+export interface PlaytimeStatus {
+  app: number | null;
+  goal: PlaytimeGoal | null;
+  draw_w: number | null;
+  budget_w: number | null;
+  /** Hours left at the current draw, the longest this game can reach, and the goal's hours to go. */
+  now_h: number | null;
+  max_h: number | null;
+  left_h: number | null;
+  reachable: boolean | null;
+  state: string | null;
+  step: number | null;
+  ceiling: number | null;
+  cap: number | null;
+  fg: number | null;
+  /** Why frame generation is not among the steps (null: it is, or not needed). */
+  fg_why: string | null;
+  steps: [number | null, number | null][];
+  on_battery: boolean;
+  power_enabled: boolean;
+  error: string | null;
+}
+
 export interface FanProfile {
   full_speed: boolean;
   curve: number[];
@@ -39,6 +72,11 @@ export interface Settings {
     power_led: { managed: boolean; on: boolean; off_in_sleep: boolean };
   };
   battery: { charge_limit: boolean | null };
+  /** Battery playtime per game (see playtime.py). */
+  playtime: {
+    games: Record<string, PlaytimeGoal>;
+    learned: Record<string, Record<string, [number, boolean]>>;
+  };
   smooth: {
     /** fps: the game's own cap; fg: frame generation (0 = follow lsfg-vk, 1 = none, 2-4 fixed). */
     games: Record<
@@ -128,8 +166,10 @@ export interface HubStatus {
      *  follow lsfg-vk), lsfg-vk's own settings, and the frames on screen. */
     fg: number;
     fg_setting: number;
-    /** Decky-Framegen (OptiScaler) is set up for the game. */
+    /** OptiScaler is set up for the game (Decky-Framegen or Frame Suite). */
     fgmod: boolean;
+    /** What the Frame Suite plugin recorded for the game, if it is installed. */
+    suite: SuiteInfo | null;
     /** Frames on screen after a variable-refresh screen's cap. */
     shown: number | null;
     lsfg: LsfgInfo | null;
@@ -176,12 +216,15 @@ export interface HubStatus {
       status: string;
       watts: number | null;
       minutes: number | null;
+      energy_wh?: number | null;
+      full_wh?: number | null;
     } | null;
     charge_limit: boolean | null;
     backend: string | null;
   };
   power_led: boolean | null;
   swap_menu: { active: boolean };
+  playtime: PlaytimeStatus;
 }
 
 export interface State {
@@ -200,6 +243,17 @@ export const deletePowerProfile = callable<[key: string], Settings>("delete_powe
 export const setRunningApp = callable<[appId: number | null, name: string], void>(
   "set_running_app",
 );
+export interface SuiteInfo {
+  /** Frame Suite's bridge file exists. */
+  present: boolean;
+  /** OptiScaler is in the game's files. */
+  optiscaler: boolean;
+  /** The game's own frame generation as Frame Suite was told (1 = off). */
+  multiplier: number;
+  route: "optiscaler" | "lsfg" | null;
+  error: string | null;
+}
+
 export interface LsfgInfo {
   installed: boolean;
   multiplier: number;
@@ -227,6 +281,11 @@ export const setSmoothGame = callable<
   ],
   Settings
 >("set_smooth_game");
+export const setPlaytimeGoal = callable<
+  [appId: number, hours: number | null, floor: number, allowFg: boolean, name: string],
+  Settings
+>("set_playtime_goal");
+export const restartPlaytime = callable<[appId: number], Settings>("restart_playtime");
 export const acpiInstallStart = callable<[], boolean>("acpi_install_start");
 export interface BackupInfo {
   path: string;
