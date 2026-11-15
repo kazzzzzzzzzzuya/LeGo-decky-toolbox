@@ -77,6 +77,14 @@ Legion Go yet.
 6. Open the Quick Access menu → Decky → **Legion Go Toolbox** (the plugin's
    name inside Decky).
 
+**Updating:** from 2.10.0 the Home tab says when a newer release exists:
+press **Update to …** at the top and confirm Decky's prompt. **About** has
+**Check for updates** and **Install another version** (one list, to go back
+as well). Settings stay. Updating from 2.9.0 or older: those versions delete
+their settings while Decky updates them, so press **Backup → Save** on the
+Home tab first; 2.10.0 brings the backup back by itself when it starts
+without settings.
+
 ## Using the tabs
 
 ### Power

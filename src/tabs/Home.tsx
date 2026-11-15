@@ -13,6 +13,7 @@ import {
 import { replaceGyroSettings, replaceSettings, update, useStore } from "../store";
 import { ErrorRow, Info, modeLabel, PLUGIN_NAME, Unavailable } from "../ui";
 import { hours } from "./Playtime";
+import { UpdateBanner, UpdateRows, useUpdates } from "./Updates";
 
 const MODELS: Record<string, string> = {
   "83E1": "Legion Go",
@@ -53,6 +54,7 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
   useEffect(() => {
     backupInfo().then(setBackup).catch(() => undefined);
   }, []);
+  const [updates, checking, checkUpdates] = useUpdates();
   if (!state) return null;
   const { caps, settings, status, gyro } = state;
   const errors = status.errors;
@@ -251,6 +253,7 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
             {error}
           </Info>
         )}
+        <UpdateBanner updates={updates} />
         {row("Power", "Power", powerLine(), errors.power)}
         {row("Fan", "Fan", fanLine(), errors.fan)}
         {row("Lights", "Lights", lightsLine(), errors.sticks ?? errors.power_led)}
@@ -399,6 +402,10 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
           {MODELS[status.model] ? `${MODELS[status.model]} (${status.model})` : status.model || "Unknown"}
         </Info>
         <Info label="Version">{state.version}</Info>
+        {state.restored_backup && (
+          <Info label="Settings">Brought back from your backup of {state.restored_backup}, since none were found at start.</Info>
+        )}
+        <UpdateRows updates={updates} checking={checking} check={checkUpdates} />
         <PanelSectionRow>
           <ButtonItem layout="below" onClick={onReset}>
             Reset hardware settings
