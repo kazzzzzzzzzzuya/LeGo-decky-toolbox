@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.9.0</div>
+    <div class="kicker">User manual · Version 2.10.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -108,10 +108,11 @@
   </ol>
 
   <h2>Update</h2>
-  <p>Install the new zip the same way. Decky replaces the old version; your settings are kept and carried forward automatically (for example, version 2.2 moves an untouched controller type to the new Steam Deck default and adds the default swap layout).</p>
+  <p>From version 2.10 the plugin looks for new releases itself. When there is one, <b>Update to …</b> appears at the top of the Home tab: press it and confirm Decky's prompt; Decky checks the download and reloads the plugin. <b>About</b> on the Home tab has <b>Check for updates</b> and <b>Install another version</b>, one list for going back as well. Your settings are kept and carried forward automatically.</p>
+  <div class="note"><b>Updating from 2.9 or older:</b> those versions delete their settings while Decky updates them. Press <b>Backup → Save</b> on the Home tab first; version 2.10 and later bring the backup back by themselves when they start without settings. Installing a zip by hand still works the same way.</div>
 
   <h2>Remove</h2>
-  <p>Uninstall it from Decky's plugin list. Before that, switch off <i>Manage power</i>, <i>Custom fan curve</i> and <i>Swap menu buttons</i> if you want the firmware and SteamOS defaults back straight away - the plugin hands these back to the firmware when they are switched off. Lights, remapping and the charge mode are stored in the hardware and stay as last set.</p>
+  <p>Uninstall it from Decky's plugin list. Before that, switch off <i>Manage power</i>, <i>Custom fan curve</i> and <i>Swap menu buttons</i> if you want the firmware and SteamOS defaults back straight away - the plugin hands these back to the firmware when they are switched off. Your settings stay in <code>~/homebrew/settings/Legion Go Toolbox/</code>, so a reinstall picks them up; delete that folder to remove them too. Lights, remapping and the charge mode are stored in the hardware and stay as last set.</p>
 </section>
 
 <!-- ============================== 3 ============================== -->

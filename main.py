@@ -13,6 +13,7 @@ if _MODULES not in sys.path:
 
 from lgo_gyro.service import GyroService  # noqa: E402
 from lgo_toolbox import __version__, backup  # noqa: E402
+from lgo_toolbox.updates import Updates  # noqa: E402
 from lgo_toolbox.hub import Hub  # noqa: E402
 
 GYRO_SETTINGS = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "gyro.json")
@@ -29,6 +30,8 @@ async def _bg(fn, *args):
 class Plugin:
     gyro = None
     hub = None
+    updates = Updates(__version__)
+    restored = None        # when settings were brought back from the backup at start
 
     @staticmethod
     def _gyro():
@@ -65,14 +68,31 @@ class Plugin:
         except OSError:
             pass
 
+    @staticmethod
+    def _restore_after_reinstall(hub):
+        """No settings yet but a backup in the home folder: a reinstall, or an
+        update from 2.9.0 or older (whose uninstall step deleted the settings
+        Decky's update runs it too). Take the backup over."""
+        data = backup.load(BACKUP_FILE)
+        if data.get("error") or not isinstance(data.get("toolbox"), dict):
+            return
+        hub.restore(data["toolbox"])
+        if isinstance(data.get("gyro"), dict):
+            Plugin._gyro().update_settings(data["gyro"])
+        Plugin.restored = data.get("saved_at") or "?"
+        decky.logger.info("Settings restored from the backup of %s", Plugin.restored)
+
     # ---- lifecycle -------------------------------------------------------
 
     async def _main(self):
         decky.logger.info("Legion Go Toolbox %s loading", __version__)
         try:
             os.makedirs(decky.DECKY_PLUGIN_SETTINGS_DIR, exist_ok=True)
+            fresh = not os.path.exists(HUB_SETTINGS)
             Plugin._adopt_gyro_settings()
-            Plugin._hub()
+            hub = Plugin._hub()
+            if fresh:
+                Plugin._restore_after_reinstall(hub)
         except Exception:
             decky.logger.exception("Failed to start")
 
@@ -86,18 +106,16 @@ class Plugin:
         decky.logger.info("Legion Go Toolbox unloaded")
 
     async def _uninstall(self):
-        # Battery playtime's requests to Frame Suite: without the file it takes
-        # back the lsfg-vk profiles it made for them.
+        # Decky runs this when it updates the plugin too, so the settings stay
+        # (they are in ~/homebrew/settings/Legion Go Toolbox/). Battery
+        # playtime's requests to Frame Suite go: Frame Suite takes back the
+        # lsfg-vk profiles it made for them only if the file stays away for
+        # ten minutes, so an update in between changes nothing.
         try:
             from lgo_toolbox.suite import Suite, write_requests
             write_requests(Suite().home(), {})
         except Exception:
             pass
-        for path in (GYRO_SETTINGS, HUB_SETTINGS):
-            try:
-                os.remove(path)
-            except OSError:
-                pass
 
     async def _migration(self):
         pass
@@ -108,6 +126,7 @@ class Plugin:
         hub, gyro = Plugin._hub(), Plugin._gyro()
         return {
             "version": __version__,
+            "restored_backup": Plugin.restored,
             "caps": await _bg(hub.capabilities, True),
             "settings": hub.get_settings(),
             "status": await _bg(hub.status),
@@ -149,6 +168,9 @@ class Plugin:
 
     async def restart_playtime(self, app_id):
         return await _bg(Plugin._hub().restart_playtime, int(app_id))
+
+    async def check_updates(self, force=False):
+        return await _bg(Plugin.updates.check, bool(force))
 
     async def acpi_install_start(self):
         return await _bg(Plugin._hub().acpi_install_start)

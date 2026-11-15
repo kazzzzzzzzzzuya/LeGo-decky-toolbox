@@ -229,6 +229,8 @@ export interface HubStatus {
 
 export interface State {
   version: string;
+  /** When settings were restored from the backup at start (none found), else null. */
+  restored_backup?: string | null;
   caps: Caps;
   settings: Settings;
   status: HubStatus;
@@ -281,6 +283,11 @@ export const setSmoothGame = callable<
   ],
   Settings
 >("set_smooth_game");
+export interface Release { version: string; url: string; sha256: string; published: string | null; notes: string }
+export interface Updates {
+  ok: boolean; error?: string; current: string; latest?: string; newer?: boolean; releases: Release[];
+}
+export const checkUpdates = callable<[force: boolean], Updates>("check_updates");
 export const setPlaytimeGoal = callable<
   [appId: number, hours: number | null, floor: number, allowFg: boolean, name: string],
   Settings
