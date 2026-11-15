@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.7.1</div>
+    <div class="kicker">User manual · Version 2.8.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -52,7 +52,7 @@
     <li><span class="n">7</span><span><span class="t">Lights</span><br><span class="d">Stick lights, power-button light</span></span></li>
     <li><span class="n">8</span><span><span class="t">Controls</span><br><span class="d">Swapped menu buttons, back-button remapping, touchpad</span></span></li>
     <li><span class="n">9</span><span><span class="t">Gyro</span><br><span class="d">Gyro in Steam games, gyro in emulators (Wii Sports, Switch Sports)</span></span></li>
-    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, Decky-Framegen, HelixSR</span></span></li>
+    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
     <li><span class="n">11</span><span><span class="t">Troubleshooting</span><br><span class="d">Symptoms and fixes</span></span></li>
     <li><span class="n">12</span><span><span class="t">Reference</span><br><span class="d">Files, limits, what is re-applied when, credits</span></span></li>
   </ol>
@@ -441,13 +441,14 @@
 <section class="chapter">
   <h1><span class="chap-num">10</span>With frame generation and upscalers</h1>
 
-  <p>The plugin works alongside lsfg-vk (Lossless Scaling frame generation), Decky-Framegen (OptiScaler) and HelixSR. The key is to know which frame rate each part controls.</p>
+  <p>The plugin works alongside lsfg-vk (Lossless Scaling frame generation), Decky-Framegen (OptiScaler), HelixSR, and Frame Suite, which bundles the three. The key is to know which frame rate each part controls.</p>
 
   <table>
     <tr><th>Tool</th><th>What it does</th><th>Frame rate it changes</th></tr>
     <tr><td class="k">HelixSR</td><td>Upscaler: renders at lower resolution and scales up</td><td>None - the game simply needs less power for the same frame rate</td></tr>
     <tr><td class="k">lsfg-vk 2.0</td><td>Frame generation as a Vulkan layer</td><td>Shown frames = game frames × multiplier</td></tr>
     <tr><td class="k">Decky-Framegen</td><td>OptiScaler frame generation inside the game</td><td>Shown frames = game frames × 2</td></tr>
+    <tr><td class="k">Frame Suite</td><td>The three above in one plugin, set up per game</td><td>Whichever of them it set up for the game</td></tr>
   </table>
 
   <h2>HelixSR (upscaling only)</h2>
@@ -474,8 +475,18 @@
   </table>
   <div class="tip"><b>The cap must be reachable.</b> Frame generation only doubles what the game delivers: a 72 cap the game holds at 45 shows about 90, not 144. Choose a cap the game holds steadily - the <b>Now</b> line shows the shown frame rate.</div>
 
+  <h2>Frame Suite</h2>
+  <p>Frame Suite tells the plugin what it set up for each game, so there is nothing to choose here. Games it gave lsfg-vk are followed like any lsfg-vk game. For games it gave OptiScaler:</p>
+  <ol class="steps">
+    <li>Choose the game's cap under <b>Smooth frame rate</b>, for example <i>60</i>, and leave <b>Frame generation</b> on <i>Auto</i>.</li>
+    <li>When you turn frame generation on in the game's own settings, also turn on <b>Frame generation is on in the game</b> for that game in Frame Suite. Within seconds, also mid-game, Auto shows <i>Auto · in-game 2× (Frame Suite) · 60 → 120 fps</i>: the cap counts the frames on screen (120), the game makes 60, and Auto TDP aims at 120.</li>
+    <li>Turn that switch off again when you turn frame generation off in the game.</li>
+  </ol>
+  <p>With lsfg-vk switched on for the same game, lsfg-vk's multiplier counts instead, so frames are never multiplied twice. The plugin only reads Frame Suite's file (<code>~/.config/frame-suite/bridge.json</code>) and never writes to it; Frame Suite adds its launch settings next to the cap instead of replacing it.</p>
+  <div class="note">Not verified on a device yet.</div>
+
   <h2>Decky-Framegen</h2>
-  <p>OptiScaler generates frames inside the game, so the plugin cannot see whether frame generation is switched on. It does see Decky-Framegen's wrapper in the game's launch options and says so under <b>Frame generation</b>.</p>
+  <p>OptiScaler generates frames inside the game, so the plugin cannot see whether frame generation is switched on. It does see Decky-Framegen's wrapper, or the DLL override of its direct patch, in the game's launch options and says so under <b>Frame generation</b>.</p>
   <ol class="steps">
     <li>Choose the game's cap under <b>Smooth frame rate</b>, for example <i>60</i>.</li>
     <li>When you turn frame generation on in the game's own settings, set <b>Frame generation</b> to <b>2×</b>. The cap then counts the frames on screen (120), the game makes 60, and Auto TDP aims at 120.</li>

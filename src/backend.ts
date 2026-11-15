@@ -128,8 +128,10 @@ export interface HubStatus {
      *  follow lsfg-vk), lsfg-vk's own settings, and the frames on screen. */
     fg: number;
     fg_setting: number;
-    /** Decky-Framegen (OptiScaler) is set up for the game. */
+    /** OptiScaler is set up for the game (Decky-Framegen or Frame Suite). */
     fgmod: boolean;
+    /** What the Frame Suite plugin recorded for the game, if it is installed. */
+    suite: SuiteInfo | null;
     /** Frames on screen after a variable-refresh screen's cap. */
     shown: number | null;
     lsfg: LsfgInfo | null;
@@ -200,6 +202,17 @@ export const deletePowerProfile = callable<[key: string], Settings>("delete_powe
 export const setRunningApp = callable<[appId: number | null, name: string], void>(
   "set_running_app",
 );
+export interface SuiteInfo {
+  /** Frame Suite's bridge file exists. */
+  present: boolean;
+  /** OptiScaler is in the game's files. */
+  optiscaler: boolean;
+  /** The game's own frame generation as Frame Suite was told (1 = off). */
+  multiplier: number;
+  route: "optiscaler" | "lsfg" | null;
+  error: string | null;
+}
+
 export interface LsfgInfo {
   installed: boolean;
   multiplier: number;

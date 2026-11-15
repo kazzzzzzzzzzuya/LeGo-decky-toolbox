@@ -137,9 +137,10 @@ own frames, and the screen rate and Auto TDP follow the generated rate
 (60 × 2 = 120). Smooth mode refuses to add a second limiter when a game
 already has one.
 
-Other launch-option tools: settings from HelixSR, Decky-Framegen and similar
-plugins are kept. Decky-Framegen and Steam ROM Manager *replace* a game's
-whole launch options when they apply; the Power tab then says the cap is
+Other launch-option tools: settings from HelixSR, Frame Suite, Decky-Framegen
+and similar plugins are kept. Decky-Framegen's own panel and Steam ROM Manager
+*replace* a game's whole launch options when they apply (Frame Suite adds its
+settings next to the cap instead); the Power tab then says the cap is
 missing and offers to add it again. For emulators added with Steam ROM
 Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot
 reach Flatpak apps, and the DXVK fallback only works for DirectX games. Shader-compilation and loading stutter come from the
@@ -253,9 +254,20 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
      60 × 2 = 120 and 45 × 2 = 90 run at 144 Hz there, marked *uneven*; even on a
      120 Hz monitor (for example when streaming).
+- **Frame Suite** (decky-lsfg-vk, Decky-Framegen and HelixSR Manager in one
+  plugin): nothing to set. Its lsfg-vk games are followed like any other
+  lsfg-vk game. For games it set up with OptiScaler, **Frame generation**
+  on *Auto* follows the switch **Frame generation is on in the game** in
+  Frame Suite: turn that on when you enable frame generation in the game's
+  settings and the Power tab shows *Auto · in-game 2× (Frame Suite) ·
+  60 → 120 fps* within seconds, also mid-game. The plugin reads this from
+  Frame Suite's own file (`~/.config/frame-suite/bridge.json`) and never
+  writes to it. With lsfg-vk on for the same game, lsfg-vk's multiplier
+  counts instead, so frames are never multiplied twice. Not verified on a
+  device yet.
 - **Decky-Framegen** (OptiScaler frame generation inside the game): the
-  plugin sees its wrapper in the game's launch options and says so under
-  **Frame generation**. Its frames are made inside the game, so the plugin
+  plugin sees its wrapper or its DLL override in the game's launch options
+  and says so under **Frame generation**. Its frames are made inside the game, so the plugin
   cannot see whether frame generation is switched on there: when you turn it
   on in the game's settings, choose **2×** under Frame generation. The cap
   then counts the frames on screen (60 → 120) and Auto TDP aims at them. Not

@@ -19,6 +19,7 @@ from .power import CUSTOM, AutoTdp, FpsMonitor, PowerLimits, cpu_boost_state, se
 from .powerled import PowerLed
 from . import smooth as smoothmod
 from .lsfg import Lsfg, homes as user_homes
+from .suite import Suite
 
 LEGION_GO = ("83E1",)
 LEGION_GO_2 = ("83N0", "83N1")
@@ -67,6 +68,7 @@ class Hub(object):
         self.gamescope = m.get("gamescope") or smoothmod.Gamescope()
         self._mangohud_env = m.get("mangohud_env", smoothmod.mangohud_env)
         self.lsfg = m.get("lsfg") or Lsfg()
+        self.suite = m.get("suite") or Suite()
         self._home = m.get("home") or (lambda: next(
             (h for h in user_homes() if os.path.isdir(h)), None))
         self._order = m.get("limit_on_output") or smoothmod.limit_on_output
@@ -653,12 +655,28 @@ class Hub(object):
 
     def _fg(self, entry, app=None):
         """The game's frame-generation multiplier: fixed in Smooth mode, or
-        (setting 0, the default) read from lsfg-vk's own settings."""
+        (setting 0, the default) read from lsfg-vk's own settings and, where
+        lsfg-vk is off for the game, from what Frame Suite was told about
+        the game's own frame generation."""
         fg = entry.get("fg", cfg.FG_AUTO)
         if fg == cfg.FG_AUTO:
             app = self._app if app is None else app
-            return self.lsfg.for_app(app)["multiplier"] if app is not None else 1
+            if app is None:
+                return 1
+            mult = self.lsfg.for_app(app)["multiplier"]
+            return mult if mult > 1 else self.suite.for_app(app)["multiplier"]
         return fg
+
+    def _in_game(self, entry, app=None):
+        """Frame generation, if on, is made inside the game (OptiScaler, set
+        up by Decky-Framegen or Frame Suite) and not by lsfg-vk: a limiter
+        then sees the generated frames too, wherever it sits."""
+        app = self._app if app is None else app
+        if app is None:
+            return bool(entry.get("fgmod"))
+        if self.lsfg.for_app(app)["multiplier"] > 1:
+            return False
+        return bool(entry.get("fgmod")) or self.suite.for_app(app)["optiscaler"]
 
     def _smooth_output(self, entry):
         """Frames on screen: the game's cap times the frame-generation
@@ -752,10 +770,7 @@ class Hub(object):
         shown = self._shown(entry, app)
         if fg <= 1:
             return shown
-        app = self._app if app is None else app
-        in_game = entry.get("fgmod") and (
-            app is None or self.lsfg.for_app(app)["multiplier"] <= 1)
-        if in_game or self.limit_on_output():
+        if self._in_game(entry, app) or self.limit_on_output():
             return shown
         return min(entry["fps"], shown // fg)
 
@@ -838,11 +853,13 @@ class Hub(object):
         fps = entry["fps"] if entry else None
         output = self._shown(entry) if entry else None
         lsfg = self.lsfg.for_app(self._app) if self._app is not None else None
+        suite = self.suite.for_app(self._app) if self._app is not None else None
         return {
             "fps": fps,
             "fg": self._fg(entry) if entry else 1,           # in effect
             "fg_setting": entry.get("fg", cfg.FG_AUTO) if entry else cfg.FG_AUTO,
-            "fgmod": bool(entry and entry.get("fgmod")),
+            "fgmod": bool(entry and (entry.get("fgmod") or (suite and suite["optiscaler"]))),
+            "suite": suite,
             "shown": self._shown(entry) if entry else None,   # after the VRR cap
             "lsfg": lsfg,
             "output": output,
