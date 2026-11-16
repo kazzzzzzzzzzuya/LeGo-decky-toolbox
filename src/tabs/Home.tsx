@@ -13,6 +13,7 @@ import {
 import { replaceGyroSettings, replaceSettings, update, useStore } from "../store";
 import { ErrorRow, Info, modeLabel, PLUGIN_NAME, Unavailable } from "../ui";
 import { hours } from "./Playtime";
+import { GuideSection, guideSeen } from "./Guide";
 import { UpdateBanner, UpdateRows, useUpdates } from "./Updates";
 
 const MODELS: Record<string, string> = {
@@ -47,6 +48,8 @@ function duration(minutes: number): string {
 
 export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
   const { state, error } = useStore();
+  const [guide, setGuide] = useState(() => !guideSeen());
+  const [guideAgain, setGuideAgain] = useState(false);
   const [gameOpen, setGameOpen] = useState(() => remembered("lgo-home-game-open", true));
   const [backup, setBackup] = useState<BackupInfo | null>(null);
   const [backupNote, setBackupNote] = useState<string | null>(null);
@@ -247,6 +250,7 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
 
   return (
     <>
+      {guide && <GuideSection go={go} close={() => setGuide(false)} reopened={guideAgain} />}
       <PanelSection title="Overview">
         {error && (
           <Info label="Backend not reachable" warn>
@@ -406,6 +410,19 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
           <Info label="Settings">Brought back from your backup of {state.restored_backup}, since none were found at start.</Info>
         )}
         <UpdateRows updates={updates} checking={checking} check={checkUpdates} />
+        {!guide && (
+          <PanelSectionRow>
+            <ButtonItem
+              layout="below"
+              onClick={() => {
+                setGuideAgain(true);
+                setGuide(true);
+              }}
+            >
+              Getting started
+            </ButtonItem>
+          </PanelSectionRow>
+        )}
         <PanelSectionRow>
           <ButtonItem layout="below" onClick={onReset}>
             Reset hardware settings
