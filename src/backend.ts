@@ -107,7 +107,7 @@ export interface Settings {
   };
   controls: {
     swap_menu: boolean;
-    swap_layout: "steam_menu" | "steam_view";
+    swap_layout: "steam_menu" | "steam_view" | "lview_steam_menu" | "lmenu_steam_view";
     /** "deck-uhid" (default), "xbox" (no gyro in Steam), "ds5-edge" or "ds5". */
     steam_controller: string;
     /** Games with their own controller type, by app id. */

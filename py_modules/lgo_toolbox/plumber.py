@@ -1,11 +1,14 @@
 """Swap the menu buttons through InputPlumber.
 
 SteamOS routes the Legion Go controllers through InputPlumber. Loading a
-small device profile into it swaps the Steam (Legion L) and Quick Access
-(Legion R) buttons with View and Menu. Two layouts are offered:
+small device profile into it moves Steam (Legion L) and Quick Access
+(Legion R) to the View and Menu buttons, and View and Menu to the Legion
+buttons. Every combination is offered:
 
-* ``steam_menu`` (default): Steam <-> Menu, Quick Access <-> View
-* ``steam_view``:           Steam <-> View, Quick Access <-> Menu
+* ``steam_menu`` (default): Legion L Menu, Legion R View; Menu button Steam, View button QAM
+* ``steam_view``:           Legion L View, Legion R Menu; View button Steam, Menu button QAM
+* ``lview_steam_menu``:     Legion L View, Legion R Menu; Menu button Steam, View button QAM
+* ``lmenu_steam_view``:     Legion L Menu, Legion R View; View button Steam, Menu button QAM
 
 The profile that was active before is kept as the base, so its own
 mappings stay in effect.
@@ -36,11 +39,25 @@ LAYOUTS = {
         ("Start", "QuickAccess"),
         ("QuickAccess", "Start"),
     ),
+    "lview_steam_menu": (
+        ("Guide", "Select"),
+        ("QuickAccess", "Start"),
+        ("Start", "Guide"),
+        ("Select", "QuickAccess"),
+    ),
+    "lmenu_steam_view": (
+        ("Guide", "Start"),
+        ("QuickAccess", "Select"),
+        ("Select", "Guide"),
+        ("Start", "QuickAccess"),
+    ),
 }
 DEFAULT_LAYOUT = "steam_menu"
 PROFILE_NAMES = {
     "steam_menu": "Legion Go Toolbox - Steam/Menu and QAM/View swapped",
     "steam_view": "Legion Go Toolbox - Steam/View and QAM/Menu swapped",
+    "lview_steam_menu": "Legion Go Toolbox - Legion L View, Legion R Menu, Steam on Menu",
+    "lmenu_steam_view": "Legion Go Toolbox - Legion L Menu, Legion R View, Steam on View",
 }
 OUR_PROFILES = frozenset(PROFILE_NAMES.values()) | {
     "Legion Go Toolbox - swapped menu buttons",       # version 2.0 / 2.1

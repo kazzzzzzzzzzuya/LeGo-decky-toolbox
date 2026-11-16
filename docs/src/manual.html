@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.11.3</div>
+    <div class="kicker">User manual · Version 2.11.4</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -358,17 +358,13 @@
   <h1><span class="chap-num">8</span>Controls</h1>
 
   <h2>Swap menu buttons</h2>
-  <p>Exchanges the two Legion buttons (Steam on the left controller, Quick Access on the right) with View and Menu. Choose the <b>Layout</b>:</p>
+  <p>Puts Steam and Quick Access (the two Legion buttons) on the View and Menu buttons, and View and Menu on the Legion buttons. Choose the <b>Layout</b>; every combination is there:</p>
   <table>
-    <tr><th>Layout</th><th>Press</th><th>You get</th></tr>
-    <tr><td class="k" rowspan="4">Legion L: Menu, Legion R: View<br><span class="muted">(default)</span></td><td>Menu</td><td>Steam menu</td></tr>
-    <tr><td>View</td><td>Quick Access menu</td></tr>
-    <tr><td>Legion L (Steam)</td><td>Menu</td></tr>
-    <tr><td>Legion R (Quick Access)</td><td>View</td></tr>
-    <tr><td class="k" rowspan="4">Legion L: View, Legion R: Menu<br><span class="muted">(as on an Xbox controller)</span></td><td>View</td><td>Steam menu</td></tr>
-    <tr><td>Menu</td><td>Quick Access menu</td></tr>
-    <tr><td>Legion L (Steam)</td><td>View</td></tr>
-    <tr><td>Legion R (Quick Access)</td><td>Menu</td></tr>
+    <tr><th>Layout</th><th>Legion L / Legion R</th><th>View button</th><th>Menu button</th></tr>
+    <tr><td class="k">L View, R Menu · View = Steam</td><td>View / Menu</td><td>Steam</td><td>Quick Access</td></tr>
+    <tr><td class="k">L View, R Menu · Menu = Steam</td><td>View / Menu</td><td>Quick Access</td><td>Steam</td></tr>
+    <tr><td class="k">L Menu, R View · Menu = Steam <span class="muted">(default)</span></td><td>Menu / View</td><td>Quick Access</td><td>Steam</td></tr>
+    <tr><td class="k">L Menu, R View · View = Steam</td><td>Menu / View</td><td>Steam</td><td>Quick Access</td></tr>
   </table>
   <p>The swap is a small profile loaded into InputPlumber (SteamOS's controller layer) on top of the active one, so the other mappings stay. If InputPlumber restarts, the plugin loads it again within a few seconds. Switching it off restores the previous profile.</p>
 

@@ -13,11 +13,16 @@ const BUTTONS: { key: RemapButton; label: string }[] = [
   { key: "M3", label: "M3 (right side, lower)" },
 ];
 
-// Named by what the two Legion buttons become; the View and Menu buttons take Steam and Quick Access.
-const LAYOUTS = [
-  { data: "steam_view", label: "Legion L: View, Legion R: Menu" },
-  { data: "steam_menu", label: "Legion L: Menu, Legion R: View" },
+// Every combination: what the two Legion buttons become, and which of View (two squares) and Menu (three
+// lines) opens Steam; the other one opens Quick Access.
+type Layout = "steam_menu" | "steam_view" | "lview_steam_menu" | "lmenu_steam_view";
+const LAYOUTS: { data: Layout; label: string; legion: string; steam: string; qam: string }[] = [
+  { data: "steam_view", label: "L View, R Menu · View = Steam", legion: "View / Menu", steam: "View", qam: "Menu" },
+  { data: "lview_steam_menu", label: "L View, R Menu · Menu = Steam", legion: "View / Menu", steam: "Menu", qam: "View" },
+  { data: "steam_menu", label: "L Menu, R View · Menu = Steam", legion: "Menu / View", steam: "Menu", qam: "View" },
+  { data: "lmenu_steam_view", label: "L Menu, R View · View = Steam", legion: "Menu / View", steam: "View", qam: "Menu" },
 ];
+const ICON: Record<string, string> = { View: "View (two squares)", Menu: "Menu (three lines)" };
 
 const ACTIONS: { data: string; label: string }[] = [
   { data: "none", label: "No action" },
@@ -63,11 +68,10 @@ export const ControlsTab: FC = () => {
             <PanelSectionRow>
               <ToggleField
                 label="Swap menu buttons"
-                description={
-                  c.swap_layout === "steam_view"
-                    ? "Legion L becomes View and Legion R Menu, as on an Xbox controller. The View button (two squares) opens Steam, the Menu button (three lines) Quick Access."
-                    : "Legion L becomes Menu and Legion R View. The Menu button (three lines) opens Steam, the View button (two squares) Quick Access."
-                }
+                description={(() => {
+                  const l = LAYOUTS.find((x) => x.data === c.swap_layout) ?? LAYOUTS[2];
+                  return `Legion L / Legion R become ${l.legion}. The ${ICON[l.steam]} button opens Steam, the ${ICON[l.qam]} button Quick Access.`;
+                })()}
                 checked={c.swap_menu}
                 onChange={(v) => update({ controls: { swap_menu: v } })}
               />
@@ -76,10 +80,11 @@ export const ControlsTab: FC = () => {
               <PanelSectionRow>
                 <DropdownItem
                   label="Layout"
-                  rgOptions={LAYOUTS}
+                  description="Which button opens Steam: pick the one that matches where you want it on your controller."
+                  rgOptions={LAYOUTS.map((l) => ({ data: l.data, label: l.label }))}
                   selectedOption={c.swap_layout}
                   onChange={(o) =>
-                    update({ controls: { swap_layout: o.data as "steam_menu" | "steam_view" } })
+                    update({ controls: { swap_layout: o.data as Layout } })
                   }
                 />
               </PanelSectionRow>

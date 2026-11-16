@@ -19,7 +19,7 @@ SETTINGS_VERSION = 3
 # choice (no gyro in Steam); the default here is the Steam Deck controller.
 STEAM_CONTROLLERS = ("deck-uhid", "xbox", "ds5-edge", "ds5")
 DEFAULT_STEAM_CONTROLLER = "deck-uhid"
-SWAP_LAYOUTS = ("steam_menu", "steam_view")
+SWAP_LAYOUTS = ("steam_menu", "steam_view", "lview_steam_menu", "lmenu_steam_view")
 FG_AUTO = 0
 FG_MULTIPLIERS = (FG_AUTO, 1, 2, 3, 4)
 PLAYTIME_FLOORS = (30, 36, 40, 45, 48, 60)
