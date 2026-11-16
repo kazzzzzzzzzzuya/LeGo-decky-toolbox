@@ -91,6 +91,10 @@ without settings.
 
 ## Using the tabs
 
+The first time the plugin opens, **Getting started** sits at the top of the Overview tab: power,
+Smooth frame rate, Battery playtime and Frame Suite in five short notes. **Got it, close this** hides it;
+the **Getting started** button under About brings it back.
+
 ### Power
 
 - **Manage power** hands TDP control to the plugin. Turn off Steam's own
