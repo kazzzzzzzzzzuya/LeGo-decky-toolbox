@@ -45,27 +45,27 @@ export const GuideSection: FC<{
   return (
     <div ref={top}>
       <PanelSection title="Getting started">
-        <Info label="1 · Power and battery">
+        <Info focusable label="1 · Power and battery">
           Power tab: turn on "Manage power". For a set frame rate at the least
           power, choose Power mode "Custom (set the watts)", then "Auto TDP for
           a frame rate" and a Target frame rate. "Separate settings per game"
           keeps one setup per game.
         </Info>
-        <Info label="2 · Smooth frame rate">
+        <Info focusable label="2 · Smooth frame rate">
           While a game runs, pick a cap for it under "Smooth frame rate" (Power
           tab). The screen rate is set to match, so frames are evenly paced.
           Restart the game once after the first choice.
         </Info>
-        <Info label="3 · Battery playtime">
+        <Info focusable label="3 · Battery playtime">
           On battery with a game running, choose a Goal, for example 7 hours.
           Power, then the frame rate, are lowered only as far as needed, never
           below your lowest frame rate.
         </Info>
-        <Info label="4 · The rest">
+        <Info focusable label="4 · The rest">
           Fan, Lights, Controls and Gyro work on their own tabs. Settings are
           saved and come back after sleep and restarts.
         </Info>
-        <Info label="With Frame Suite">
+        <Info focusable label="With Frame Suite">
           Nothing to link: MAKO and lsfg-vk frame generation in a game are
           picked up by Smooth mode, Auto TDP and Battery playtime by themselves.
         </Info>
