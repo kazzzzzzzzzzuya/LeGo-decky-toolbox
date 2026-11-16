@@ -76,6 +76,9 @@ const TAB_STYLES = `
     border-image: linear-gradient(90deg, rgba(61,155,255,0.15), ${BLUE}, rgba(255,255,255,0.85), ${BLUE}, rgba(61,155,255,0.15)) 1;
   }
   .lgo-toolbox-tabs .lgo-info {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid rgba(61, 155, 255, 0.30);
     border-left: 3px solid ${BLUE};
@@ -87,9 +90,17 @@ const TAB_STYLES = `
     border-left-color: #f2c14e;
     background: rgba(242, 193, 78, 0.08);
   }
-  .lgo-toolbox-tabs .lgo-info > div {
-    padding-left: 8px !important;
-    padding-right: 6px !important;
+  .lgo-toolbox-tabs .lgo-info-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f5f8fc;
+  }
+  .lgo-toolbox-tabs .lgo-info-text {
+    font-size: 12px;
+    line-height: 1.35;
+    color: #b8c4d2;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
   }
 `;
 

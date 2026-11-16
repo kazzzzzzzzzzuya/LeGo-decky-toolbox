@@ -7,23 +7,32 @@ export const PLUGIN_NAME = "Legion Go Toolbox";
 export const ACCENT = "#3d9bff";
 export const WARN = "#f2c14e";
 
-/** An information row, in a soft blue box (amber when it warns). */
-export const Info: FC<{ label: ReactNode; children?: ReactNode; warn?: boolean }> = ({
+/** An information row, in a soft blue box (amber when it warns). The box sits inside the
+ *  Field: Steam gives a Field negative side margins, so a box around one is overrun.
+ *  focusable lets the controller stop on it, for longer text the panel should scroll to. */
+export const Info: FC<{ label: ReactNode; children?: ReactNode; warn?: boolean; focusable?: boolean }> = ({
   label,
   children,
   warn,
+  focusable,
 }) => (
   <PanelSectionRow>
-    <div className={warn ? "lgo-info warn" : "lgo-info"}>
-      <Field
-        label={label}
-        description={
-          children ? <span style={warn ? { color: WARN } : undefined}>{children}</span> : undefined
-        }
-        padding="compact"
-        bottomSeparator="none"
-      />
-    </div>
+    <Field
+      focusable={focusable}
+      bottomSeparator="none"
+      padding="none"
+      childrenLayout="below"
+      childrenContainerWidth="max"
+    >
+      <div className={warn ? "lgo-info warn" : "lgo-info"}>
+        <div className="lgo-info-label">{label}</div>
+        {children ? (
+          <div className="lgo-info-text" style={warn ? { color: WARN } : undefined}>
+            {children}
+          </div>
+        ) : null}
+      </div>
+    </Field>
   </PanelSectionRow>
 );
 
