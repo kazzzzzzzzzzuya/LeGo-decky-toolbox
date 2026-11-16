@@ -237,8 +237,8 @@ power light off when the device suspends and back on when it wakes.
   | Layout | Legion L / Legion R | View button | Menu button |
   |---|---|---|---|
   | L View, R Menu · View = Steam | View / Menu | Steam | Quick Access |
-  | L View, R Menu · Menu = Steam | View / Menu | Quick Access | Steam |
-  | **L Menu, R View · Menu = Steam** (default) | Menu / View | Quick Access | Steam |
+  | **L View, R Menu · Menu = Steam** (default) | View / Menu | Quick Access | Steam |
+  | L Menu, R View · Menu = Steam | Menu / View | Quick Access | Steam |
   | L Menu, R View · View = Steam | Menu / View | Steam | Quick Access |
 
   Done with an InputPlumber profile on top of the active one, and restored

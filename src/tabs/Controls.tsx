@@ -18,7 +18,7 @@ const BUTTONS: { key: RemapButton; label: string }[] = [
 type Layout = "steam_menu" | "steam_view" | "lview_steam_menu" | "lmenu_steam_view";
 const LAYOUTS: { data: Layout; label: string; legion: string; steam: string; qam: string }[] = [
   { data: "steam_view", label: "L View, R Menu · View = Steam", legion: "View / Menu", steam: "View", qam: "Menu" },
-  { data: "lview_steam_menu", label: "L View, R Menu · Menu = Steam", legion: "View / Menu", steam: "Menu", qam: "View" },
+  { data: "lview_steam_menu", label: "L View, R Menu · Menu = Steam (default)", legion: "View / Menu", steam: "Menu", qam: "View" },
   { data: "steam_menu", label: "L Menu, R View · Menu = Steam", legion: "Menu / View", steam: "Menu", qam: "View" },
   { data: "lmenu_steam_view", label: "L Menu, R View · View = Steam", legion: "Menu / View", steam: "View", qam: "Menu" },
 ];
@@ -69,7 +69,7 @@ export const ControlsTab: FC = () => {
               <ToggleField
                 label="Swap menu buttons"
                 description={(() => {
-                  const l = LAYOUTS.find((x) => x.data === c.swap_layout) ?? LAYOUTS[2];
+                  const l = LAYOUTS.find((x) => x.data === c.swap_layout) ?? LAYOUTS[1];
                   return `Legion L / Legion R become ${l.legion}. The ${ICON[l.steam]} button opens Steam, the ${ICON[l.qam]} button Quick Access.`;
                 })()}
                 checked={c.swap_menu}

@@ -19,7 +19,7 @@ SETTINGS_VERSION = 3
 # choice (no gyro in Steam); the default here is the Steam Deck controller.
 STEAM_CONTROLLERS = ("deck-uhid", "xbox", "ds5-edge", "ds5")
 DEFAULT_STEAM_CONTROLLER = "deck-uhid"
-SWAP_LAYOUTS = ("steam_menu", "steam_view", "lview_steam_menu", "lmenu_steam_view")
+SWAP_LAYOUTS = ("lview_steam_menu", "steam_view", "steam_menu", "lmenu_steam_view")   # first: the default
 FG_AUTO = 0
 FG_MULTIPLIERS = (FG_AUTO, 1, 2, 3, 4)
 PLAYTIME_FLOORS = (30, 36, 40, 45, 48, 60)
@@ -278,6 +278,9 @@ def sanitize(data):
         d["swap_menu"] = _flag(c.get("swap_menu"), False)
         if c.get("swap_layout") in SWAP_LAYOUTS:
             d["swap_layout"] = c["swap_layout"]
+        elif "swap_menu" in c and "swap_layout" not in c:
+            # Saved before there was a choice: the swap then was Steam <-> Menu, QAM <-> View. Kept.
+            d["swap_layout"] = "steam_menu"
         steam = c.get("steam_controller")
         if steam == "default":
             # Version 1 called the Xbox pad "default" and used it unless the

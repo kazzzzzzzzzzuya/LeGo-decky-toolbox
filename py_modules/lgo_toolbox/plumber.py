@@ -5,9 +5,9 @@ small device profile into it moves Steam (Legion L) and Quick Access
 (Legion R) to the View and Menu buttons, and View and Menu to the Legion
 buttons. Every combination is offered:
 
-* ``steam_menu`` (default): Legion L Menu, Legion R View; Menu button Steam, View button QAM
+* ``lview_steam_menu`` (default): Legion L View, Legion R Menu; Menu button Steam, View button QAM
 * ``steam_view``:           Legion L View, Legion R Menu; View button Steam, Menu button QAM
-* ``lview_steam_menu``:     Legion L View, Legion R Menu; Menu button Steam, View button QAM
+* ``steam_menu``:           Legion L Menu, Legion R View; Menu button Steam, View button QAM
 * ``lmenu_steam_view``:     Legion L Menu, Legion R View; View button Steam, Menu button QAM
 
 The profile that was active before is kept as the base, so its own
@@ -52,7 +52,7 @@ LAYOUTS = {
         ("Start", "QuickAccess"),
     ),
 }
-DEFAULT_LAYOUT = "steam_menu"
+DEFAULT_LAYOUT = "lview_steam_menu"
 PROFILE_NAMES = {
     "steam_menu": "Legion Go Toolbox - Steam/Menu and QAM/View swapped",
     "steam_view": "Legion Go Toolbox - Steam/View and QAM/Menu swapped",
