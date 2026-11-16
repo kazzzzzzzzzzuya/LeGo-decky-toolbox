@@ -42,6 +42,8 @@ const FG_WHY: Record<string, string> = {
   fixed_off: "Smooth mode's Frame generation is fixed to Off for this game. Set it to Auto to allow this.",
   preparing: "Frame Suite is preparing lsfg-vk for this game…",
   refused: "Frame Suite did not allow it for this game (its page for the game says why).",
+  mako:
+    "MAKO's adaptive frame generation already trades real for generated frames as the power limit comes down, so only the power limit is used.",
   next_start:
     "Ready from the next start of this game: lsfg-vk only picks up a game when it starts. Until then the frame cap steps down on its own.",
 };

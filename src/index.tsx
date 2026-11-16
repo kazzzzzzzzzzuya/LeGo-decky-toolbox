@@ -16,9 +16,12 @@ import { LightsTab } from "./tabs/Lights";
 import { PowerTab } from "./tabs/Power";
 import { PLUGIN_NAME } from "./ui";
 
+// Blue and white, in the style of MAKO: the tabs are a row of icon tiles, the current one filled
+// blue; each tab starts with its name, centred over a blue and white line; notes sit in soft boxes.
+const BLUE = "#3d9bff";
 const TAB_STYLES = `
   .lgo-toolbox-tabs > div > div:first-child {
-    background: #0d141c;
+    background: #0b1219;
     box-shadow: none;
     backdrop-filter: none;
   }
@@ -33,50 +36,99 @@ const TAB_STYLES = `
     display: flex;
     flex-wrap: nowrap;
     justify-content: center;
+    gap: 6px;
+    padding: 4px 6px;
   }
   .lgo-toolbox-tabs [role="tab"] {
-    flex: 0 1 auto;
+    flex: 1 1 0;
     min-width: 0;
+    height: 34px;
     box-sizing: border-box;
-    padding-left: 5px !important;
-    padding-right: 5px !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
+    border-radius: 9px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(61, 155, 255, 0.35) !important;
+    color: #f5f8fc !important;
   }
   .lgo-toolbox-tabs [role="tab"] svg {
     display: block;
     margin: 0;
+    color: ${BLUE};
   }
-  /* Steam dims the tab row while focus is in the page below, and the
-     current tab turns from a white pill into a grey one. Keep the current
-     tab's white pill (dark icon) and the other icons undimmed, so the row
-     looks the same with or without focus. */
+  /* Steam dims the tab row while focus is in the page below: keep it as it is. */
   .lgo-toolbox-tabs [role="tablist"],
   .lgo-toolbox-tabs [role="tab"] {
     opacity: 1 !important;
     filter: none !important;
   }
+  .lgo-toolbox-tabs .lgo-header {
+    text-align: center;
+    font-weight: 700;
+    font-size: 15px;
+    color: #f5f8fc;
+    padding: 8px 0 6px;
+    margin: 2px 0 6px;
+    border-bottom: 3px solid transparent;
+    border-image: linear-gradient(90deg, rgba(61,155,255,0.15), ${BLUE}, rgba(255,255,255,0.85), ${BLUE}, rgba(61,155,255,0.15)) 1;
+  }
+  .lgo-toolbox-tabs .lgo-info {
+    border-radius: 8px;
+    border: 1px solid rgba(61, 155, 255, 0.30);
+    border-left: 3px solid ${BLUE};
+    background: rgba(61, 155, 255, 0.08);
+    margin: 3px 0;
+  }
+  .lgo-toolbox-tabs .lgo-info.warn {
+    border-color: rgba(242, 193, 78, 0.45);
+    border-left-color: #f2c14e;
+    background: rgba(242, 193, 78, 0.08);
+  }
+  .lgo-toolbox-tabs .lgo-info > div {
+    padding-left: 8px !important;
+    padding-right: 6px !important;
+  }
 `;
 
-// The current tab, marked through its own title (works whatever Steam's
-// generated class names are) and through Steam's "Selected" class.
+// The current tab, filled blue with a white icon (marked through its own title, whatever Steam's
+// generated class names are, and through Steam's "Selected" class).
 const CURRENT_TAB_LOOK = `
-    background: #ffffff !important;
-    color: #0e141b !important;
+    background: ${BLUE} !important;
+    border-color: ${BLUE} !important;
+    box-shadow: 0 0 10px rgba(61, 155, 255, 0.45);
     opacity: 1 !important;
     filter: none !important;
 `;
 const currentTabStyles = () => {
   let css = `.lgo-toolbox-tabs [role="tab"]:has(.lgo-tab-current) {${CURRENT_TAB_LOOK}}\n`;
-  css += `.lgo-toolbox-tabs .lgo-tab-current, .lgo-toolbox-tabs .lgo-tab-current svg { color: #0e141b !important; }\n`;
+  css += `.lgo-toolbox-tabs .lgo-tab-current, .lgo-toolbox-tabs .lgo-tab-current svg { color: #ffffff !important; }\n`;
   const selected = gamepadTabbedPageClasses?.Selected;
   const tab = gamepadTabbedPageClasses?.Tab;
-  if (selected && tab) css += `.lgo-toolbox-tabs .${tab}.${selected} {${CURRENT_TAB_LOOK}}\n`;
+  if (selected && tab) {
+    css += `.lgo-toolbox-tabs .${tab}.${selected} {${CURRENT_TAB_LOOK}}\n`;
+    css += `.lgo-toolbox-tabs .${tab}.${selected} svg { color: #ffffff !important; }\n`;
+  }
   return css;
 };
 
-const wrap = (content: ReactNode) => <div className="lgo-toolbox-tab-content">{content}</div>;
+const TAB_NAMES: Record<string, string> = {
+  Home: "Overview",
+  Power: "Power and frame rate",
+  Fan: "Fan",
+  Lights: "Lights",
+  Controls: "Controls",
+  Gyro: "Gyro",
+};
+
+const wrap = (id: string, content: ReactNode) => (
+  <div className="lgo-toolbox-tab-content">
+    <div className="lgo-header">{TAB_NAMES[id] ?? id}</div>
+    {content}
+  </div>
+);
 
 const Content: FC = () => {
   const { state, error } = useStore();
@@ -115,12 +167,13 @@ const Content: FC = () => {
     </span>
   );
   const tabs = [
-    { id: "Home", title: icon("Home", <FaHome size={18} />), content: wrap(<HomeTab go={setTab} />) },
-    { id: "Power", title: icon("Power", <FaBolt size={18} />), content: wrap(<PowerTab />) },
-    { id: "Fan", title: icon("Fan", <FaFan size={18} />), content: wrap(<FanTab />) },
-    { id: "Lights", title: icon("Lights", <FaLightbulb size={18} />), content: wrap(<LightsTab />) },
-    { id: "Controls", title: icon("Controls", <FaGamepad size={18} />), content: wrap(<ControlsTab />) },
+    { id: "Home", title: icon("Home", <FaHome size={18} />), content: wrap("Home", <HomeTab go={setTab} />) },
+    { id: "Power", title: icon("Power", <FaBolt size={18} />), content: wrap("Power", <PowerTab />) },
+    { id: "Fan", title: icon("Fan", <FaFan size={18} />), content: wrap("Fan", <FanTab />) },
+    { id: "Lights", title: icon("Lights", <FaLightbulb size={18} />), content: wrap("Lights", <LightsTab />) },
+    { id: "Controls", title: icon("Controls", <FaGamepad size={18} />), content: wrap("Controls", <ControlsTab />) },
     { id: "Gyro", title: icon("Gyro", <MdScreenRotation size={18} />), content: wrap(
+        "Gyro",
         <>
           <SteamGyroSection />
           <GyroTab />
@@ -190,7 +243,12 @@ export default definePlugin(() => {
   const stopSleep = watchSleep();
   return {
     name: PLUGIN_NAME,
-    titleView: <div className={staticClasses.Title}>{PLUGIN_NAME}</div>,
+    titleView: (
+      <div className={staticClasses.Title} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <GiToolbox style={{ color: BLUE }} />
+        {PLUGIN_NAME}
+      </div>
+    ),
     alwaysRender: true,
     content: <Content />,
     icon: <GiToolbox />,

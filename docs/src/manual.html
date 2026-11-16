@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.10.0</div>
+    <div class="kicker">User manual · Version 2.11.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -52,7 +52,7 @@
     <li><span class="n">7</span><span><span class="t">Lights</span><br><span class="d">Stick lights, power-button light</span></span></li>
     <li><span class="n">8</span><span><span class="t">Controls</span><br><span class="d">Swapped menu buttons, back-button remapping, touchpad</span></span></li>
     <li><span class="n">9</span><span><span class="t">Gyro</span><br><span class="d">Gyro in Steam games, gyro in emulators (Wii Sports, Switch Sports)</span></span></li>
-    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
+    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, MAKO, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
     <li><span class="n">11</span><span><span class="t">Troubleshooting</span><br><span class="d">Symptoms and fixes</span></span></li>
     <li><span class="n">12</span><span><span class="t">Reference</span><br><span class="d">Files, limits, what is re-applied when, credits</span></span></li>
   </ol>
@@ -469,7 +469,8 @@
     <tr><td class="k">HelixSR</td><td>Upscaler: renders at lower resolution and scales up</td><td>None - the game simply needs less power for the same frame rate</td></tr>
     <tr><td class="k">lsfg-vk 2.0</td><td>Frame generation as a Vulkan layer</td><td>Shown frames = game frames × multiplier</td></tr>
     <tr><td class="k">Decky-Framegen</td><td>OptiScaler frame generation inside the game</td><td>Shown frames = game frames × 2</td></tr>
-    <tr><td class="k">Frame Suite</td><td>The three above in one plugin, set up per game</td><td>Whichever of them it set up for the game</td></tr>
+    <tr><td class="k">MAKO</td><td>Adaptive frame generation (in Frame Suite)</td><td>Holds a frame rate on screen; generates what the game does not make</td></tr>
+    <tr><td class="k">Frame Suite</td><td>MAKO and the three above in one plugin, set up per game</td><td>Whichever of them it set up for the game</td></tr>
   </table>
 
   <h2>HelixSR (upscaling only)</h2>
@@ -495,6 +496,18 @@
     <tr><td>60 × 2, 45 × 2</td><td>120, 90</td><td>Built-in screen runs at 144 Hz (slightly uneven); 120 is even on a 120 Hz monitor or stream</td></tr>
   </table>
   <div class="tip"><b>The cap must be reachable.</b> Frame generation only doubles what the game delivers: a 72 cap the game holds at 45 shows about 90, not 144. Choose a cap the game holds steadily - the <b>Now</b> line shows the shown frame rate.</div>
+
+  <h2>MAKO (adaptive frame generation)</h2>
+  <p>MAKO's adaptive mode holds a frame rate on screen, for example 72, and generates whatever the game does not make, up to a set number of times. The plugin reads that target from Frame Suite, so there is nothing to set:</p>
+  <table>
+    <tr><th>Part</th><th>With MAKO adaptive</th></tr>
+    <tr><td class="k">Smooth frame rate</td><td>Puts the screen at a rate the target divides (72 → 144 Hz). Its own cap is not used; the limiter only backs MAKO up at the target.</td></tr>
+    <tr><td class="k">Auto TDP</td><td>Aims at MAKO's target: the least power that keeps it on screen. MAKO uses its generated frames before watts are added, never more than its most generated frames.</td></tr>
+    <tr><td class="k">Battery playtime</td><td>Moves only the power limit: MAKO already trades real for generated frames as power drops.</td></tr>
+  </table>
+  <p>MAKO's fixed mode (2×, 3×) counts like any frame generation: the cap times the frames. A fixed <b>Frame generation</b> setting in Smooth mode wins over MAKO. With lsfg-vk on for the same game, lsfg-vk counts (and Frame Suite warns about two frame generators).</p>
+  <div class="tip"><b>Choose the target in Frame Suite:</b> 72 or 144 on the Legion Go's own screen (even), 60 at 60 Hz. With at most 2× generated frames the game itself never makes fewer than half of it.</div>
+  <div class="note">Not verified on a device yet.</div>
 
   <h2>Frame Suite</h2>
   <p>Frame Suite tells the plugin what it set up for each game, so there is nothing to choose here. Games it gave lsfg-vk are followed like any lsfg-vk game. For games it gave OptiScaler:</p>

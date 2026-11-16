@@ -4,23 +4,26 @@ import { FC, ReactNode } from "react";
 import type { Capability } from "./backend";
 
 export const PLUGIN_NAME = "Legion Go Toolbox";
-export const ACCENT = "#1a9fff";
-export const WARN = "#ffb84d";
+export const ACCENT = "#3d9bff";
+export const WARN = "#f2c14e";
 
-/** A plain information row. */
+/** An information row, in a soft blue box (amber when it warns). */
 export const Info: FC<{ label: ReactNode; children?: ReactNode; warn?: boolean }> = ({
   label,
   children,
   warn,
 }) => (
   <PanelSectionRow>
-    <Field
-      label={label}
-      description={
-        children ? <span style={warn ? { color: WARN } : undefined}>{children}</span> : undefined
-      }
-      padding="compact"
-    />
+    <div className={warn ? "lgo-info warn" : "lgo-info"}>
+      <Field
+        label={label}
+        description={
+          children ? <span style={warn ? { color: WARN } : undefined}>{children}</span> : undefined
+        }
+        padding="compact"
+        bottomSeparator="none"
+      />
+    </div>
   </PanelSectionRow>
 );
 

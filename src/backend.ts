@@ -170,6 +170,9 @@ export interface HubStatus {
     fgmod: boolean;
     /** What the Frame Suite plugin recorded for the game, if it is installed. */
     suite: SuiteInfo | null;
+    mako: MakoInfo | null;
+    /** MAKO holds this rate on screen by itself (adaptive, frame generation on Auto), else null. */
+    mako_adaptive: number | null;
     /** Frames on screen after a variable-refresh screen's cap. */
     shown: number | null;
     lsfg: LsfgInfo | null;
@@ -252,8 +255,19 @@ export interface SuiteInfo {
   optiscaler: boolean;
   /** The game's own frame generation as Frame Suite was told (1 = off). */
   multiplier: number;
-  route: "optiscaler" | "lsfg" | null;
+  route: "optiscaler" | "lsfg" | "mako" | null;
   error: string | null;
+  /** MAKO's frame generation for the game (Frame Suite bundles MAKO), or null. */
+  mako?: MakoInfo | null;
+}
+
+export interface MakoInfo {
+  enabled: boolean;
+  /** Adaptive: the screen holds target_fps, MAKO generating up to max_multiplier times. */
+  adaptive: boolean;
+  target_fps: number;
+  max_multiplier: number;
+  multiplier: number;
 }
 
 export interface LsfgInfo {

@@ -701,8 +701,29 @@ class Hub(object):
             if app is None:
                 return 1
             mult = self.lsfg.for_app(app)["multiplier"]
-            return mult if mult > 1 else self.suite.for_app(app)["multiplier"]
+            if mult > 1:
+                return mult
+            mako = self._mako(app)
+            if mako:
+                return mako["multiplier"]
+            return self.suite.for_app(app)["multiplier"]
         return fg
+
+    def _mako(self, app=None):
+        """MAKO's frame generation for the game (via Frame Suite), or None."""
+        app = self._app if app is None else app
+        return self.suite.for_app(app).get("mako") if app is not None else None
+
+    def _mako_adaptive(self, entry=None, app=None):
+        """MAKO holds a frame rate on screen by itself (its adaptive mode, and Smooth's frame
+        generation left on Auto): that rate, or None."""
+        if entry is not None and entry.get("fg", cfg.FG_AUTO) != cfg.FG_AUTO:
+            return None
+        app = self._app if app is None else app
+        if app is None or self.lsfg.for_app(app)["multiplier"] > 1:
+            return None
+        mako = self._mako(app)
+        return mako["target_fps"] if mako and mako["adaptive"] else None
 
     def _in_game(self, entry, app=None):
         """Frame generation, if on, is made inside the game (OptiScaler, set
@@ -713,7 +734,8 @@ class Hub(object):
             return bool(entry.get("fgmod"))
         if self.lsfg.for_app(app)["multiplier"] > 1:
             return False
-        return bool(entry.get("fgmod")) or self.suite.for_app(app)["optiscaler"]
+        # MAKO's frames pass MangoHud too (MAKO counts them by default): the limiter sees the screen.
+        return bool(entry.get("fgmod")) or self.suite.for_app(app)["optiscaler"] or bool(self._mako(app))
 
     def _smooth_output(self, entry):
         """Frames on screen: the game's cap times the frame-generation
@@ -735,6 +757,11 @@ class Hub(object):
         frame generation it was not told about (more frames shown than the
         cap allows), the profile's target (the final frame rate) is used."""
         entry = self.smooth_for()
+        target = self._mako_adaptive(entry)
+        if target:
+            # MAKO generates whatever the game does not make: Auto TDP keeps its rate on screen, at the
+            # least power, and so lets MAKO use its most generated frames before adding watts.
+            return self._vrr_capped(target)
         if entry and (self._fg(entry) > 1 or not self._frame_gen):
             return self._shown(entry)
         return profile["target_fps"]
@@ -792,7 +819,11 @@ class Hub(object):
     def _shown(self, entry, app=None):
         """Frames on screen Smooth mode aims at: cap x multiplier, kept just
         below the top rate of a variable-refresh screen so VRR stays active."""
-        shown = entry["fps"] * self._fg(entry, app)
+        target = self._mako_adaptive(entry, app)
+        shown = target if target else entry["fps"] * self._fg(entry, app)
+        return self._vrr_capped(shown)
+
+    def _vrr_capped(self, shown):
         info = self._display
         if info and info["vrr"] and info["rates"]:
             shown = min(shown, smoothmod.vrr_cap(info["rates"]))
@@ -897,6 +928,8 @@ class Hub(object):
             "fg_setting": entry.get("fg", cfg.FG_AUTO) if entry else cfg.FG_AUTO,
             "fgmod": bool(entry and (entry.get("fgmod") or (suite and suite["optiscaler"]))),
             "suite": suite,
+            "mako": suite.get("mako") if suite else None,
+            "mako_adaptive": self._mako_adaptive(entry) if self._app is not None else None,
             "shown": self._shown(entry) if entry else None,   # after the VRR cap
             "lsfg": lsfg,
             "output": output,
@@ -994,6 +1027,9 @@ class Hub(object):
         """The settings the planner may step through for this game, and why
         frame generation is not among them (or None)."""
         entry = self.settings["smooth"]["games"].get(str(app))
+        if self._mako_adaptive(entry, app):
+            # MAKO already trades real for generated frames as power drops: only the power limit moves.
+            return [(None, None)], "mako"
         if not entry or not smoothmod.conf_from_prefix(entry["prefix"]):
             return [(None, None)], "no_cap"
         suite = self.suite.for_app(app)
@@ -1029,9 +1065,13 @@ class Hub(object):
 
     def _game_fps(self):
         """Frames the game itself makes: the measured (shown) rate without
-        what frame generation adds."""
+        what frame generation adds. With MAKO's adaptive mode that is not
+        known: the fewest it can be (shown / its most generated frames)."""
         fps = self.fps.get()
         entry = self.smooth_for()
+        mako = self._mako()
+        if fps is not None and mako and self._mako_adaptive(entry):
+            return fps / max(1, mako["max_multiplier"])
         fg = self._fg(entry) if entry else 1
         return fps / fg if fps is not None and fg > 1 else fps
 
@@ -1124,6 +1164,10 @@ class Hub(object):
         played_h = goal["played_s"] / 3600.0
         entry = self.smooth_for()
         cap = entry["fps"] if entry else None
+        mako = self._mako()
+        if mako and self._mako_adaptive(entry):
+            # MAKO holds its target while the game makes at least target / its most frames.
+            cap = mako["target_fps"] / float(max(1, mako["max_multiplier"]))
         ceiling, step = pt.tick(now, usable, played_h, applied, fps, cap, len(steps))
         step = min(step, len(steps) - 1)
         pt.step = step
