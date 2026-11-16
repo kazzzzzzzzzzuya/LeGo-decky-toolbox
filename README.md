@@ -235,9 +235,9 @@ power light off when the device suspends and back on when it wakes.
 
   | Layout | Press | Gets |
   |---|---|---|
-  | **Steam ↔ Menu, QAM ↔ View** (default) | Menu / View | Steam / Quick Access |
+  | **Legion L: Menu, Legion R: View** (default) | Menu / View | Steam / Quick Access |
   | | Legion L / Legion R | Menu / View |
-  | Steam ↔ View, QAM ↔ Menu | View / Menu | Steam / Quick Access |
+  | Legion L: View, Legion R: Menu (as on an Xbox controller) | View / Menu | Steam / Quick Access |
   | | Legion L / Legion R | View / Menu |
 
   Done with an InputPlumber profile on top of the active one, and restored

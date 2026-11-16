@@ -13,9 +13,10 @@ const BUTTONS: { key: RemapButton; label: string }[] = [
   { key: "M3", label: "M3 (right side, lower)" },
 ];
 
+// Named by what the two Legion buttons become; the View and Menu buttons take Steam and Quick Access.
 const LAYOUTS = [
-  { data: "steam_menu", label: "Steam ↔ Menu, QAM ↔ View (default)" },
-  { data: "steam_view", label: "Steam ↔ View, QAM ↔ Menu" },
+  { data: "steam_view", label: "Legion L: View, Legion R: Menu" },
+  { data: "steam_menu", label: "Legion L: Menu, Legion R: View" },
 ];
 
 const ACTIONS: { data: string; label: string }[] = [
@@ -64,8 +65,8 @@ export const ControlsTab: FC = () => {
                 label="Swap menu buttons"
                 description={
                   c.swap_layout === "steam_view"
-                    ? "View opens Steam and Menu opens Quick Access; Legion L becomes View and Legion R becomes Menu."
-                    : "Menu opens Steam and View opens Quick Access; Legion L becomes Menu and Legion R becomes View."
+                    ? "Legion L becomes View and Legion R Menu, as on an Xbox controller. The View button (two squares) opens Steam, the Menu button (three lines) Quick Access."
+                    : "Legion L becomes Menu and Legion R View. The Menu button (three lines) opens Steam, the View button (two squares) Quick Access."
                 }
                 checked={c.swap_menu}
                 onChange={(v) => update({ controls: { swap_menu: v } })}
