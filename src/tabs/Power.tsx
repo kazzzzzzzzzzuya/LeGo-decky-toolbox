@@ -144,7 +144,9 @@ export const PowerTab: FC = () => {
                     <DropdownItem
                       label="Target frame rate"
                       description={
-                        status.power.auto.frame_gen
+                        status.smooth?.mako_adaptive
+                          ? `Ignored while MAKO's adaptive frame generation runs this game: Auto TDP finds the least power that keeps MAKO's ${status.smooth.mako_adaptive} fps on screen (MAKO makes up the rest with generated frames).`
+                          : status.power.auto.frame_gen
                           ? "Frame generation detected: Auto TDP aims at this target (the final frame rate), not the Smooth cap. Better: turn Smooth mode off for frame-generated games."
                           : status.smooth?.fps && status.smooth.fg > 1
                           ? `Ignored while this game has Smooth mode: Auto TDP aims at its ${status.smooth.output} fps (${status.smooth.fps} fps × ${status.smooth.fg} frame generation).`

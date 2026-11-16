@@ -31,6 +31,10 @@ cannot do says so, with the reason, instead of pretending.
 Saved settings are applied when SteamOS starts, after sleep, and when a
 controller reconnects, also while the menu is closed.
 
+The look is blue and white: the tabs are a row of icon tiles (the current one
+filled blue), each tab starts with its name over a blue line, and notes sit in
+soft boxes (amber when they warn).
+
 ## Requirements
 
 | | |
@@ -303,8 +307,19 @@ Press **Calibrate** once and leave the controllers alone for a few seconds.
   5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
      60 × 2 = 120 and 45 × 2 = 90 run at 144 Hz there, marked *uneven*; even on a
      120 Hz monitor (for example when streaming).
-- **Frame Suite** (decky-lsfg-vk, Decky-Framegen and HelixSR Manager in one
-  plugin): nothing to set. Its lsfg-vk games are followed like any other
+- **MAKO** (adaptive frame generation; bundled in Frame Suite 1.2.0 and newer):
+  nothing to set. With MAKO's adaptive mode the screen holds MAKO's target
+  (for example 72 fps) and MAKO generates whatever the game does not make.
+  The plugin reads that target from Frame Suite: Smooth mode puts the screen
+  at a rate the target divides (72 → 144 Hz) and its limiter only backs MAKO
+  up, Auto TDP finds the least power that keeps the target on screen (so MAKO
+  uses its generated frames before watts are added), and Battery playtime
+  moves only the power limit, since MAKO already trades real for generated
+  frames as power drops. MAKO's fixed mode (2×, 3×) counts like any frame
+  generation: cap × frames. A fixed Frame generation setting in Smooth mode
+  wins over MAKO. Not verified on a device yet.
+- **Frame Suite** (MAKO, decky-lsfg-vk, Decky-Framegen and HelixSR Manager in
+  one plugin): nothing to set. Its lsfg-vk games are followed like any other
   lsfg-vk game. For games it set up with OptiScaler, **Frame generation**
   on *Auto* follows the switch **Frame generation is on in the game** in
   Frame Suite: turn that on when you enable frame generation in the game's

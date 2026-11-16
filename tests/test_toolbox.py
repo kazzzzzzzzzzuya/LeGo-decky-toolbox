@@ -1425,11 +1425,12 @@ class FakeSuite(object):
 
     def __init__(self):
         self.games = {}     # app id -> (optiscaler, multiplier)
+        self.mako = {}      # app id -> MAKO entry as suite.py returns it
 
     def for_app(self, app_id):
         opti, mult = self.games.get(app_id, (False, 1))
-        return {"present": bool(self.games), "optiscaler": opti, "multiplier": mult,
-                "route": "optiscaler" if opti else None, "error": None}
+        return {"present": bool(self.games or self.mako), "optiscaler": opti, "multiplier": mult,
+                "route": "optiscaler" if opti else None, "error": None, "mako": self.mako.get(app_id)}
 
 
 class FakeFps(object):
@@ -1983,6 +1984,52 @@ class HubTests(TempDirCase):
         st = self.hub.status()["smooth"]
         self.assertEqual((st["fg"], st["fgmod"]), (1, False))
 
+    def test_smooth_and_auto_tdp_follow_mako(self):
+        gs, lsfg, suite = self.mods["gamescope"], self.mods["lsfg"], self.mods["suite"]
+        self.hub.update({"power": {"enabled": True, "profiles": {"default": {
+            "auto": True, "target_fps": 45, "tdp": 25}}}})
+        conf = os.path.join(self.home, ".config", "lgo-toolbox", "smooth", "9.conf")
+        read = lambda: open(conf).read()
+        self.hub.set_running_app(9, "Game")
+        # MAKO adaptive, no Smooth cap: Auto TDP keeps MAKO's target on screen
+        suite.mako[9] = {"enabled": True, "adaptive": True, "target_fps": 72, "max_multiplier": 2, "multiplier": 2}
+        self.hub._tick(7000.0)
+        self.assertEqual(self.hub._auto.target, 72.0)
+        # With a Smooth cap: MAKO's target is what the screen shows, the limiter only backs it up
+        plan = self.hub.smooth_plan(60, 9)
+        self.hub.set_smooth_game(9, 60, "Game", plan["prefix"], False)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["shown"], st["mako_adaptive"]), (72, 72))
+        self.assertEqual(gs.sent[-1], 144)                     # 72 x 2 = 144 Hz, even
+        self.assertIn("fps_limit=72\n", read())
+        self.assertEqual(self.hub._auto.target, 72.0)
+        # Battery playtime moves only the power limit: MAKO trades real for generated frames itself
+        self.hub.set_playtime_goal(9, 3.0, 30, True, "Game")
+        steps, why = self.hub._pt_steps(9, self.hub._pt_goal(9))
+        self.assertEqual((steps, why), ([(None, None)], "mako"))
+        self.hub.set_playtime_goal(9, None)
+        # MAKO fixed 2x: like any frame generation, the cap times the frames
+        suite.mako[9] = {"enabled": True, "adaptive": False, "target_fps": 0, "max_multiplier": 2, "multiplier": 2}
+        self.hub._tick(7001.0)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["fg"], st["shown"], st["mako_adaptive"]), (2, 120, None))
+        self.assertIn("fps_limit=120\n", read())              # MangoHud counts MAKO's frames too
+        # lsfg-vk on as well: its multiplier counts (and Frame Suite warns about two generators)
+        suite.mako[9] = {"enabled": True, "adaptive": True, "target_fps": 72, "max_multiplier": 2, "multiplier": 2}
+        lsfg.mult[9] = 3
+        self.hub._tick(7002.0)
+        self.assertEqual(self.hub.status()["smooth"]["shown"], 180)
+        lsfg.mult[9] = 1
+        # A fixed setting in Smooth mode wins over MAKO
+        self.hub.set_smooth_game(9, 60, "Game", plan["prefix"], False, 1)
+        st = self.hub.status()["smooth"]
+        self.assertEqual((st["shown"], st["mako_adaptive"]), (60, None))
+        # MAKO off for the game: back to the plain cap
+        self.hub.set_smooth_game(9, 60, "Game", plan["prefix"], False, 0)
+        suite.mako.pop(9)
+        self.hub._tick(7003.0)
+        self.assertEqual(self.hub.status()["smooth"]["shown"], 60)
+
     def test_restore_from_backup(self):
         path = os.path.join(self.tmp, "backup.json")
         self.assertFalse(backup.info(path)["exists"])
@@ -2430,6 +2477,32 @@ class FrameSuiteBridge(TempDirCase):
         r = self._suite(pad).for_app(1091500)
         self.assertEqual((r["optiscaler"], r["multiplier"]), (False, 1))
         self.assertIsNotNone(r["error"])
+
+    def test_mako_entries(self):
+        games = {
+            "1": {"route": "mako", "mako": {"profile": "P", "enabled": True, "adaptive": True, "target_fps": 72,
+                                            "max_multiplier": 2, "multiplier": 2, "base_fps_cap": 0}},
+            "2": {"route": "mako", "mako": {"enabled": True, "adaptive": False, "multiplier": 3}},
+            "3": {"mako": {"enabled": False, "adaptive": True, "target_fps": 72, "max_multiplier": 2}},
+        }
+        bad = [None, "x", {"enabled": "yes"}, {"enabled": True, "adaptive": True, "target_fps": True, "max_multiplier": 2},
+               {"enabled": True, "adaptive": True, "target_fps": 999, "max_multiplier": 2},
+               {"enabled": True, "adaptive": True, "target_fps": 72, "max_multiplier": 0},
+               {"enabled": True, "adaptive": False, "multiplier": 2.5}]
+        for i, m in enumerate(bad):
+            games["b%d" % i] = {"mako": m}
+        s = self._suite({"version": 1, "games": {k: v for k, v in games.items() if not k.startswith("b")}})
+        self.assertEqual(s.for_app(1)["mako"], {"enabled": True, "adaptive": True, "target_fps": 72,
+                                                "max_multiplier": 2, "multiplier": 2})
+        self.assertEqual(s.for_app(1)["route"], "mako")
+        self.now += 10
+        self.assertEqual(s.for_app(2)["mako"]["multiplier"], 3)
+        self.now += 10
+        self.assertIsNone(s.for_app(3)["mako"])                          # switched off in MAKO
+        for i in range(len(bad)):
+            self.now += 10
+            s = self._suite({"version": 1, "games": {str(100 + i): games["b%d" % i]}})
+            self.assertIsNone(s.for_app(100 + i)["mako"], bad[i])
 
     def test_changes_are_seen_after_the_recheck_interval(self):
         s = self._suite({"version": 1, "games": self.GAMES})

@@ -209,17 +209,24 @@ export const SmoothSection: FC = () => {
     // Not divisible: the screen goes to its highest rate (as even as it gets).
     return rates.length ? `${name} · screen ${Math.max(...rates)} Hz, uneven` : name;
   };
-  // Multiplier in effect (with Auto: what lsfg-vk is set to for this game).
-  const fg = current ? (st?.fg ?? 1) : 1;
+  // MAKO's adaptive mode holds its own rate on screen, whatever the cap.
+  const makoAdaptive = st?.mako_adaptive ?? null;
+  // Multiplier in effect (with Auto: what lsfg-vk or MAKO is set to for this game).
+  const fg = current && !makoAdaptive ? (st?.fg ?? 1) : 1;
   const fgSetting = current?.fg ?? FG_AUTO;
-  const out = current ? current.fps * fg : 0;
+  const out = current ? (makoAdaptive ?? current.fps * fg) : 0;
   const lsfg = st?.lsfg ?? null;
   const lsfgMult = lsfg?.installed ? lsfg.multiplier : 1;
   // Frame Suite's record: OptiScaler in the game, and its frame generation as the user set it there.
   const suite = st?.suite ?? null;
   const suiteMult = lsfgMult <= 1 && suite?.optiscaler ? suite.multiplier : 1;
+  const mako = st?.mako ?? null;
   const autoLabel = (f: number) =>
-    lsfgMult > 1
+    makoAdaptive
+      ? `Auto · MAKO adaptive · ${makoAdaptive} fps on screen`
+      : lsfgMult <= 1 && mako && !mako.adaptive
+        ? `Auto · MAKO ${mako.multiplier}× · ${label(f, mako.multiplier)}`
+        : lsfgMult > 1
       ? `Auto · lsfg-vk ${lsfgMult}× · ${label(f, lsfgMult)}`
       : suiteMult > 1
         ? `Auto · in-game ${suiteMult}× (Frame Suite) · ${label(f, suiteMult)}`
@@ -231,6 +238,10 @@ export const SmoothSection: FC = () => {
   const fgDescription = (): string => {
     if (!current) return "";
     if (lsfg?.error) return `Could not read lsfg-vk's settings (${lsfg.error}). Pick the multiplier by hand.`;
+    if (makoAdaptive)
+      return `MAKO holds ${makoAdaptive} fps on screen for this game and generates whatever the game does not make (up to ${mako?.max_multiplier ?? 2}×). The cap below is not used meanwhile; the limiter only backs MAKO up at ${makoAdaptive}, and Auto TDP looks for the least power that keeps ${makoAdaptive} on screen. Change the target in Frame Suite.`;
+    if (mako && lsfgMult <= 1 && fgSetting === FG_AUTO)
+      return `Follows MAKO (fixed ${mako.multiplier}×): the game makes ${current.fps} fps, the screen shows ${out}. Auto TDP aims at ${out}.`;
     const viaGame = (!!current.fgmod || !!st?.fgmod) && lsfgMult <= 1;
     // Frame Suite knows the game: Auto follows the switch its user sets there.
     if (suite?.optiscaler && lsfgMult <= 1 && fgSetting === FG_AUTO)

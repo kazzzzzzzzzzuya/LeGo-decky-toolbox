@@ -9,6 +9,10 @@ writes ``~/.config/frame-suite/bridge.json`` whenever it changes a game::
          "frame_generation": {"source": "optiscaler", "multiplier": 2, "in_game": true},
          "optiscaler": {"patched": true}}}}
 
+It also mirrors MAKO's per-game settings (Frame Suite bundles MAKO) under
+"mako": with MAKO's adaptive frame generation the screen holds "target_fps"
+and MAKO generates up to "max_multiplier" times the game's frames.
+
 Smooth mode needs two things from it that it cannot see itself: that
 OptiScaler is in the game (Frame Suite patches games directly, without
 Decky-Framegen's ``fgmod`` wrapper in the launch options), and whether the
@@ -136,7 +140,8 @@ class Suite(object):
 
     def _lookup(self, app_id):
         out = {"present": False, "optiscaler": False, "multiplier": 1, "route": None, "error": None,
-               "lsfg_ready": False, "standby_since": None, "fg_applied": None, "fg_refused": None}
+               "lsfg_ready": False, "standby_since": None, "fg_applied": None, "fg_refused": None,
+               "mako": None}
         if app_id is None:
             return out
         games, err = self._games()
@@ -151,7 +156,8 @@ class Suite(object):
         if not isinstance(game, dict):
             return out
         route = game.get("route")
-        out["route"] = route if route in ("optiscaler", "lsfg") else None
+        out["route"] = route if route in ("optiscaler", "lsfg", "mako") else None
+        out["mako"] = _mako(game.get("mako"))
         opti = game.get("optiscaler")
         out["optiscaler"] = isinstance(opti, dict) and opti.get("patched") is True
         fg = game.get("frame_generation")
@@ -175,6 +181,23 @@ class Suite(object):
 
 def _int(v):
     return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _mako(m):
+    """MAKO's frame generation for a game (from Frame Suite, which bundles MAKO), checked:
+    {"enabled", "adaptive", "target_fps", "max_multiplier", "multiplier"} or None."""
+    if not isinstance(m, dict) or m.get("enabled") is not True:
+        return None
+    adaptive = m.get("adaptive") is True
+    target, top, mult = m.get("target_fps"), m.get("max_multiplier"), m.get("multiplier")
+    if adaptive:
+        if not (_int(target) and 15 <= target <= 360 and _int(top) and 1 <= top <= 8):
+            return None
+        return {"enabled": True, "adaptive": True, "target_fps": target, "max_multiplier": top,
+                "multiplier": top}
+    if not (_int(mult) and 1 <= mult <= 8):
+        return None
+    return {"enabled": True, "adaptive": False, "target_fps": 0, "max_multiplier": mult, "multiplier": mult}
 
 
 def write_requests(home, games, clock=time.time):
