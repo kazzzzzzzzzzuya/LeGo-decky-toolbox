@@ -452,9 +452,9 @@ class Plumber(TempDirCase):
         self.assertNotIn("KeyEsc", text)          # replaced by the swap
         self.assertEqual(text.count("  - name:"), 2 + 4)
         self.assertEqual(text.count("mapping:"), 1)
-        # Default layout: Steam <-> Menu, Quick Access <-> View
-        for src, dst in (("Start", "Guide"), ("Guide", "Start"),
-                         ("Select", "QuickAccess"), ("QuickAccess", "Select")):
+        # Default layout: Legion L View, Legion R Menu, the Menu button Steam, the View button Quick Access
+        for src, dst in (("Guide", "Select"), ("QuickAccess", "Start"),
+                         ("Start", "Guide"), ("Select", "QuickAccess")):
             self.assertIn("button: %s\n    target_events:\n      - gamepad:\n"
                           "          button: %s\n" % (src, dst), text)
         other = plumber.build_profile(DEFAULT_PROFILE_YAML, "steam_view")
