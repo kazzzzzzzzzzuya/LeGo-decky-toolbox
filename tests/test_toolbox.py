@@ -446,7 +446,7 @@ class Plumber(TempDirCase):
 
     def test_profile_keeps_base_mappings(self):
         text = plumber.build_profile(DEFAULT_PROFILE_YAML)
-        self.assertIn("name: " + plumber.PROFILE_NAMES["steam_menu"], text)
+        self.assertIn("name: " + plumber.PROFILE_NAMES["lview_steam_menu"], text)   # the default
         self.assertIn("button: LeftPaddle1", text)
         self.assertIn("LeftStickDial", text)
         self.assertNotIn("KeyEsc", text)          # replaced by the swap
@@ -502,7 +502,7 @@ class Plumber(TempDirCase):
         self.assertTrue(swap.apply(True))
         self.assertTrue(swap.is_active())
         self.assertIn("button: LeftPaddle1", state["loaded"])
-        self.assertTrue(swap.is_active("steam_menu"))
+        self.assertTrue(swap.is_active("lview_steam_menu"))     # the default
         self.assertFalse(swap.is_active("steam_view"))
         before = len(calls)
         self.assertTrue(swap.apply(True))                 # already active: no reload
@@ -1586,7 +1586,7 @@ class HubTests(TempDirCase):
     def test_swap_layouts(self):
         swap = self.mods["swap"]
         self.hub.update({"controls": {"swap_menu": True}})
-        self.assertEqual((swap.active, swap.layout), (True, "steam_menu"))   # default
+        self.assertEqual((swap.active, swap.layout), (True, "lview_steam_menu"))   # default
         self.assertTrue(self.hub.status()["swap_menu"]["active"])
         self.hub.update({"controls": {"swap_layout": "steam_view"}})
         self.assertEqual(swap.layout, "steam_view")
@@ -1594,7 +1594,7 @@ class HubTests(TempDirCase):
         self.hub._tick(100.0)
         self.assertEqual(swap.layout, "steam_view")
         self.assertEqual(cfg.sanitize({"controls": {"swap_layout": "x"}})
-                         ["controls"]["swap_layout"], "steam_menu")
+                         ["controls"]["swap_layout"], "lview_steam_menu")
 
     def test_swap_is_kept_alive(self):
         swap = self.mods["swap"]
