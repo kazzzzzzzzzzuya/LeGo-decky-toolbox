@@ -231,14 +231,15 @@ power light off when the device suspends and back on when it wakes.
 
 ### Controls
 
-- **Swap menu buttons** with two layouts:
+- **Swap menu buttons** puts Steam and Quick Access on the View and Menu buttons and View and Menu on the
+  Legion buttons, in any combination:
 
-  | Layout | Press | Gets |
-  |---|---|---|
-  | **Legion L: Menu, Legion R: View** (default) | Menu / View | Steam / Quick Access |
-  | | Legion L / Legion R | Menu / View |
-  | Legion L: View, Legion R: Menu (as on an Xbox controller) | View / Menu | Steam / Quick Access |
-  | | Legion L / Legion R | View / Menu |
+  | Layout | Legion L / Legion R | View button | Menu button |
+  |---|---|---|---|
+  | L View, R Menu · View = Steam | View / Menu | Steam | Quick Access |
+  | L View, R Menu · Menu = Steam | View / Menu | Quick Access | Steam |
+  | **L Menu, R View · Menu = Steam** (default) | Menu / View | Quick Access | Steam |
+  | L Menu, R View · View = Steam | Menu / View | Steam | Quick Access |
 
   Done with an InputPlumber profile on top of the active one, and restored
   when you switch it off.

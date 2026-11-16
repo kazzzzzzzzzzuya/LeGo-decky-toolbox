@@ -430,6 +430,20 @@ class PowerLight(TempDirCase):
 
 
 class Plumber(TempDirCase):
+    def test_every_layout_moves_all_four_buttons_once(self):
+        for layout, pairs in plumber.LAYOUTS.items():
+            srcs = [s for s, _ in pairs]
+            dsts = [d for _, d in pairs]
+            self.assertEqual(sorted(srcs), ["Guide", "QuickAccess", "Select", "Start"], layout)
+            self.assertEqual(sorted(dsts), ["Guide", "QuickAccess", "Select", "Start"], layout)
+            text = plumber.build_profile(DEFAULT_PROFILE_YAML, layout)
+            self.assertIn("name: " + plumber.PROFILE_NAMES[layout], text)
+            self.assertEqual(text.count("  - name:"), 2 + 4)
+        # The combination asked for: Legion L View, Legion R Menu, the Menu button Steam, View Quick Access
+        self.assertEqual(dict(plumber.LAYOUTS["lview_steam_menu"]),
+                         {"Guide": "Select", "QuickAccess": "Start", "Start": "Guide", "Select": "QuickAccess"})
+        self.assertEqual(set(plumber.LAYOUTS), set(cfg.SWAP_LAYOUTS))
+
     def test_profile_keeps_base_mappings(self):
         text = plumber.build_profile(DEFAULT_PROFILE_YAML)
         self.assertIn("name: " + plumber.PROFILE_NAMES["steam_menu"], text)
