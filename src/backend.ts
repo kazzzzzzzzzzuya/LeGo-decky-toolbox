@@ -335,3 +335,66 @@ export const gyroCalibrate = callable<[target: SlotName], CalibrationResult>("gy
 export const gyroCalibrateAll = callable<[], Record<string, CalibrationResult>>(
   "gyro_calibrate_all",
 );
+
+// ---- System tab: speaker EQ, sleep guard, Steam update check ----
+export interface SystemSettings {
+  eq: { enabled: boolean; preset: string; bass: number; treble: number };
+  sleep: { poweroff: boolean; hours: number; battery_only: boolean };
+}
+export interface SleepEntry {
+  start: number;
+  end: number;
+  hours: number;
+  pct_before: number | null;
+  pct_after: number | null;
+  drain_ph: number | null;
+  ac: boolean | null;
+  powered_off?: boolean;
+}
+export interface SteamItem { id: string; label: string; ok: boolean; detail: string; installed: boolean }
+export interface SteamResult {
+  overall: "ok" | "fail" | "idle";
+  items: SteamItem[];
+  version?: number | null;
+  last_good?: number | null;
+  good_at?: string | null;
+  updated_since_good?: boolean;
+  hold?: { held: boolean; foreign: boolean };
+  checked_at?: string;
+  error?: string;
+}
+export interface SystemState {
+  settings: SystemSettings;
+  eq: {
+    available: boolean;
+    reason: string | null;
+    state: "off" | "starting" | "on" | "headphones" | "other" | "failed";
+    error: string | null;
+    speaker: string | null;
+    others: string[];
+    presets: { id: string; label: string }[];
+  };
+  sleep: {
+    available: boolean;
+    alarm_at: number | null;
+    last: SleepEntry | null;
+    history: SleepEntry[];
+    average_ph: number | null;
+    counted: number;
+    hours_choices: number[];
+  };
+  steam: SteamResult | null;
+}
+export interface SteamSnapshot { name: string; created: string; reason: string; steam: number | null; files: string[] }
+export const systemState = callable<[], SystemState>("system_state");
+export const systemUpdate = callable<[patch: DeepPartial<SystemSettings>], SystemState>("system_update");
+export const steamCheck = callable<[], SystemState>("steam_check");
+export const steamSnapshots = callable<[], SteamSnapshot[]>("steam_snapshots");
+export const steamSnapshotNow = callable<[], { ok: boolean; name: string | null; error: string | null }>(
+  "steam_snapshot_now",
+);
+export const steamRestore = callable<[name: string], { ok: boolean; restored: string[]; error: string | null }>(
+  "steam_restore",
+);
+export const steamHold = callable<[on: boolean], { ok: boolean; error: string | null }>("steam_hold");
+export const sleepClear = callable<[], SystemState>("sleep_clear");

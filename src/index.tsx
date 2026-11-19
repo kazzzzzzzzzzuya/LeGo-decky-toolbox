@@ -1,7 +1,7 @@
 import { Router, Tabs, gamepadTabbedPageClasses, staticClasses } from "@decky/ui";
 import { definePlugin } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
-import { FaBolt, FaFan, FaGamepad, FaHome, FaLightbulb } from "react-icons/fa";
+import { FaBolt, FaFan, FaGamepad, FaHome, FaLightbulb, FaSlidersH } from "react-icons/fa";
 import { MdScreenRotation } from "react-icons/md";
 import { GiToolbox } from "react-icons/gi";
 
@@ -14,6 +14,7 @@ import { SteamGyroSection } from "./tabs/SteamGyro";
 import { HomeTab } from "./tabs/Home";
 import { LightsTab } from "./tabs/Lights";
 import { PowerTab } from "./tabs/Power";
+import { SystemTab, watchSteamMods } from "./tabs/System";
 import { PLUGIN_NAME } from "./ui";
 
 // Blue and white, in the style of MAKO: the tabs are a row of icon tiles, the current one filled
@@ -132,6 +133,7 @@ const TAB_NAMES: Record<string, string> = {
   Lights: "Lights",
   Controls: "Controls",
   Gyro: "Gyro",
+  System: "Sound, sleep and Steam",
 };
 
 const wrap = (id: string, content: ReactNode) => (
@@ -191,6 +193,7 @@ const Content: FC = () => {
         </>,
       ),
     },
+    { id: "System", title: icon("System", <FaSlidersH size={18} />), content: wrap("System", <SystemTab />) },
   ];
 
   return (
@@ -252,6 +255,7 @@ function watchSleep(): () => void {
 export default definePlugin(() => {
   const stopApp = watchRunningApp();
   const stopSleep = watchSleep();
+  const stopMods = watchSteamMods();
   return {
     name: PLUGIN_NAME,
     titleView: (
@@ -266,6 +270,7 @@ export default definePlugin(() => {
     onDismount() {
       stopApp();
       stopSleep();
+      stopMods();
       flushWrites();
     },
   };
