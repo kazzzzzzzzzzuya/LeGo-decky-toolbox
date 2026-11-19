@@ -1,7 +1,7 @@
 import { Router, Tabs, gamepadTabbedPageClasses, staticClasses } from "@decky/ui";
 import { definePlugin } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
-import { FaBolt, FaFan, FaGamepad, FaHome, FaLightbulb, FaSlidersH } from "react-icons/fa";
+import { FaBolt, FaFan, FaGamepad, FaHome, FaSlidersH } from "react-icons/fa";
 import { MdScreenRotation } from "react-icons/md";
 import { GiToolbox } from "react-icons/gi";
 
@@ -15,7 +15,7 @@ import { HomeTab } from "./tabs/Home";
 import { LightsTab } from "./tabs/Lights";
 import { PowerTab } from "./tabs/Power";
 import { SystemTab, watchSteamMods } from "./tabs/System";
-import { PLUGIN_NAME } from "./ui";
+import { Fold, PLUGIN_NAME } from "./ui";
 
 // Blue and white, in the style of MAKO: the tabs are a row of icon tiles, the current one filled
 // blue; each tab starts with its name, centred over a blue and white line; notes sit in soft boxes.
@@ -130,8 +130,7 @@ const TAB_NAMES: Record<string, string> = {
   Home: "Overview",
   Power: "Power and frame rate",
   Fan: "Fan",
-  Lights: "Lights",
-  Controls: "Controls",
+  Controls: "Buttons and lights",
   Gyro: "Gyro",
   System: "Sound, sleep and Steam",
 };
@@ -183,13 +182,30 @@ const Content: FC = () => {
     { id: "Home", title: icon("Home", <FaHome size={18} />), content: wrap("Home", <HomeTab go={setTab} />) },
     { id: "Power", title: icon("Power", <FaBolt size={18} />), content: wrap("Power", <PowerTab />) },
     { id: "Fan", title: icon("Fan", <FaFan size={18} />), content: wrap("Fan", <FanTab />) },
-    { id: "Lights", title: icon("Lights", <FaLightbulb size={18} />), content: wrap("Lights", <LightsTab />) },
-    { id: "Controls", title: icon("Controls", <FaGamepad size={18} />), content: wrap("Controls", <ControlsTab />) },
+    {
+      id: "Controls",
+      title: icon("Controls", <FaGamepad size={18} />),
+      content: wrap(
+        "Controls",
+        <>
+          <ControlsTab />
+          <Fold id="lights" title="Lights" summary="Stick lights and the power-button light">
+            <LightsTab />
+          </Fold>
+        </>,
+      ),
+    },
     { id: "Gyro", title: icon("Gyro", <MdScreenRotation size={18} />), content: wrap(
         "Gyro",
         <>
           <SteamGyroSection />
-          <GyroTab />
+          <Fold
+            id="gyro-emulators"
+            title="Gyro for emulators"
+            summary={state.gyro.settings.enabled ? "On: each controller is a motion device (DSU)" : "Dolphin, Switch emulators and others"}
+          >
+            <GyroTab />
+          </Fold>
         </>,
       ),
     },

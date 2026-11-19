@@ -3,9 +3,9 @@ import { FC } from "react";
 
 import { deletePowerProfile, PowerProfile } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
-import { ErrorRow, Info, modeLabel, Unavailable } from "../ui";
+import { ErrorRow, Fold, Info, modeLabel, Unavailable } from "../ui";
 import { SmoothSection } from "./Smooth";
-import { PlaytimeSection } from "./Playtime";
+import { hours, PlaytimeSection } from "./Playtime";
 
 export const TARGETS = [30, 40, 45, 50, 60, 72, 90, 100, 120, 144];
 
@@ -88,22 +88,6 @@ export const PowerTab: FC = () => {
 
       {p.enabled && (
         <PanelSection title={editKey === "default" ? "Default profile" : gameName}>
-          <PanelSectionRow>
-            <ToggleField
-              label="Separate settings per game"
-              description={
-                !p.per_game
-                  ? "One profile for everything."
-                  : appKey == null
-                    ? "Start a game to give it its own profile. Editing the default now."
-                    : hasGameProfile
-                      ? `Editing the profile of ${gameName}.`
-                      : `Change anything below to create a profile for ${gameName}.`
-              }
-              checked={p.per_game}
-              onChange={(v) => update({ power: { per_game: v } })}
-            />
-          </PanelSectionRow>
           <PanelSectionRow>
             <DropdownItem
               label="Power mode"
@@ -196,21 +180,56 @@ export const PowerTab: FC = () => {
         </PanelSection>
       )}
 
-      <SmoothSection />
+      <Fold id="power-smooth" title="Smooth frame rate" summary={(() => {
+          const sm = status.smooth;
+          return sm?.fps ? `On for this game: ${sm.shown ?? sm.output ?? sm.fps} fps` : "A steady frame rate per game";
+        })()}>
+        <SmoothSection />
+      </Fold>
 
-      <PlaytimeSection />
+      <Fold
+        id="power-playtime"
+        title="Battery playtime"
+        summary={
+          status.playtime?.goal
+            ? `Goal for this game: ${hours(status.playtime.goal.hours)}`
+            : "Make a game last the hours you choose"
+        }
+      >
+        <PlaytimeSection />
+      </Fold>
 
-      {p.enabled && boost != null && (
-        <PanelSection title="Processor">
-          <PanelSectionRow>
-            <ToggleField
-              label="CPU boost"
-              description="Off runs cooler and quieter and often costs few frames."
-              checked={boost}
-              onChange={(v) => update({ power: { cpu_boost: v } })}
-            />
-          </PanelSectionRow>
-        </PanelSection>
+      {p.enabled && (
+        <Fold id="power-more" title="More power settings" summary="Per-game profiles, CPU boost">
+          <PanelSection>
+            <PanelSectionRow>
+              <ToggleField
+                label="Separate settings per game"
+                description={
+                  !p.per_game
+                    ? "One profile for everything."
+                    : appKey == null
+                      ? "Start a game to give it its own profile. Editing the default now."
+                      : hasGameProfile
+                        ? `Editing the profile of ${gameName}.`
+                        : `Change a setting above to give ${gameName} its own profile.`
+                }
+                checked={p.per_game}
+                onChange={(v) => update({ power: { per_game: v } })}
+              />
+            </PanelSectionRow>
+            {boost != null && (
+              <PanelSectionRow>
+                <ToggleField
+                  label="CPU boost"
+                  description="Off runs cooler and quieter and often costs few frames."
+                  checked={boost}
+                  onChange={(v) => update({ power: { cpu_boost: v } })}
+                />
+              </PanelSectionRow>
+            )}
+          </PanelSection>
+        </Fold>
       )}
     </>
   );

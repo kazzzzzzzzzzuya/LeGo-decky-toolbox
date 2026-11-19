@@ -11,7 +11,7 @@ import { FC } from "react";
 
 import { deleteFanProfile, FanProfile } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
-import { ACCENT, ErrorRow, Info, Unavailable } from "../ui";
+import { ACCENT, ErrorRow, Fold, Info, Unavailable } from "../ui";
 
 const TEMPS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 // Lenovo's minimum curve for the Legion Go: nothing below it is accepted.
@@ -172,26 +172,6 @@ export const FanTab: FC = () => {
             The firmware only follows a custom curve in the Custom power mode.
           </Info>
         )}
-        {f.enabled && (
-          <>
-            <PanelSectionRow>
-              <ToggleField
-                label="Separate settings per game"
-                description="A game can have its own fan setting; others use the general one."
-                checked={f.per_game}
-                onChange={(v) => update({ fan: { per_game: v } })}
-              />
-            </PanelSectionRow>
-            <PanelSectionRow>
-              <ToggleField
-                label="Separate settings on charger"
-                description="One setting on battery and another while plugged in. Switches by itself when you plug in or unplug."
-                checked={f.per_power}
-                onChange={(v) => update({ fan: { per_power: v } })}
-              />
-            </PanelSectionRow>
-          </>
-        )}
       </PanelSection>
 
       {f.enabled && (
@@ -229,24 +209,26 @@ export const FanTab: FC = () => {
                   <CurvePreview curve={profile.curve} temp={sensors.temp} />
                 </Field>
               </PanelSectionRow>
-              {TEMPS.map((t, i) => (
-                <PanelSectionRow key={t}>
-                  <SliderField
-                    label={`At ${t} °C`}
-                    value={profile.curve[i]}
-                    min={FLOOR[i]}
-                    max={MAX_LEVEL}
-                    step={1}
-                    showValue
-                    valueSuffix="%"
-                    onChange={(v) => setProfile({ curve: withPoint(profile.curve, i, v) })}
-                  />
-                </PanelSectionRow>
-              ))}
-              <Info label="Safety">
-                The curve always rises with temperature and never goes below Lenovo's own minimum
-                (44 % at 10 °C up to 100 % at 90 °C). Silent is that minimum.
-              </Info>
+              <Fold id="fan-points" inline title="Edit the curve points" summary="Ten temperatures, from 10 to 90 °C">
+                {TEMPS.map((t, i) => (
+                  <PanelSectionRow key={t}>
+                    <SliderField
+                      label={`At ${t} °C`}
+                      value={profile.curve[i]}
+                      min={FLOOR[i]}
+                      max={MAX_LEVEL}
+                      step={1}
+                      showValue
+                      valueSuffix="%"
+                      onChange={(v) => setProfile({ curve: withPoint(profile.curve, i, v) })}
+                    />
+                  </PanelSectionRow>
+                ))}
+                <Info label="Safety">
+                  The curve always rises with temperature and never goes below Lenovo's own minimum
+                  (44 % at 10 °C up to 100 % at 90 °C). Silent is that minimum.
+                </Info>
+              </Fold>
             </>
           )}
           {editingOwn && editKey !== "default" && (
@@ -259,27 +241,49 @@ export const FanTab: FC = () => {
         </PanelSection>
       )}
 
-      {f.enabled && saved.length > 0 && (
-        <PanelSection title="Saved fan settings">
-          <PanelSectionRow>
-            <Field
-              description="Select one to remove it; that case then uses the general setting again."
-              padding="compact"
-              bottomSeparator="none"
-            />
-          </PanelSectionRow>
-          {saved.map((key) => (
-            <PanelSectionRow key={key}>
-              <ButtonItem
-                layout="below"
-                description={profileSummary(f.profiles[key])}
-                onClick={() => void removeProfile(key)}
-              >
-                {keyLabel(key, f.profiles, f.per_power)}
-              </ButtonItem>
+      {f.enabled && (
+        <Fold id="fan-more" title="More fan settings" summary="Per game, on charger, saved settings">
+          <PanelSection>
+            <PanelSectionRow>
+              <ToggleField
+                label="Separate settings per game"
+                description="A game can have its own fan setting; others use the general one."
+                checked={f.per_game}
+                onChange={(v) => update({ fan: { per_game: v } })}
+              />
             </PanelSectionRow>
-          ))}
-        </PanelSection>
+            <PanelSectionRow>
+              <ToggleField
+                label="Separate settings on charger"
+                description="One setting on battery and another while plugged in. Switches by itself when you plug in or unplug."
+                checked={f.per_power}
+                onChange={(v) => update({ fan: { per_power: v } })}
+              />
+            </PanelSectionRow>
+          </PanelSection>
+          {saved.length > 0 && (
+            <PanelSection title="Saved fan settings">
+              <PanelSectionRow>
+                <Field
+                  description="Select one to remove it; that case then uses the general setting again."
+                  padding="compact"
+                  bottomSeparator="none"
+                />
+              </PanelSectionRow>
+              {saved.map((key) => (
+                <PanelSectionRow key={key}>
+                  <ButtonItem
+                    layout="below"
+                    description={profileSummary(f.profiles[key])}
+                    onClick={() => void removeProfile(key)}
+                  >
+                    {keyLabel(key, f.profiles, f.per_power)}
+                  </ButtonItem>
+                </PanelSectionRow>
+              ))}
+            </PanelSection>
+          )}
+        </Fold>
       )}
     </>
   );

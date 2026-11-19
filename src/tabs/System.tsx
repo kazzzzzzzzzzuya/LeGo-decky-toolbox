@@ -25,7 +25,7 @@ import {
   systemState,
   systemUpdate,
 } from "../backend";
-import { Info, PLUGIN_NAME } from "../ui";
+import { Fold, Info, PLUGIN_NAME } from "../ui";
 
 type Patch = { eq?: Partial<SystemSettings["eq"]>; sleep?: Partial<SystemSettings["sleep"]> };
 
@@ -190,11 +190,7 @@ export const SystemTab: FC = () => {
                     onChange={(v) => setToneSoon("treble", v)}
                   />
                 </PanelSectionRow>
-                <Info label="About the EQ">
-                  Starting points tuned by ear, not measured. Only the built-in speakers get it: headphones,
-                  Bluetooth and USB never do. Volume stays where you set it. Nothing is written to SteamOS: turning
-                  it off removes it completely.
-                </Info>
+                <Info label="Speakers only">Headphones, Bluetooth and USB never get it. Off removes it completely.</Info>
               </>
             )}
           </>
@@ -209,13 +205,7 @@ export const SystemTab: FC = () => {
           {sleep.average_ph != null &&
             ` · Average ${sleep.average_ph.toFixed(1)} %/h over ${sleep.counted} sleep${sleep.counted === 1 ? "" : "s"}`}
         </Info>
-        {sleep.history.length > 1 && (
-          <Info label="Recent sleeps" focusable>
-            {sleep.history.slice(1, 6).map((e, i) => (
-              <div key={i}>{sleepLine(e)}</div>
-            ))}
-          </Info>
-        )}
+
         {!sleep.available ? (
           <Info label="Power-off after a long sleep is not available" warn>
             This system has no RTC wake alarm (/sys/class/rtc/rtc0/wakealarm).
@@ -225,7 +215,7 @@ export const SystemTab: FC = () => {
             <PanelSectionRow>
               <ToggleField
                 label="Power off after a long sleep"
-                description="If it is still asleep after the hours below, it wakes and shuts down, so the battery is not drained. An unsaved game is lost, as with any shutdown."
+                description="Still asleep after the hours below: it shuts down. Unsaved games are lost."
                 checked={settings.sleep.poweroff}
                 onChange={(v) => void set({ sleep: { poweroff: v } })}
               />
@@ -252,12 +242,19 @@ export const SystemTab: FC = () => {
             )}
           </>
         )}
-        {sleep.history.length > 0 && (
-          <PanelSectionRow>
-            <ButtonItem layout="below" onClick={() => void sleepClear().then(setSt)}>
-              Clear the sleep history
-            </ButtonItem>
-          </PanelSectionRow>
+        {sleep.history.length > 1 && (
+          <Fold id="sleep-history" inline title="Recent sleeps" summary={`${sleep.history.length} measured`}>
+            <Info label="Recent sleeps" focusable>
+              {sleep.history.slice(1, 6).map((e, i) => (
+                <div key={i}>{sleepLine(e)}</div>
+              ))}
+            </Info>
+            <PanelSectionRow>
+              <ButtonItem layout="below" onClick={() => void sleepClear().then(setSt)}>
+                Clear the sleep history
+              </ButtonItem>
+            </PanelSectionRow>
+          </Fold>
         )}
       </PanelSection>
 
@@ -279,7 +276,7 @@ export const SystemTab: FC = () => {
             that no longer loads needs its own update for this Steam build.
           </Info>
         )}
-        {steam?.items.map((i) => (
+        {steam?.overall !== "ok" && steam?.items.map((i) => (
           <Info key={i.id} label={`${i.ok ? "✓" : "✗"} ${i.label}`} warn={!i.ok}>
             {i.detail}
           </Info>
@@ -289,47 +286,53 @@ export const SystemTab: FC = () => {
             {busy ? "Checking…" : "Check now"}
           </ButtonItem>
         </PanelSectionRow>
-        <PanelSectionRow>
-          <ToggleField
-            label="Hold Steam client updates"
-            description={
-              hold?.foreign
-                ? "steam.cfg already exists with other settings, so this is left alone."
-                : "Valve's steam.cfg switch: the Steam client stays on this build. SteamOS updates are not affected. Turn it off to update, then check here."
-            }
-            checked={!!hold?.held}
-            disabled={!!hold?.foreign}
-            onChange={(v) => void onHold(v)}
-          />
-        </PanelSectionRow>
-        <Info label="Settings backups">
-          SLSsteam's config.yaml, the ASSella / Uran library and CloudRedirect's settings are copied each time
-          everything works (when they changed). The last 8 are kept.
-          {snaps[0] ? ` Newest: ${snaps[0].created}.` : " None yet."}
-        </Info>
-        <PanelSectionRow>
-          <ButtonItem layout="below" onClick={() => void onSnapshot()}>
-            Back up now
-          </ButtonItem>
-        </PanelSectionRow>
-        {snaps.length > 0 && (
-          <PanelSectionRow>
-            <DropdownItem
-              label="Restore a backup"
-              strDefaultLabel="Choose one"
-              rgOptions={snaps.map((s) => ({
-                data: s.name,
-                label: `${s.created}${s.steam ? ` · build ${s.steam}` : ""} · ${s.reason}`,
-              }))}
-              selectedOption={null}
-              onChange={(o) => {
-                const s = snaps.find((x) => x.name === o.data);
-                if (s) askRestore(s);
-              }}
-            />
-          </PanelSectionRow>
-        )}
       </PanelSection>
+      <Fold
+        id="steam-more"
+        title="Backups and update hold"
+        summary={`${snaps[0] ? `Newest backup ${snaps[0].created}` : "No backup yet"}${hold?.held ? " · Steam updates held" : ""}`}
+      >
+        <PanelSection>
+            <PanelSectionRow>
+              <ToggleField
+                label="Hold Steam client updates"
+                description={
+                  hold?.foreign
+                    ? "steam.cfg already exists with other settings, so this is left alone."
+                    : "Valve's steam.cfg switch: the Steam client stays on this build. SteamOS updates are not affected. Turn it off to update, then check here."
+                }
+                checked={!!hold?.held}
+                disabled={!!hold?.foreign}
+                onChange={(v) => void onHold(v)}
+              />
+            </PanelSectionRow>
+            <Info label="Settings backups">
+              Saved by themselves whenever everything works. The last 8 are kept.
+            </Info>
+            <PanelSectionRow>
+              <ButtonItem layout="below" onClick={() => void onSnapshot()}>
+                Back up now
+              </ButtonItem>
+            </PanelSectionRow>
+            {snaps.length > 0 && (
+              <PanelSectionRow>
+                <DropdownItem
+                  label="Restore a backup"
+                  strDefaultLabel="Choose one"
+                  rgOptions={snaps.map((s) => ({
+                    data: s.name,
+                    label: `${s.created}${s.steam ? ` · build ${s.steam}` : ""} · ${s.reason}`,
+                  }))}
+                  selectedOption={null}
+                  onChange={(o) => {
+                    const s = snaps.find((x) => x.name === o.data);
+                    if (s) askRestore(s);
+                  }}
+                />
+              </PanelSectionRow>
+            )}
+        </PanelSection>
+      </Fold>
     </>
   );
 };

@@ -134,7 +134,7 @@ export const PlaytimeSection: FC = () => {
     : "";
 
   return (
-    <PanelSection title="Battery playtime">
+    <PanelSection>
       <Info label="Now">{nowLine}</Info>
       {app.id == null ? (
         <Info label="Start a game">The goal is set per game while it runs. The longest this battery lasts is shown then.</Info>

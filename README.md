@@ -15,7 +15,7 @@ button remapping, swapped menu buttons and per-controller gyro for emulators.
 
 ## Features
 
-One Decky plugin, seven tabs (switch with **LB / RB**). Nothing is changed on
+One Decky plugin, six tabs (switch with **LB / RB**). Nothing is changed on
 your device until you switch a feature on, and every feature that your system
 cannot do says so, with the reason, instead of pretending.
 
@@ -24,8 +24,7 @@ cannot do says so, with the reason, instead of pretending.
 | **Home** | See every module at a glance, limit charging to 80 %, reset |
 | **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose. **Battery playtime** makes a game last the hours you choose on battery |
 | **Fan** | Draw a ten-point fan curve, presets, full speed, live temperature, per game and on battery vs charger |
-| **Lights** | Stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
-| **Controls** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off |
+| **Buttons and lights** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off. Under *Lights*: stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
 | **Gyro** | Gyro in ordinary Steam games (handheld), and each detached controller as its own motion device for Dolphin, Switch emulators and others (DSU / CemuHook) |
 | **System** | **Speaker EQ** for the built-in speakers (never headphones or Bluetooth), battery used while asleep and **power-off after a long sleep**, and a **Steam update check** that tells you when a Steam update broke SLSsteam, CloudRedirect or ASSella / Uran, with backups of their settings |
 
@@ -91,6 +90,10 @@ Home tab first; 2.10.0 brings the backup back by itself when it starts
 without settings.
 
 ## Using the tabs
+
+Each tab shows its main settings first. Less-used ones sit in closed sections
+marked **▾** (for example *More power settings*, *Edit the curve points*,
+*Gyro for emulators*); select one to open it. Open or closed is remembered.
 
 The first time the plugin opens, **Getting started** sits at the top of the Overview tab: power,
 Smooth frame rate, Battery playtime and Frame Suite in five short notes. **Got it, close this** hides it;
