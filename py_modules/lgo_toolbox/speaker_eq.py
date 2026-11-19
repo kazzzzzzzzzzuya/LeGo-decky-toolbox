@@ -176,17 +176,16 @@ def route(sinks, default):
     return None
 
 
+def is_virtual(sink):
+    """A sink no device is behind: another EQ or effect (the legion-go-tricks
+    "Legion GO" convolver, EasyEffects, a filter chain)."""
+    name = sink.get("name") or ""
+    return not (name == EQ_NODE or name.startswith(("alsa_output.", "bluez_", "auto_null")))
+
+
 def other_processing(sinks):
-    """Descriptions of other virtual sinks that look like speaker processing."""
-    out = []
-    for s in sinks:
-        name = s.get("name") or ""
-        if name == EQ_NODE or name.startswith("alsa_output.") or name.startswith("bluez_"):
-            continue
-        text = (name + " " + (s.get("description") or "")).lower()
-        if any(w in text for w in ("eq", "filter", "dsp", "speaker", "easyeffects")):
-            out.append(s.get("description") or name)
-    return out
+    """Descriptions of other sound effects that are outputs of their own."""
+    return [s.get("description") or s.get("name") for s in sinks if is_virtual(s)]
 
 
 class SpeakerEq(object):
@@ -375,8 +374,10 @@ class SpeakerEq(object):
                 self._set_volume(spk["name"], FULL_VOLUME)
                 self._spk_raised = True
             self.state = "on"
+        elif default == spk["name"]:
+            self.state = "headphones"
         else:
-            self.state = "headphones" if default == spk["name"] else "other"
+            self.state = "other_effect" if is_virtual(by_name.get(default) or {"name": default}) else "other"
 
     def status(self):
         return {"state": self.state, "error": self.error, "speaker": self.speaker,

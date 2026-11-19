@@ -86,6 +86,9 @@ class SpeakerEq(unittest.TestCase):
         ucm = sink("alsa_output.pci-0000_c2_00.6.HiFi__Speaker__sink", ports=("[Out] Speaker",))
         self.assertEqual(eq.find_speaker([hdmi, ucm])["name"], ucm["name"])
         self.assertIsNone(eq.find_speaker([hdmi, bt]))
+        tricks = {"name": "Legion GO", "description": "Legion GO"}
+        self.assertEqual(eq.other_processing([hdmi, bt, tricks, sink(eq.EQ_NODE)]), ["Legion GO"])
+        self.assertIsNone(eq.route([sink(SPK, "analog-output-speaker"), sink(eq.EQ_NODE), tricks], "Legion GO"))
 
     def test_route_follows_the_output(self):
         e = sink(eq.EQ_NODE, ports=())

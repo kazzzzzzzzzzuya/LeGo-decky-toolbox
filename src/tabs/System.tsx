@@ -37,6 +37,7 @@ const EQ_STATE: Record<string, string> = {
   on: "On: the speakers play through the EQ.",
   headphones: "Headphones in use: they get no EQ. It comes back when they are unplugged.",
   other: "Another output plays (Bluetooth, USB or a screen): it gets no EQ.",
+  other_effect: "Another sound effect is the output right now, so this EQ waits. Use one or the other.",
   failed: "Not running.",
 };
 
@@ -150,8 +151,9 @@ export const SystemTab: FC = () => {
             </PanelSectionRow>
             {eq.error && settings.eq.enabled && <Info label="EQ problem" warn>{eq.error}</Info>}
             {eq.others.length > 0 && settings.eq.enabled && (
-              <Info label="Other sound processing found" warn>
-                {eq.others.join(", ")}: two EQs stack. Turn one of them off if the sound gets worse.
+              <Info label="Another sound effect is installed" warn>
+                {eq.others.join(", ")}. Each is a separate output, so they do not stack: whichever is selected as the
+                output plays. Pick one in Steam's sound settings, or remove the other.
               </Info>
             )}
             {settings.eq.enabled && (

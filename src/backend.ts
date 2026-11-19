@@ -368,7 +368,7 @@ export interface SystemState {
   eq: {
     available: boolean;
     reason: string | null;
-    state: "off" | "starting" | "on" | "headphones" | "other" | "failed";
+    state: "off" | "starting" | "on" | "headphones" | "other" | "other_effect" | "failed";
     error: string | null;
     speaker: string | null;
     others: string[];
