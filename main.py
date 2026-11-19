@@ -15,6 +15,7 @@ from lgo_gyro.service import GyroService  # noqa: E402
 from lgo_toolbox import __version__, backup  # noqa: E402
 from lgo_toolbox.updates import Updates  # noqa: E402
 from lgo_toolbox.hub import Hub  # noqa: E402
+from lgo_toolbox.system import System  # noqa: E402
 
 GYRO_SETTINGS = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "gyro.json")
 HUB_SETTINGS = os.path.join(decky.DECKY_PLUGIN_SETTINGS_DIR, "toolbox.json")
@@ -30,6 +31,7 @@ async def _bg(fn, *args):
 class Plugin:
     gyro = None
     hub = None
+    system = None
     updates = Updates(__version__)
     restored = None        # when settings were brought back from the backup at start
 
@@ -50,6 +52,15 @@ class Plugin:
                 state_dir=decky.DECKY_PLUGIN_SETTINGS_DIR)
             Plugin.hub.start()
         return Plugin.hub
+
+    @staticmethod
+    def _system():
+        if Plugin.system is None:
+            from lgo_toolbox.useros import User
+            user = User(getattr(decky, "DECKY_USER", None), getattr(decky, "DECKY_USER_HOME", None))
+            Plugin.system = System(decky.DECKY_PLUGIN_SETTINGS_DIR, logger=decky.logger, user=user)
+            Plugin.system.start()
+        return Plugin.system
 
     @staticmethod
     def _adopt_gyro_settings():
@@ -79,6 +90,8 @@ class Plugin:
         hub.restore(data["toolbox"])
         if isinstance(data.get("gyro"), dict):
             Plugin._gyro().update_settings(data["gyro"])
+        if isinstance(data.get("system"), dict):
+            Plugin._system().restore(data["system"])
         Plugin.restored = data.get("saved_at") or "?"
         decky.logger.info("Settings restored from the backup of %s", Plugin.restored)
 
@@ -91,14 +104,17 @@ class Plugin:
             fresh = not os.path.exists(HUB_SETTINGS)
             Plugin._adopt_gyro_settings()
             hub = Plugin._hub()
+            Plugin._system()
             if fresh:
                 Plugin._restore_after_reinstall(hub)
         except Exception:
             decky.logger.exception("Failed to start")
 
     async def _unload(self):
-        hub, gyro = Plugin.hub, Plugin.gyro
-        Plugin.hub = Plugin.gyro = None
+        hub, gyro, system = Plugin.hub, Plugin.gyro, Plugin.system
+        Plugin.hub = Plugin.gyro = Plugin.system = None
+        if system is not None:
+            await _bg(system.stop)
         if hub is not None:
             await _bg(hub.stop)
         if gyro is not None:
@@ -182,7 +198,8 @@ class Plugin:
     async def backup_settings(self):
         hub, gyro = Plugin._hub(), Plugin._gyro()
         return await _bg(backup.save, BACKUP_FILE, __version__,
-                         hub.get_settings(), gyro.get_settings())
+                         hub.get_settings(), gyro.get_settings(),
+                         Plugin._system().get_settings())
 
     async def restore_settings(self):
         """Returns {"ok", "error", "settings", "gyro"}."""
@@ -193,6 +210,8 @@ class Plugin:
         settings = await _bg(hub.restore, data["toolbox"])
         if isinstance(data.get("gyro"), dict):
             gyro.update_settings(data["gyro"])
+        if isinstance(data.get("system"), dict):
+            await _bg(Plugin._system().restore, data["system"])
         return {"ok": True, "error": None, "settings": settings,
                 "gyro": gyro.get_settings()}
 
@@ -207,10 +226,46 @@ class Plugin:
         await _bg(Plugin._hub().set_running_app, app_id, name)
 
     async def on_suspend(self):
+        await _bg(Plugin._system().before_sleep)
         await _bg(Plugin._hub().on_suspend)
 
     async def on_resume(self):
         await _bg(Plugin._hub().on_resume)
+
+    # ---- System tab: speaker EQ, sleep guard, Steam update check ----------
+
+    async def system_state(self):
+        return await _bg(Plugin._system().state)
+
+    async def system_update(self, patch):
+        return await _bg(Plugin._system().update, patch)
+
+    async def steam_check(self):
+        system = Plugin._system()
+        await _bg(system.steam_check)
+        return await _bg(system.state)
+
+    async def steam_snapshots(self):
+        return await _bg(Plugin._system().steam.snapshots)
+
+    async def steam_snapshot_now(self):
+        name = await _bg(Plugin._system().steam.snapshot, "saved by hand", True)
+        return {"ok": name is not None, "name": name,
+                "error": None if name else "Nothing to back up was found"}
+
+    async def steam_restore(self, name):
+        return await _bg(Plugin._system().steam.restore, str(name))
+
+    async def steam_hold(self, on):
+        system = Plugin._system()
+        out = await _bg(system.steam.set_hold, bool(on))
+        await _bg(system.steam_check)
+        return out
+
+    async def sleep_clear(self):
+        system = Plugin._system()
+        await _bg(system.sleep.clear)
+        return await _bg(system.state)
 
     # ---- gyro ------------------------------------------------------------
 

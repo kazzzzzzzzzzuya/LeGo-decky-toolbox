@@ -24,9 +24,9 @@ cannot do says so, with the reason, instead of pretending.
 | **Home** | See every module at a glance, limit charging to 80 %, reset |
 | **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose. **Battery playtime** makes a game last the hours you choose on battery |
 | **Fan** | Draw a ten-point fan curve, presets, full speed, live temperature, per game and on battery vs charger |
-| **Lights** | Stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
-| **Controls** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off |
+| **Buttons and lights** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off. Under *Lights*: stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
 | **Gyro** | Gyro in ordinary Steam games (handheld), and each detached controller as its own motion device for Dolphin, Switch emulators and others (DSU / CemuHook) |
+| **System** | **Speaker EQ** for the built-in speakers (never headphones or Bluetooth), battery used while asleep and **power-off after a long sleep**, and a **Steam update check** that tells you when a Steam update broke SLSsteam, CloudRedirect or ASSella / Uran, with backups of their settings |
 
 Saved settings are applied when SteamOS starts, after sleep, and when a
 controller reconnects, also while the menu is closed.
@@ -90,6 +90,10 @@ Home tab first; 2.10.0 brings the backup back by itself when it starts
 without settings.
 
 ## Using the tabs
+
+Each tab shows its main settings first. Less-used ones sit in closed sections
+marked **▾** (for example *More power settings*, *Edit the curve points*,
+*Gyro for emulators*); select one to open it. Open or closed is remembered.
 
 The first time the plugin opens, **Getting started** sits at the top of the Overview tab: power,
 Smooth frame rate, Battery playtime and Frame Suite in five short notes. **Got it, close this** hides it;
@@ -287,6 +291,32 @@ controller.
   controller.
 
 Press **Calibrate** once and leave the controllers alone for a few seconds.
+
+### System
+
+**Speaker EQ.** SteamOS plays the speakers without the processing Windows
+gives them. The EQ sits in front of the built-in speakers only: headphones,
+Bluetooth and USB never get it, and it comes back when they disconnect. Pick
+a sound and adjust bass and treble; the presets are starting points tuned by
+ear. Your volume stays where it was. It runs as a separate PipeWire client:
+nothing is written to SteamOS or your PipeWire settings, and switching it off
+removes it.
+
+**Sleep.** Every sleep longer than a minute is measured (hours, battery before
+and after, percent per hour). **Power off after a long sleep** sets the
+clock's wake alarm before sleeping; if the device is still asleep after the
+hours you choose, it wakes and shuts down. Waking it earlier cancels that.
+*Only on battery* is on by default. Unsaved game progress is lost, as with any
+shutdown. Hibernation, swap and boot settings are not touched.
+
+**Steam update check.** Every minute, and a minute after Steam starts, the
+tab checks that each installed Steam client mod (SLSsteam, CloudRedirect,
+ASSella / Uran) is still loaded and its settings file is readable, and
+notifies you when one stopped working after a Steam update. It only reads.
+Their settings files are backed up whenever everything works (last 8 kept)
+and can be restored from the tab. **Hold Steam client updates** writes Valve's
+`steam.cfg` switch so the client stays on its build until your mods catch up;
+SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
 
 ## With frame generation and upscalers
 

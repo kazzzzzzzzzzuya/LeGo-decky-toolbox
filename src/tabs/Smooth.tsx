@@ -175,7 +175,7 @@ export const SmoothSection: FC = () => {
 
   if (!caps.smooth?.available && Object.keys(games).length === 0) {
     return (
-      <PanelSection title="Smooth frame rate">
+      <PanelSection>
         <Unavailable cap={caps.smooth} what="Smooth mode" />
       </PanelSection>
     );
@@ -270,7 +270,7 @@ export const SmoothSection: FC = () => {
   const saved = Object.entries(games).sort((a, b) => a[1].name.localeCompare(b[1].name));
 
   return (
-    <PanelSection title="Smooth frame rate">
+    <PanelSection>
       {app.id != null ? (
         <PanelSectionRow>
           <DropdownItem

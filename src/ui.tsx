@@ -1,5 +1,5 @@
-import { Field, PanelSectionRow } from "@decky/ui";
-import { FC, ReactNode } from "react";
+import { ButtonItem, Field, PanelSection, PanelSectionRow } from "@decky/ui";
+import { FC, ReactNode, useState } from "react";
 
 import type { Capability } from "./backend";
 
@@ -118,3 +118,44 @@ export function modeLabel(mode: string): string {
       return mode.charAt(0).toUpperCase() + mode.slice(1).replace(/[-_]/g, " ");
   }
 }
+
+function rememberedOpen(id: string): boolean {
+  try {
+    return window.localStorage.getItem(`lgo-fold-${id}`) === "1";
+  } catch {
+    return false;
+  }
+}
+
+/** A closed section: one row with its name and a one-line summary; selecting it shows the
+ *  settings inside. Open or closed is remembered per section. */
+export const Fold: FC<{ id: string; title: string; summary?: ReactNode; inline?: boolean; children: ReactNode }> = ({
+  id,
+  title,
+  summary,
+  inline,
+  children,
+}) => {
+  const [open, setOpen] = useState(() => rememberedOpen(id));
+  const toggle = () => {
+    setOpen(!open);
+    try {
+      window.localStorage.setItem(`lgo-fold-${id}`, open ? "0" : "1");
+    } catch {
+      /* private storage is optional */
+    }
+  };
+  const row = (
+    <PanelSectionRow>
+      <ButtonItem layout="below" description={open ? undefined : summary} onClick={toggle}>
+        {title + (open ? "  ▴" : "  ▾")}
+      </ButtonItem>
+    </PanelSectionRow>
+  );
+  return (
+    <>
+      {inline ? row : <PanelSection>{row}</PanelSection>}
+      {open && children}
+    </>
+  );
+};

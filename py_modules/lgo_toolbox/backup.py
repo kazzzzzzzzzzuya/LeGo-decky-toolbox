@@ -18,10 +18,12 @@ def info(path):
     return out
 
 
-def save(path, version, toolbox, gyro):
+def save(path, version, toolbox, gyro, system=None):
     data = {"kind": MAGIC, "version": version,
             "saved_at": time.strftime("%Y-%m-%d %H:%M"),
             "toolbox": toolbox, "gyro": gyro}
+    if system is not None:
+        data["system"] = system
     try:
         tmp = path + ".tmp"
         with open(tmp, "w") as f:

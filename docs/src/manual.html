@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.11.5</div>
+    <div class="kicker">User manual · Version 2.13.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -52,9 +52,10 @@
     <li><span class="n">7</span><span><span class="t">Lights</span><br><span class="d">Stick lights, power-button light</span></span></li>
     <li><span class="n">8</span><span><span class="t">Controls</span><br><span class="d">Swapped menu buttons, back-button remapping, touchpad</span></span></li>
     <li><span class="n">9</span><span><span class="t">Gyro</span><br><span class="d">Gyro in Steam games, gyro in emulators (Wii Sports, Switch Sports)</span></span></li>
-    <li><span class="n">10</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, MAKO, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
-    <li><span class="n">11</span><span><span class="t">Troubleshooting</span><br><span class="d">Symptoms and fixes</span></span></li>
-    <li><span class="n">12</span><span><span class="t">Reference</span><br><span class="d">Files, limits, what is re-applied when, credits</span></span></li>
+    <li><span class="n">10</span><span><span class="t">Sound, sleep and Steam</span><br><span class="d">Speaker EQ, battery used while asleep, power-off after a long sleep, Steam update check</span></span></li>
+    <li><span class="n">11</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, MAKO, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
+    <li><span class="n">12</span><span><span class="t">Troubleshooting</span><br><span class="d">Symptoms and fixes</span></span></li>
+    <li><span class="n">13</span><span><span class="t">Reference</span><br><span class="d">Files, limits, what is re-applied when, credits</span></span></li>
   </ol>
 </section>
 
@@ -122,16 +123,16 @@
 <section class="chapter">
   <h1><span class="chap-num">3</span>Finding your way around</h1>
 
-  <p>The plugin opens on <b>Home</b>. Switch tabs with <kbd>LB</kbd> / <kbd>RB</kbd> or by tapping the icons along the top.</p>
+  <p>The plugin opens on <b>Home</b>. Switch tabs with <kbd>LB</kbd> / <kbd>RB</kbd> or by tapping the icons along the top. Each tab shows its main settings first; less-used ones sit in closed sections marked <b>▾</b> (for example <i>More power settings</i>, <i>Edit the curve points</i>, <i>Gyro for emulators</i>). Select one to open it; open or closed is remembered.</p>
 
   <table>
     <tr><th>Icon</th><th>Tab</th><th>What it holds</th></tr>
     <tr><td>House</td><td class="k">Home</td><td>One status line per module (tap one to jump there), battery and 80 % charge limit, device, version, reset</td></tr>
     <tr><td>Lightning bolt</td><td class="k">Power</td><td>Power mode, TDP, Auto TDP for a frame rate, per-game profiles, CPU boost</td></tr>
     <tr><td>Fan</td><td class="k">Fan</td><td>Custom fan curve, presets, full speed, temperature</td></tr>
-    <tr><td>Light bulb</td><td class="k">Lights</td><td>Stick lights, power-button light</td></tr>
-    <tr><td>Gamepad</td><td class="k">Controls</td><td>Swapped menu buttons, back-button remapping, touchpad</td></tr>
+    <tr><td>Gamepad</td><td class="k">Buttons and lights</td><td>Swapped menu buttons, back-button remapping, touchpad; stick lights and power-button light under <i>Lights</i></td></tr>
     <tr><td>Rotating screen</td><td class="k">Gyro</td><td>Gyro in Steam games and per-controller gyro for emulators</td></tr>
+    <tr><td>Sliders</td><td class="k">System</td><td>Speaker EQ, battery used while asleep, power-off after a long sleep, Steam update check and backups (chapter 10)</td></tr>
   </table>
 
   <h2>Reading the screens</h2>
@@ -238,7 +239,7 @@
     <li>Under <b>Smooth frame rate</b> choose a cap, for example <i>60 fps · screen 60 Hz</i> or <i>72 fps · screen 144 Hz</i>.</li>
     <li>Quit and start the game again once - the cap goes into its launch options. From then on, changing the cap or frame generation applies while the game runs.</li>
     <li>In Steam's Performance menu set <b>Framerate limit</b> off for this game, and switch off the game's own frame limiter and V-Sync.</li>
-    <li>Using lsfg-vk frame generation? <b>Frame generation</b> below the cap reads its multiplier by itself (chapter 10).</li>
+    <li>Using lsfg-vk frame generation? <b>Frame generation</b> below the cap reads its multiplier by itself (chapter 11).</li>
   </ol>
   <h3>What it does</h3>
   <table>
@@ -459,7 +460,30 @@
 
 <!-- ============================== 10 ============================== -->
 <section class="chapter">
-  <h1><span class="chap-num">10</span>With frame generation and upscalers</h1>
+  <h1><span class="chap-num">10</span>Sound, sleep and Steam</h1>
+
+  <p>The last tab (sliders icon). Three separate things, each off or read-only until you use it.</p>
+
+  <h2>Speaker EQ</h2>
+  <p>SteamOS plays the speakers without the sound processing Windows gives them, so they sound thin and harsh. <b>Speaker EQ</b> puts an equaliser in front of the built-in speakers only: headphones, Bluetooth and USB audio never get it, and it comes back by itself when they are disconnected. Pick a <b>Sound</b> (Balanced, Voice and dialogue, More bass, Flat) and adjust <b>Bass</b> and <b>Treble</b>. The presets are starting points tuned by ear, not measurements.</p>
+  <p>Your volume stays where it was. Nothing is written to SteamOS or to your PipeWire settings: the EQ is a separate PipeWire client the plugin runs, and switching it off removes it. If another EQ (EasyEffects, for example) is found, the tab says so, because two EQs stack.</p>
+
+  <h2>Sleep</h2>
+  <p><b>Battery used while asleep</b> shows each sleep longer than a minute: how long, the battery level before and after, and percent per hour, plus the average.</p>
+  <p><b>Power off after a long sleep</b>: if the Legion Go is still asleep after the hours you choose (1 to 24), it wakes and shuts down instead of draining the battery. Waking it earlier cancels this. With <b>Only on battery</b> (on by default) a sleep on the charger never powers off. A game you did not save is lost, as with any shutdown. It uses the clock's wake alarm only; hibernation, swap and the boot settings are not touched.</p>
+
+  <h2>Steam update check</h2>
+  <p>For Steam client mods (SLSsteam, CloudRedirect, ASSella / Uran) that a Steam update can break. Every minute, and a minute after Steam starts, the plugin checks whether each installed mod is still loaded by the running Steam and whether its settings file reads correctly. A Steam client update restarts Steam, so you get a notification if one stopped working. The check only reads: nothing is loaded into Steam.</p>
+  <ul>
+    <li><b>Settings backups</b>: SLSsteam's <code>config.yaml</code>, the ASSella / Uran library and CloudRedirect's settings are copied whenever everything works and they changed (the last 8 are kept), or with <b>Back up now</b>. <b>Restore a backup</b> puts them back (your current files are backed up first); restart Steam afterwards.</li>
+    <li><b>Hold Steam client updates</b> writes Valve's <code>steam.cfg</code> switch, so the Steam client stays on its build while your mods catch up. SteamOS updates are not affected. A <code>steam.cfg</code> you made yourself is never changed.</li>
+  </ul>
+  <p>A mod that no longer loads after an update needs its own update for the new Steam build; the check tells you which one.</p>
+</section>
+
+<!-- ============================== 11 ============================== -->
+<section class="chapter">
+  <h1><span class="chap-num">11</span>With frame generation and upscalers</h1>
 
   <p>The plugin works alongside lsfg-vk (Lossless Scaling frame generation), Decky-Framegen (OptiScaler), HelixSR, and Frame Suite, which bundles the three. The key is to know which frame rate each part controls.</p>
 
@@ -531,9 +555,9 @@
   <p>On a screen with VRR the cap is held just below its top rate - 116 on 120 Hz, 138 on 144 Hz - so variable refresh stays active, and Auto TDP aims at that number. The Legion Go's own screen has no VRR, so nothing changes there.</p>
 </section>
 
-<!-- ============================== 11 ============================== -->
+<!-- ============================== 12 ============================== -->
 <section class="chapter">
-  <h1><span class="chap-num">11</span>Troubleshooting</h1>
+  <h1><span class="chap-num">12</span>Troubleshooting</h1>
   <table>
     <tr><th style="width:38%">Symptom</th><th>What to do</th></tr>
     <tr><td>A feature says "not available"</td><td>The text under it gives the reason. Most often: no <code>acpi_call</code> (fan), not in Gaming Mode (Auto TDP), or InputPlumber not running (buttons, Steam gyro).</td></tr>
@@ -556,9 +580,9 @@
   <p>Logs for a bug report are in <code>~/homebrew/logs/Legion Go Toolbox/</code>.</p>
 </section>
 
-<!-- ============================== 12 ============================== -->
+<!-- ============================== 13 ============================== -->
 <section class="chapter">
-  <h1><span class="chap-num">12</span>Reference</h1>
+  <h1><span class="chap-num">13</span>Reference</h1>
 
   <h2>Files</h2>
   <table>
