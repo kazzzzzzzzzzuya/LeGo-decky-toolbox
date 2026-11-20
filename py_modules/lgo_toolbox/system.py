@@ -1,6 +1,7 @@
 """The System tab: Speaker EQ, Sleep guard and the Steam update check, with
 their own settings file (system.json) and one background thread."""
 
+import collections
 import copy
 import json
 import os
@@ -14,6 +15,8 @@ from .useros import User, write_atomic
 
 TICK_S = 2.0
 STEAM_CHECK_S = 60.0
+WATTS_EVERY_S = 60.0
+WATTS_KEPT = 10          # the Power tab's "last 10 min"
 
 
 def defaults():
@@ -70,6 +73,8 @@ class System(object):
         self._steam_at = 0.0
         self._stop = threading.Event()
         self._thread = None
+        self._watts = collections.deque(maxlen=WATTS_KEPT)
+        self._watts_at = None
 
     def _load(self):
         try:
@@ -117,9 +122,26 @@ class System(object):
                 except Exception:
                     if self.log:
                         self.log.exception("System %s step failed", name)
+            self._sample_watts()
             if time.monotonic() - self._steam_at >= STEAM_CHECK_S:
                 self.steam_check()
             self._stop.wait(TICK_S)
+
+    def _sample_watts(self, now=None):
+        """Battery draw once a minute (None while charging) for the Power tab's chart."""
+        now = time.monotonic() if now is None else now
+        if self._watts_at is not None and now - self._watts_at < WATTS_EVERY_S:
+            return
+        self._watts_at = now
+        try:
+            info = battery_info() or {}
+        except Exception:
+            info = {}
+        w = info.get("watts")
+        self._watts.append(round(w, 1) if w is not None and info.get("status") == "Discharging" else None)
+
+    def watts_history(self):
+        return list(self._watts)
 
     # -- calls -------------------------------------------------------------------
     def before_sleep(self):

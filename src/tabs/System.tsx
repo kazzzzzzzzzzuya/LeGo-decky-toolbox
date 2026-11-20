@@ -2,6 +2,7 @@ import {
   ButtonItem,
   ConfirmModal,
   DropdownItem,
+  Field,
   PanelSection,
   PanelSectionRow,
   showModal,
@@ -25,7 +26,7 @@ import {
   systemState,
   systemUpdate,
 } from "../backend";
-import { Fold, Info, PLUGIN_NAME } from "../ui";
+import { Check, Fold, Info, Pills, PLUGIN_NAME, Stat, Stats } from "../ui";
 
 type Patch = { eq?: Partial<SystemSettings["eq"]>; sleep?: Partial<SystemSettings["sleep"]> };
 
@@ -50,6 +51,20 @@ function sleepLine(e: SleepEntry): string {
   const rate = e.drain_ph != null ? ` · ${e.drain_ph.toFixed(1)} %/h` : e.ac ? " · charging" : "";
   return `${time(e.end)}: ${h}${pct}${rate}${e.powered_off ? " · powered off" : ""}`;
 }
+
+const PRESET_SHORT: Record<string, string> = { balanced: "Balanced", voice: "Voice", bass: "Bass", flat: "Flat" };
+
+/** Decoration while the EQ plays: a still sound wave. */
+const WAVE = [10, 22, 30, 18, 26, 12, 20, 30, 16, 8, 18, 24, 14, 6, 12, 20];
+const Wave: FC = () => (
+  <PanelSectionRow>
+    <div style={{ display: "flex", gap: 3, alignItems: "center", height: 34, padding: "2px 0" }}>
+      {WAVE.map((h, i) => (
+        <div key={i} style={{ width: 4, height: h, borderRadius: 2, background: "#f2f2f2" }} />
+      ))}
+    </div>
+  </PanelSectionRow>
+);
 
 export const SystemTab: FC = () => {
   const [st, setSt] = useState<SystemState | null>(null);
@@ -158,14 +173,12 @@ export const SystemTab: FC = () => {
             )}
             {settings.eq.enabled && (
               <>
-                <PanelSectionRow>
-                  <DropdownItem
-                    label="Sound"
-                    rgOptions={eq.presets.map((p) => ({ data: p.id, label: p.label }))}
-                    selectedOption={settings.eq.preset}
-                    onChange={(o) => void set({ eq: { preset: o.data as string } })}
-                  />
-                </PanelSectionRow>
+                {eq.state === "on" && <Wave />}
+                <Pills
+                  options={eq.presets.map((p) => ({ id: p.id, label: PRESET_SHORT[p.id] ?? p.label }))}
+                  value={settings.eq.preset}
+                  onChange={(id) => void set({ eq: { preset: id } })}
+                />
                 <PanelSectionRow>
                   <SliderField
                     label="Bass"
@@ -198,13 +211,28 @@ export const SystemTab: FC = () => {
       </PanelSection>
 
       <PanelSection title="Sleep">
-        <Info label="Battery used while asleep">
-          {sleep.last
-            ? `Last: ${sleepLine(sleep.last)}`
-            : "Measured from the next sleep on (sleeps shorter than a minute are not counted)."}
-          {sleep.average_ph != null &&
-            ` · Average ${sleep.average_ph.toFixed(1)} %/h over ${sleep.counted} sleep${sleep.counted === 1 ? "" : "s"}`}
-        </Info>
+        {sleep.last ? (
+          <Stats>
+            <Stat
+              label="Average"
+              value={sleep.average_ph != null ? sleep.average_ph.toFixed(1) : "–"}
+              unit="%/h"
+              size={34}
+              sub={`${sleep.counted} sleep${sleep.counted === 1 ? "" : "s"}`}
+            />
+            <Stat
+              label="Last sleep"
+              value={sleep.last.hours >= 1 ? sleep.last.hours.toFixed(1) : Math.round(sleep.last.hours * 60)}
+              unit={sleep.last.hours >= 1 ? "h" : "min"}
+              size={34}
+              sub={sleep.last.pct_before != null && sleep.last.pct_after != null
+                ? `${sleep.last.pct_before} → ${sleep.last.pct_after} %`
+                : undefined}
+            />
+          </Stats>
+        ) : (
+          <Info label="Battery used while asleep">Measured from the next sleep longer than a minute.</Info>
+        )}
 
         {!sleep.available ? (
           <Info label="Power-off after a long sleep is not available" warn>
@@ -261,11 +289,7 @@ export const SystemTab: FC = () => {
       <PanelSection title="Steam update check">
         {!steam ? (
           <Info label="Checking…" />
-        ) : steam.overall === "ok" ? (
-          <Info label="Everything works">
-            Steam build {steam.version ?? "?"}: every mod below is loaded. Checked {steam.checked_at}.
-          </Info>
-        ) : steam.overall === "idle" ? (
+        ) : steam.overall === "ok" ? null : steam.overall === "idle" ? (
           <Info label="Steam is not running" />
         ) : (
           <Info label="Something stopped working" warn>
@@ -276,11 +300,21 @@ export const SystemTab: FC = () => {
             that no longer loads needs its own update for this Steam build.
           </Info>
         )}
-        {steam?.overall !== "ok" && steam?.items.map((i) => (
-          <Info key={i.id} label={`${i.ok ? "✓" : "✗"} ${i.label}`} warn={!i.ok}>
-            {i.detail}
-          </Info>
-        ))}
+        {steam && steam.items.length > 0 && (
+          <PanelSectionRow>
+            <Field bottomSeparator="none" padding="none" childrenLayout="below" childrenContainerWidth="max">
+              <div className="dot-card" style={{ width: "100%" }}>
+                <div className="dot-label" style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span>Build {steam.version ?? "?"}</span>
+                  <span>{steam.checked_at}</span>
+                </div>
+                {steam.items.map((i) => (
+                  <Check key={i.id} ok={i.ok} label={i.label} detail={i.ok ? i.detail.split(" · ")[0] : i.detail} />
+                ))}
+              </div>
+            </Field>
+          </PanelSectionRow>
+        )}
         <PanelSectionRow>
           <ButtonItem layout="below" disabled={busy} onClick={() => void onCheck()}>
             {busy ? "Checking…" : "Check now"}

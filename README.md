@@ -31,9 +31,11 @@ cannot do says so, with the reason, instead of pretending.
 Saved settings are applied when SteamOS starts, after sleep, and when a
 controller reconnects, also while the menu is closed.
 
-The look is blue and white: the tabs are a row of icon tiles (the current one
-filled blue), each tab starts with its name over a blue line, and notes sit in
-soft boxes (amber when they warn).
+The look is the **Dot theme**: true black, white and grey with one red accent
+for what is on or needs a look. Tabs are a row of round outlined icons (the
+current one filled white), titles and big readings (battery, watts, frame rate,
+sleep drain) are in dot-matrix type, and notes sit in outlined cards. Frame
+Suite has the same look.
 
 ## Requirements
 
@@ -471,5 +473,8 @@ about the hardware:
   the Quick Access menu
 - [Legion Go 2 Companion](https://github.com/Rayekkk/LegionGo2Companion) –
   the module-overview layout
+- [Doto](https://github.com/oliverlalan/Doto) – the dot-matrix font, by the
+  Doto Project Authors (SIL Open Font License 1.1; a small Latin subset is
+  embedded in `src/dot.ts`)
 
 MIT licensed.

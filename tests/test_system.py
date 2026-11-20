@@ -272,6 +272,23 @@ class SteamChecks(unittest.TestCase):
         self.assertTrue(os.path.exists(c.cfg_path))
 
 
+class WattsHistory(unittest.TestCase):
+    def test_once_a_minute_and_none_while_charging(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        s = system.System(d, user=FakeUser(d))
+        readings = iter([{"watts": 11.44, "status": "Discharging"}, {"watts": 30.0, "status": "Charging"}])
+        system.battery_info = lambda: next(readings)
+        try:
+            s._sample_watts(0.0)
+            s._sample_watts(30.0)        # too soon: skipped
+            s._sample_watts(61.0)
+        finally:
+            import lgo_toolbox.battery as b
+            system.battery_info = b.battery_info
+        self.assertEqual(s.watts_history(), [11.4, None])
+
+
 class Settings(unittest.TestCase):
     def test_sanitize(self):
         s = system.sanitize({"eq": {"enabled": 1, "preset": "x", "bass": 99}, "sleep": {"hours": 5}})

@@ -97,7 +97,7 @@ const Meter: FC<{ label: string; value: number; active: boolean }> = ({
             bottom: 0,
             left: frac >= 0 ? "50%" : `${50 - width}%`,
             width: `${width}%`,
-            background: active ? "#3d9bff" : "rgba(255,255,255,0.3)",
+            background: active ? "#f2f2f2" : "rgba(255,255,255,0.3)",
           }}
         />
         <div
@@ -315,7 +315,7 @@ const ActivityBar: FC<{ gyro: [number, number, number]; active: boolean }> = ({ 
         overflow: "hidden",
       }}
     >
-      <div style={{ height: "100%", width: `${width}%`, background: "#3d9bff" }} />
+      <div style={{ height: "100%", width: `${width}%`, background: "#f2f2f2" }} />
     </div>
   );
 };
