@@ -11,7 +11,7 @@ import {
   restoreSettings,
 } from "../backend";
 import { replaceGyroSettings, replaceSettings, update, useStore } from "../store";
-import { ErrorRow, Fold, Info, modeLabel, PLUGIN_NAME, Unavailable } from "../ui";
+import { ErrorRow, Fold, Info, modeLabel, PLUGIN_NAME, Stat, Stats, Unavailable } from "../ui";
 import { hours } from "./Playtime";
 import { GuideSection, guideSeen } from "./Guide";
 import { UpdateBanner, UpdateRows, useUpdates } from "./Updates";
@@ -239,7 +239,7 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
       <ButtonItem
         layout="below"
         description={
-          problem ? <span style={{ color: "#ffb84d" }}>{problem}</span> : text
+          problem ? <span style={{ color: "#ff5a5f" }}>{problem}</span> : text
         }
         onClick={() => go(tab)}
       >
@@ -292,10 +292,13 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
       </PanelSection>
 
       <PanelSection title="Battery">
-        <Info label="Battery">
-          {batt.info
+        <Stats>
+          <Stat
+            label="Battery"
+            value={batt.info ? batt.info.percent : "–"}
+            unit="%"
+            sub={batt.info
             ? [
-                `${batt.info.percent}%`,
                 batt.info.status,
                 batt.info.watts != null && batt.info.watts >= 0.5
                   ? `${batt.info.watts.toFixed(1)} W`
@@ -309,7 +312,8 @@ export const HomeTab: FC<{ go: (tab: string) => void }> = ({ go }) => {
                 .filter(Boolean)
                 .join(" · ")
             : "No reading"}
-        </Info>
+          />
+        </Stats>
         {status.playtime?.app != null && status.playtime.on_battery && (status.playtime.goal || status.playtime.max_h != null) ? (
           <Info label="Playtime" warn={status.playtime.reachable === false}>
             {status.playtime.goal

@@ -155,7 +155,9 @@ class Plugin:
 
     async def get_status(self):
         hub = Plugin._hub()
-        return {"hub": await _bg(hub.status), "gyro": Plugin._gyro().get_status()}
+        st = await _bg(hub.status)
+        st["watts_history"] = Plugin._system().watts_history()
+        return {"hub": st, "gyro": Plugin._gyro().get_status()}
 
     async def update_settings(self, patch):
         return await _bg(Plugin._hub().update, patch)

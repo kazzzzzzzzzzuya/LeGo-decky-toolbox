@@ -6,6 +6,7 @@ import { MdScreenRotation } from "react-icons/md";
 import { GiToolbox } from "react-icons/gi";
 
 import { onResume, onSuspend, setRunningApp } from "./backend";
+import { DOT, dotCss } from "./dot";
 import { flushWrites, load, refreshStatus, useStore } from "./store";
 import { ControlsTab } from "./tabs/Controls";
 import { FanTab } from "./tabs/Fan";
@@ -17,12 +18,13 @@ import { PowerTab } from "./tabs/Power";
 import { SystemTab, watchSteamMods } from "./tabs/System";
 import { Fold, PLUGIN_NAME } from "./ui";
 
-// Blue and white, in the style of MAKO: the tabs are a row of icon tiles, the current one filled
-// blue; each tab starts with its name, centred over a blue and white line; notes sit in soft boxes.
-const BLUE = "#3d9bff";
+// Dot theme (see dot.ts): black, white and grey, one red accent; tabs are a row of round outlined
+// icons, the current one filled white; each tab starts with its name in dot-matrix type.
+const ROOT = ".lgo-toolbox-tabs";
 const TAB_STYLES = `
+  ${dotCss(ROOT)}
   .lgo-toolbox-tabs > div > div:first-child {
-    background: #0b1219;
+    background: #000;
     box-shadow: none;
     backdrop-filter: none;
   }
@@ -38,27 +40,27 @@ const TAB_STYLES = `
     flex-wrap: nowrap;
     justify-content: center;
     gap: 6px;
-    padding: 4px 6px;
+    padding: 4px 6px 8px;
   }
   .lgo-toolbox-tabs [role="tab"] {
     flex: 1 1 0;
     min-width: 0;
-    height: 34px;
+    height: 36px;
     box-sizing: border-box;
     padding-left: 4px !important;
     padding-right: 4px !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    border-radius: 9px !important;
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(61, 155, 255, 0.35) !important;
-    color: #f5f8fc !important;
+    border-radius: 18px !important;
+    background: transparent !important;
+    border: 1px solid ${DOT.line2} !important;
+    color: ${DOT.text} !important;
   }
   .lgo-toolbox-tabs [role="tab"] svg {
     display: block;
     margin: 0;
-    color: ${BLUE};
+    color: ${DOT.text};
   }
   /* Steam dims the tab row while focus is in the page below: keep it as it is. */
   .lgo-toolbox-tabs [role="tablist"],
@@ -67,61 +69,73 @@ const TAB_STYLES = `
     filter: none !important;
   }
   .lgo-toolbox-tabs .lgo-header {
-    text-align: center;
-    font-weight: 700;
-    font-size: 15px;
-    color: #f5f8fc;
-    padding: 8px 0 6px;
-    margin: 2px 0 6px;
-    border-bottom: 3px solid transparent;
-    border-image: linear-gradient(90deg, rgba(61,155,255,0.15), ${BLUE}, rgba(255,255,255,0.85), ${BLUE}, rgba(61,155,255,0.15)) 1;
+    font-family: "LgoDoto", monospace;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: ${DOT.text};
+    padding: 6px 4px 8px;
+    margin: 2px 0 4px;
   }
   .lgo-toolbox-tabs .lgo-info {
     box-sizing: border-box;
     width: 100%;
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid rgba(61, 155, 255, 0.30);
-    border-left: 3px solid ${BLUE};
-    background: rgba(61, 155, 255, 0.08);
+    padding: 9px 14px;
+    border-radius: 18px;
+    border: 1px solid ${DOT.line};
+    background: ${DOT.card};
     margin: 3px 0;
   }
   .lgo-toolbox-tabs .lgo-info.warn {
-    border-color: rgba(242, 193, 78, 0.45);
-    border-left-color: #f2c14e;
-    background: rgba(242, 193, 78, 0.08);
+    border-color: rgba(215, 25, 33, 0.55);
   }
   .lgo-toolbox-tabs .lgo-info-label {
     font-size: 14px;
     font-weight: 600;
-    color: #f5f8fc;
+    color: ${DOT.text};
+  }
+  .lgo-toolbox-tabs .lgo-info.warn .lgo-info-label::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: ${DOT.red};
+    margin-right: 7px;
+    vertical-align: middle;
   }
   .lgo-toolbox-tabs .lgo-info-text {
     font-size: 12px;
     line-height: 1.35;
-    color: #b8c4d2;
+    color: ${DOT.mute};
     margin-top: 2px;
     overflow-wrap: anywhere;
   }
+  .lgo-toolbox-tabs .lgo-fold .DialogButton {
+    border-style: dashed !important;
+    border-radius: 20px !important;
+    text-align: left;
+  }
 `;
 
-// The current tab, filled blue with a white icon (marked through its own title, whatever Steam's
+// The current tab, filled white with a black icon (marked through its own title, whatever Steam's
 // generated class names are, and through Steam's "Selected" class).
 const CURRENT_TAB_LOOK = `
-    background: ${BLUE} !important;
-    border-color: ${BLUE} !important;
-    box-shadow: 0 0 10px rgba(61, 155, 255, 0.45);
+    background: ${DOT.text} !important;
+    border-color: ${DOT.text} !important;
+    box-shadow: none;
     opacity: 1 !important;
     filter: none !important;
 `;
 const currentTabStyles = () => {
   let css = `.lgo-toolbox-tabs [role="tab"]:has(.lgo-tab-current) {${CURRENT_TAB_LOOK}}\n`;
-  css += `.lgo-toolbox-tabs .lgo-tab-current, .lgo-toolbox-tabs .lgo-tab-current svg { color: #ffffff !important; }\n`;
+  css += `.lgo-toolbox-tabs .lgo-tab-current, .lgo-toolbox-tabs .lgo-tab-current svg { color: #000 !important; }\n`;
   const selected = gamepadTabbedPageClasses?.Selected;
   const tab = gamepadTabbedPageClasses?.Tab;
   if (selected && tab) {
     css += `.lgo-toolbox-tabs .${tab}.${selected} {${CURRENT_TAB_LOOK}}\n`;
-    css += `.lgo-toolbox-tabs .${tab}.${selected} svg { color: #ffffff !important; }\n`;
+    css += `.lgo-toolbox-tabs .${tab}.${selected} svg { color: #000 !important; }\n`;
   }
   return css;
 };
@@ -276,8 +290,10 @@ export default definePlugin(() => {
     name: PLUGIN_NAME,
     titleView: (
       <div className={staticClasses.Title} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <GiToolbox style={{ color: BLUE }} />
-        {PLUGIN_NAME}
+        <span style={{ width: 8, height: 8, borderRadius: "50%", background: DOT.red, flex: "none" }} />
+        <span style={{ fontFamily: "LgoDoto, monospace", fontWeight: 900, letterSpacing: 1, textTransform: "uppercase" }}>
+          {PLUGIN_NAME}
+        </span>
       </div>
     ),
     alwaysRender: true,

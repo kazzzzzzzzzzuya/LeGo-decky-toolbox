@@ -59,11 +59,11 @@ const CurvePreview: FC<{ curve: number[]; temp: number | null }> = ({ curve, tem
   const points = curve.map((v, i) => `${x(TEMPS[i]).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
   return (
     <svg viewBox={`-2 -2 ${w + 4} ${h + 4}`} width="100%" height="84">
-      <rect x={0} y={0} width={w} height={h} fill="rgba(255,255,255,0.06)" rx={3} />
-      <polyline points={`0,${h} ${points} ${w},${h}`} fill="rgba(26,159,255,0.18)" stroke="none" />
+      <rect x={0} y={0} width={w} height={h} fill="#0f0f0f" stroke="#262626" rx={8} />
+      <polyline points={`0,${h} ${points} ${w},${h}`} fill="rgba(242,242,242,0.10)" stroke="none" />
       <polyline points={points} fill="none" stroke={ACCENT} strokeWidth={2} />
       {temp != null && temp >= 10 && temp <= 100 && (
-        <line x1={x(temp)} x2={x(temp)} y1={0} y2={h} stroke="#fff" strokeOpacity={0.6} strokeDasharray="3 3" />
+        <line x1={x(temp)} x2={x(temp)} y1={0} y2={h} stroke="#d71921" strokeDasharray="3 3" />
       )}
     </svg>
   );

@@ -145,6 +145,8 @@ export type Caps = Record<CapName, Capability> & {
 };
 
 export interface HubStatus {
+  /** Battery draw once a minute, oldest first (null while charging). */
+  watts_history?: (number | null)[];
   model: string;
   errors: Record<string, string>;
   app: { id: number | null; name: string };

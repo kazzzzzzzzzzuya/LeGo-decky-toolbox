@@ -3,7 +3,7 @@ import { FC } from "react";
 
 import { deletePowerProfile, PowerProfile } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
-import { ErrorRow, Fold, Info, modeLabel, Unavailable } from "../ui";
+import { Bars, ErrorRow, Fold, Info, modeLabel, Stat, Stats, Unavailable } from "../ui";
 import { SmoothSection } from "./Smooth";
 import { hours, PlaytimeSection } from "./Playtime";
 
@@ -82,8 +82,20 @@ export const PowerTab: FC = () => {
             onChange={(v) => update({ power: { enabled: v } })}
           />
         </PanelSectionRow>
+        {p.enabled ? (
+          <Stats>
+            <Stat label="TDP now" value={st.tdp ?? "–"} unit="W" size={44} />
+            <Stat
+              label="Frame rate"
+              value={st.auto.fps != null ? Math.round(st.auto.fps) : "–"}
+              unit="fps"
+              size={44}
+            />
+          </Stats>
+        ) : null}
         <Info label="Now">{nowLine()}</Info>
         <ErrorRow message={status.errors.power} />
+        <Bars label="Battery draw, last 10 min" unit=" W" values={status.watts_history ?? []} />
       </PanelSection>
 
       {p.enabled && (
