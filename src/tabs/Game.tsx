@@ -62,7 +62,8 @@ export const GameTab: FC<{ go: (tab: string) => void; updates: Updates | null }>
   const name = app.name || (appId != null ? `App ${appId}` : "");
   const batt = status.battery.info;
   const charging = batt ? batt.status !== "Discharging" : false;
-  const fps = status.power.auto.fps;
+  const before = status.fps_before_menu ?? null;
+  const fps = before ?? status.power.auto.fps;
   const watts = batt?.watts != null && !charging ? batt.watts : status.power.tdp;
   const mode = info?.mode ?? null;
 
@@ -93,7 +94,9 @@ export const GameTab: FC<{ go: (tab: string) => void; updates: Updates | null }>
               <div className="dot-label">{appId != null ? "Now playing" : "No game running"}</div>
               {appId != null && <div style={{ fontSize: 16, fontWeight: 600, marginTop: 3 }}>{name}</div>}
               <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                {appId != null && <Reading label="Frame rate" value={fps != null ? Math.round(fps) : "–"} unit="fps" />}
+                {appId != null && (
+                  <Reading label={before != null ? "Before menu" : "Frame rate"} value={fps != null ? Math.round(fps) : "–"} unit="fps" />
+                )}
                 <Reading label={charging ? "TDP" : "Power"} value={watts != null ? Math.round(watts) : "–"} unit="W" />
                 <Reading
                   label={charging ? "Battery" : "Left"}

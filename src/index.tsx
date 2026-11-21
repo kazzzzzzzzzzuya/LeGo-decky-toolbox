@@ -1,10 +1,10 @@
 import { Router, Tabs, gamepadTabbedPageClasses, staticClasses } from "@decky/ui";
-import { definePlugin } from "@decky/api";
+import { definePlugin, useQuickAccessVisible } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
 import { FaEllipsisH, FaGamepad, FaTabletAlt } from "react-icons/fa";
 import { GiToolbox } from "react-icons/gi";
 
-import { onResume, onSuspend, setRunningApp } from "./backend";
+import { menuState, onResume, onSuspend, setRunningApp } from "./backend";
 import { DOT, dotCss } from "./dot";
 import { flushWrites, load, refreshStatus, useStore } from "./store";
 import { DeviceTab } from "./tabs/Device";
@@ -184,6 +184,11 @@ const Content: FC = () => {
   const { state, error } = useStore();
   const [tab, setTab] = useState("Game");
   const [updates, checking, check] = useUpdates();
+  // The menu slows the game (MAKO pauses): the backend keeps the frame rate from just before it opened.
+  const visible = useQuickAccessVisible();
+  useEffect(() => {
+    void menuState(visible).catch(() => undefined);
+  }, [visible]);
 
   // The gyro bars (on a page under More) want quicker updates; everything else is fine at 1 Hz.
   useEffect(() => {

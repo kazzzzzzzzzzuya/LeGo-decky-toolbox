@@ -145,6 +145,8 @@ export type Caps = Record<CapName, Capability> & {
 };
 
 export interface HubStatus {
+  /** Frame rate from just before the panel opened (the menu slows MAKO and the game down). */
+  fps_before_menu?: number | null;
   /** Battery draw once a minute, oldest first (null while charging). */
   watts_history?: (number | null)[];
   model: string;
@@ -410,3 +412,4 @@ export interface ModeInfo {
 }
 export const setMode = callable<[appId: number, name: string, mode: ModeId | null], ModeInfo>("set_mode");
 export const modeInfo = callable<[appId: number | null], ModeInfo>("mode_info");
+export const menuState = callable<[open: boolean], void>("menu");
