@@ -1,9 +1,9 @@
-import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
+import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow, SliderField } from "@decky/ui";
 import { FC } from "react";
 
 import { deletePowerProfile, PowerProfile } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
-import { Bars, ErrorRow, Fold, Info, modeLabel, Stat, Stats, Unavailable } from "../ui";
+import { Bars, ErrorRow, Fold, Info, modeLabel, Stat, Stats, Toggle, Unavailable } from "../ui";
 import { SmoothSection } from "./Smooth";
 import { hours, PlaytimeSection } from "./Playtime";
 
@@ -76,7 +76,7 @@ export const PowerTab: FC<{ bare?: boolean }> = ({ bare }) => {
     <>
       <PanelSection title="Power">
         <PanelSectionRow>
-          <ToggleField
+          <Toggle
             label="Manage power"
             description="Sets the power limit (TDP) for you. Turn off Steam's own TDP limit in the Performance menu so the two do not fight."
             checked={p.enabled}
@@ -124,7 +124,7 @@ export const PowerTab: FC<{ bare?: boolean }> = ({ bare }) => {
                 />
               </PanelSectionRow>
               <PanelSectionRow>
-                <ToggleField
+                <Toggle
                   label="Auto TDP for a frame rate"
                   description={
                     caps.fps.available
@@ -221,7 +221,7 @@ export const PowerTab: FC<{ bare?: boolean }> = ({ bare }) => {
         <Fold id="power-more" title="More power settings" summary="Per-game profiles, CPU boost">
           <PanelSection>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Separate settings per game"
                 description={
                   !p.per_game
@@ -238,7 +238,7 @@ export const PowerTab: FC<{ bare?: boolean }> = ({ bare }) => {
             </PanelSectionRow>
             {boost != null && (
               <PanelSectionRow>
-                <ToggleField
+                <Toggle
                   label="CPU boost"
                   description="Off runs cooler and quieter and often costs few frames."
                   checked={boost}

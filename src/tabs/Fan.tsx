@@ -4,14 +4,12 @@ import {
   Field,
   PanelSection,
   PanelSectionRow,
-  SliderField,
-  ToggleField,
-} from "@decky/ui";
+  SliderField } from "@decky/ui";
 import { FC } from "react";
 
 import { deleteFanProfile, FanProfile } from "../backend";
 import { replaceSettings, update, useStore } from "../store";
-import { ACCENT, ErrorRow, Fold, Info, Unavailable } from "../ui";
+import { ACCENT, ErrorRow, Fold, Info, Toggle, Unavailable } from "../ui";
 
 const TEMPS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 // Lenovo's minimum curve for the Legion Go: nothing below it is accepted.
@@ -151,7 +149,7 @@ export const FanTab: FC = () => {
     <>
       <PanelSection title="Fan">
         <PanelSectionRow>
-          <ToggleField
+          <Toggle
             label="Custom fan curve"
             description="The firmware still controls the fan and its overheating protection; this only changes the curve it follows."
             checked={f.enabled}
@@ -184,7 +182,7 @@ export const FanTab: FC = () => {
             </Info>
           )}
           <PanelSectionRow>
-            <ToggleField
+            <Toggle
               label="Full speed"
               description="Runs the fan flat out, ignoring the curve. The plugin checks every few seconds and turns it back on if the firmware switches it off."
               checked={profile.full_speed}
@@ -245,7 +243,7 @@ export const FanTab: FC = () => {
         <Fold id="fan-more" title="More fan settings" summary="Per game, on charger, saved settings">
           <PanelSection>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Separate settings per game"
                 description="A game can have its own fan setting; others use the general one."
                 checked={f.per_game}
@@ -253,7 +251,7 @@ export const FanTab: FC = () => {
               />
             </PanelSectionRow>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Separate settings on charger"
                 description="One setting on battery and another while plugged in. Switches by itself when you plug in or unplug."
                 checked={f.per_power}

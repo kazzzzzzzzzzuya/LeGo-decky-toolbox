@@ -1,10 +1,10 @@
-import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
+import { ButtonItem, DropdownItem, PanelSection, PanelSectionRow } from "@decky/ui";
 import { toaster } from "@decky/api";
 import { FC, useRef, useState } from "react";
 
 import { PlaytimeStatus, restartPlaytime, setPlaytimeGoal } from "../backend";
 import { replaceSettings, useStore } from "../store";
-import { ErrorRow, Info, PLUGIN_NAME } from "../ui";
+import { ErrorRow, Info, PLUGIN_NAME, Toggle } from "../ui";
 
 const GOALS = [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 6, 7, 8];
 const LONGEST = 24;
@@ -195,7 +195,7 @@ export const PlaytimeSection: FC = () => {
                 />
               </PanelSectionRow>
               <PanelSectionRow>
-                <ToggleField
+                <Toggle
                   label="Frame generation for battery time"
                   description={fgDescription}
                   checked={goal.allow_fg}

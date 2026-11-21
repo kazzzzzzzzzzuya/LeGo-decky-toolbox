@@ -6,10 +6,8 @@ import {
   PanelSection,
   PanelSectionRow,
   showModal,
-  SliderField,
-  ToggleField,
-} from "@decky/ui";
-import { toaster, useQuickAccessVisible } from "@decky/api";
+  SliderField } from "@decky/ui";
+import { toaster } from "@decky/api";
 import { FC, useEffect, useRef, useState } from "react";
 
 import {
@@ -26,7 +24,8 @@ import {
   systemState,
   systemUpdate,
 } from "../backend";
-import { Check, Fold, Info, Pills, PLUGIN_NAME, Stat, Stats } from "../ui";
+import { usePanelVisible } from "../panel";
+import { Check, Fold, Info, Pills, PLUGIN_NAME, Stat, Stats, Toggle } from "../ui";
 
 type Patch = { eq?: Partial<SystemSettings["eq"]>; sleep?: Partial<SystemSettings["sleep"]> };
 
@@ -85,11 +84,11 @@ export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part 
       })
       .catch((e) => setError(String(e)));
   const loadSnaps = () => steamSnapshots().then(setSnaps).catch(() => undefined);
-  const visible = useQuickAccessVisible();
+  const visible = usePanelVisible();
   useEffect(() => {
-    if (!visible) return;
-    void refresh();
+    void refresh();                  // once on opening, even if visibility can't be told
     void loadSnaps();
+    if (!visible) return;
     const id = setInterval(() => void refresh(), 2000);
     return () => {
       clearInterval(id);
@@ -162,7 +161,7 @@ export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part 
         ) : (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Speaker EQ"
                 description={EQ_STATE[eq.state] ?? eq.state}
                 checked={settings.eq.enabled}
@@ -248,7 +247,7 @@ export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part 
         ) : (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Power off after a long sleep"
                 description="Still asleep after the hours below: it shuts down. Unsaved games are lost."
                 checked={settings.sleep.poweroff}
@@ -266,7 +265,7 @@ export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part 
                   />
                 </PanelSectionRow>
                 <PanelSectionRow>
-                  <ToggleField
+                  <Toggle
                     label="Only on battery"
                     description="Sleeping on the charger never powers off."
                     checked={settings.sleep.battery_only}
@@ -337,7 +336,7 @@ export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part 
       >
         <PanelSection>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Hold Steam client updates"
                 description={
                   hold?.foreign
