@@ -61,6 +61,7 @@ class Plugin:
             Plugin.system = System(decky.DECKY_PLUGIN_SETTINGS_DIR, logger=decky.logger, user=user)
             hub = Plugin._hub()
             Plugin.system.running_app = lambda: hub._app
+            Plugin.system.fps_now = lambda: hub.fps.get() if hub._app is not None else None
             hub.boost_requests = Plugin.system.boost_requests
             Plugin.system.start()
         return Plugin.system
@@ -160,6 +161,7 @@ class Plugin:
         hub = Plugin._hub()
         st = await _bg(hub.status)
         st["watts_history"] = Plugin._system().watts_history()
+        st["fps_before_menu"] = Plugin._system().fps_before_menu()
         return {"hub": st, "gyro": Plugin._gyro().get_status()}
 
     async def update_settings(self, patch):
@@ -244,6 +246,9 @@ class Plugin:
 
     async def system_update(self, patch):
         return await _bg(Plugin._system().update, patch)
+
+    async def menu(self, open_):
+        Plugin._system().set_menu(bool(open_))
 
     async def set_mode(self, app_id, name, mode):
         return await _bg(Plugin._system().set_mode, int(app_id), str(name or ""),

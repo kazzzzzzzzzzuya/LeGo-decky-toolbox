@@ -18,6 +18,8 @@ MODE_LEARN_KEEP = 60     # minutes of battery draw averaged per game and mode
 TICK_S = 2.0
 STEAM_CHECK_S = 60.0
 WATTS_EVERY_S = 60.0
+FPS_KEPT_S = 30.0         # frame-rate readings kept for "before the menu opened"
+FPS_BEFORE = (12.0, 1.5)  # ... averaged from this many seconds before opening up to this many
 WATTS_KEPT = 10          # the Power tab's "last 10 min"
 
 
@@ -86,6 +88,10 @@ class System(object):
         self._watts = collections.deque(maxlen=WATTS_KEPT)
         self._watts_at = None
         self.running_app = lambda: None          # main.py hands in the hub's running game
+        self.fps_now = lambda: None              # ... and its frame-rate reading
+        self._fps = collections.deque()          # (monotonic time, fps)
+        self._menu_open = False
+        self._fps_before = None
         self._learn_path = os.path.join(state_dir, "mode-watts.json")
         self._learn = self._load_learn()
 
@@ -136,6 +142,7 @@ class System(object):
                     if self.log:
                         self.log.exception("System %s step failed", name)
             self._sample_watts()
+            self._sample_fps()
             if time.monotonic() - self._steam_at >= STEAM_CHECK_S:
                 self.steam_check()
             self._stop.wait(TICK_S)
@@ -166,6 +173,37 @@ class System(object):
             n = min(n + 1, MODE_LEARN_KEEP)
             self._learn["watts"][key] = (round(avg + (w - avg) / n, 2), n)
             write_atomic(self._learn_path, json.dumps(self._learn))
+
+    # -- frame rate before the menu opened ------------------------------------------
+    # MAKO (and the Steam overlay) slow a game down while the Quick Access menu is open, so the
+    # Game tab shows the frame rate from just before it opened.
+    def _sample_fps(self, now=None):
+        now = time.monotonic() if now is None else now
+        if self._menu_open:
+            return
+        try:
+            fps = self.fps_now()
+        except Exception:
+            fps = None
+        if fps:
+            self._fps.append((now, float(fps)))
+        while self._fps and now - self._fps[0][0] > FPS_KEPT_S:
+            self._fps.popleft()
+
+    def set_menu(self, open_, now=None):
+        """The plugin's panel opened or closed."""
+        now = time.monotonic() if now is None else now
+        if open_ and not self._menu_open:
+            lo, hi = now - FPS_BEFORE[0], now - FPS_BEFORE[1]
+            vals = [f for t, f in self._fps if lo <= t <= hi]
+            self._fps_before = round(sum(vals) / len(vals)) if vals else None
+        elif not open_:
+            self._fps_before = None
+            self._fps.clear()           # what follows the menu is not "before" anything
+        self._menu_open = bool(open_)
+
+    def fps_before_menu(self):
+        return self._fps_before if self._menu_open else None
 
     def _load_learn(self):
         try:

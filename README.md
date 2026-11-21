@@ -108,7 +108,9 @@ The choice is remembered per game and applied by setting that game's own
 power profile, frame cap (in its launch options: restart the game once) and
 fan curve; Smoothest asks Frame Suite to turn its Boost on, which starts with
 the game's next start. The hours shown per mode are learned while the game
-runs in that mode on battery. Anything changed under **More** overrides the
+runs in that mode on battery. The frame rate on the Game tab is the one from
+just **before you opened the menu** ("Before menu"): the open menu slows the
+game down and pauses MAKO's frame generation. Anything changed under **More** overrides the
 mode for that game. Without a mode a game runs exactly as before.
 
 ### The Device and More tabs

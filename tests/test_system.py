@@ -336,6 +336,25 @@ class BoostRequestFile(unittest.TestCase):
         self.assertEqual(data["games"]["7"], {"standby": True, "multiplier": 2})
 
 
+class FpsBeforeMenu(unittest.TestCase):
+    def test_the_rate_before_the_menu_opened(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        s = system.System(d, user=FakeUser(d))
+        rates = {"v": 72.0}
+        s.fps_now = lambda: rates["v"]
+        for t in range(0, 20, 2):
+            s._sample_fps(float(t))
+        rates["v"] = 30.0                       # the menu opening slows it down at once
+        s._sample_fps(20.0)
+        s.set_menu(True, now=20.5)
+        self.assertEqual(s.fps_before_menu(), 72)
+        s._sample_fps(22.0)                     # not sampled while open
+        self.assertEqual(s.fps_before_menu(), 72)
+        s.set_menu(False, now=30.0)
+        self.assertIsNone(s.fps_before_menu())
+
+
 class Settings(unittest.TestCase):
     def test_sanitize(self):
         s = system.sanitize({"eq": {"enabled": 1, "preset": "x", "bass": 99}, "sleep": {"hours": 5}})
