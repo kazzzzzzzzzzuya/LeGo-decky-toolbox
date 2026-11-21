@@ -1,6 +1,9 @@
 import { ButtonItem, DialogButton, Field, Focusable, PanelSection, PanelSectionRow } from "@decky/ui";
-import { FC, ReactNode, useState } from "react";
+import { FC, ReactNode, useRef, useState } from "react";
 import { FaChevronLeft } from "react-icons/fa";
+import { useQuickAccessVisible } from "@decky/api";
+
+import { panel } from "./panel";
 
 import type { Capability } from "./backend";
 
@@ -265,32 +268,47 @@ export const Check: FC<{ ok: boolean; label: string; detail?: string }> = ({ ok,
   </div>
 );
 
+/** One action per press: a Field calls onActivate for A and also for a tap (it takes a MouseEvent),
+ *  and onClick for the tap as well, so a tap would otherwise act twice. */
+function useOnce(fn: () => void): () => void {
+  const last = useRef(0);
+  return () => {
+    const now = Date.now();
+    if (now - last.current < 400) return;
+    last.current = now;
+    fn();
+  };
+}
+
 /** A row that opens a page: name, a line of what is set now, and a chevron. */
 export const NavRow: FC<{ label: ReactNode; sub?: ReactNode; warn?: boolean; onClick: () => void }> = ({
   label,
   sub,
   warn,
   onClick,
-}) => (
-  <PanelSectionRow>
-    <Field
-      label={
-        <span>
-          {warn && <span className="dot-reddot" />}
-          {label}
-        </span>
-      }
-      description={sub}
-      onActivate={onClick}
-      onClick={onClick}
-      highlightOnFocus
-      focusable
-      bottomSeparator="none"
-    >
-      <span style={{ color: "#8a8a8a", fontSize: 18 }}>›</span>
-    </Field>
-  </PanelSectionRow>
-);
+}) => {
+  const open = useOnce(onClick);
+  return (
+    <PanelSectionRow>
+      <Field
+        label={
+          <span>
+            {warn && <span className="dot-reddot" />}
+            {label}
+          </span>
+        }
+        description={sub}
+        onActivate={open}
+        onClick={open}
+        highlightOnFocus
+        focusable
+        bottomSeparator="none"
+      >
+        <span style={{ color: "#8a8a8a", fontSize: 18 }}>›</span>
+      </Field>
+    </PanelSectionRow>
+  );
+};
 
 /** A small grey group title over rows. */
 export const Group: FC<{ children: ReactNode }> = ({ children }) => (
@@ -299,12 +317,28 @@ export const Group: FC<{ children: ReactNode }> = ({ children }) => (
   </div>
 );
 
-/** A page inside a tab: B or the back row returns to the tab's list. */
-export const SubPage: FC<{ title: string; back: () => void; children: ReactNode }> = ({ title, back, children }) => (
+/** A page inside a tab: B or the back row returns to the tab's list.
+ *  In Decky's own tab B never closes the menu: straight back. In a QuickTab tab B may also close the whole
+ *  menu, and removing the page that holds the focus while Steam closes the menu leaves the menu stuck on
+ *  screen (found in Frame Suite): go back a moment later, and only if the panel is still on screen. */
+export const SubPage: FC<{ title: string; back: () => void; children: ReactNode }> = ({ title, back, children }) => {
+  const decky = useQuickAccessVisible();
+  const deckyRef = useRef(decky);
+  deckyRef.current = decky;
+  const backSoon = () => {
+    if (deckyRef.current) {
+      back();
+      return;
+    }
+    window.setTimeout(() => {
+      if (panel.shown()) back();
+    }, 350);
+  };
+  return (
   <Focusable
     onCancelButton={(e: { stopPropagation?: () => void }) => {
       e?.stopPropagation?.();
-      back();
+      backSoon();
     }}
     onCancelActionDescription="Back"
   >
@@ -319,7 +353,8 @@ export const SubPage: FC<{ title: string; back: () => void; children: ReactNode 
     </PanelSection>
     {children}
   </Focusable>
-);
+  );
+};
 
 /** A switch row drawn by the theme (Steam's own toggle ignores restyling on some clients and
  *  stayed blue). Same props as Decky's ToggleField: A or a tap flips it. */
@@ -330,9 +365,9 @@ export const Toggle: FC<{
   disabled?: boolean;
   onChange: (v: boolean) => void;
 }> = ({ label, description, checked, disabled, onChange }) => {
-  const flip = () => {
+  const flip = useOnce(() => {
     if (!disabled) onChange(!checked);
-  };
+  });
   return (
     <Field label={label} description={description} focusable highlightOnFocus onActivate={flip} onClick={flip}>
       <span className={`dot-switch${checked ? " on" : ""}${disabled ? " disabled" : ""}`} role="switch" aria-checked={checked} />
