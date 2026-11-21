@@ -739,7 +739,8 @@ class CloudSaves(object):
             c = {"checked_at": cloud.get("checked_at"), "present": cloud.get("present"),
                  "matched": cloud.get("matched"), "compared": cloud.get("compared"),
                  "missing": cloud.get("missing") or [], "missing_count": cloud.get("missing_count") or 0,
-                 "newest": cloud.get("newest"), "error": cloud.get("error"), "stale": not fresh}
+                 "newest": cloud.get("newest"), "files": cloud.get("files"), "error": cloud.get("error"),
+                 "stale": not fresh}
 
         level, problem, key = "ok", None, None
         synced_here = bool(rec and rec["files"]) or bool(up and up["result"] == "ok")

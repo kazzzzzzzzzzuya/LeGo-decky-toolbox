@@ -435,6 +435,8 @@ export interface CloudGame {
     missing: string[];
     missing_count: number;
     newest: number | null;
+    /** Files of this game in the cloud. */
+    files?: number | null;
     error: string | null;
     /** The saves changed here after this check: a new one follows. */
     stale: boolean;

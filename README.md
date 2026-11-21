@@ -342,7 +342,10 @@ SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
 
 **Cloud saves.** Device → Cloud saves lists every game
 whose saves go to the cloud, each with a white tick when all is well and a red
-**!** with the reason when not. Select a game for its details. It has two
+**!** with the reason when not. Games with saves come first (problems on top, then
+names A–Z, then App numbers), each tagged with where its save is: *This
+device + Google Drive*, *This device only* or *Google Drive only*. Games with
+nothing synced yet sit under **No saves yet**. Select a game for its details. It has two
 parts, one tool per game:
 
 - **Steam games · CloudRedirect.** The games in SLSsteam's `AdditionalApps`,
