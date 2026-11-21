@@ -1,9 +1,9 @@
-import { DropdownItem, PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
+import { DropdownItem, PanelSection, PanelSectionRow } from "@decky/ui";
 import { FC } from "react";
 
 import type { RemapButton } from "../backend";
 import { update, useStore } from "../store";
-import { ErrorRow, Unavailable } from "../ui";
+import { ErrorRow, Toggle, Unavailable } from "../ui";
 
 const BUTTONS: { key: RemapButton; label: string }[] = [
   { key: "Y1", label: "Y1 (left back, upper)" },
@@ -66,7 +66,7 @@ export const ControlsTab: FC = () => {
         ) : (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Swap menu buttons"
                 description={(() => {
                   const l = LAYOUTS.find((x) => x.data === c.swap_layout) ?? LAYOUTS[1];
@@ -100,7 +100,7 @@ export const ControlsTab: FC = () => {
         ) : (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Remap back buttons"
                 description="Stored in the controllers themselves. Steam still sees the back buttons too, so leave them unassigned in Steam Input for a game where you use this."
                 checked={c.remap_managed}
@@ -119,7 +119,7 @@ export const ControlsTab: FC = () => {
                 </PanelSectionRow>
               ))}
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Touchpad"
                 description="The touchpad on the right controller."
                 checked={c.touchpad ?? true}

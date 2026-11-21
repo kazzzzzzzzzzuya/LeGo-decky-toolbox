@@ -62,6 +62,13 @@ ${root} [class*="_SliderHandle_"] { background: ${text} !important; box-shadow: 
 ${root} [class*="_FieldDescription_"] { color: ${mute} !important; }
 ${root} .dot-red { color: ${red}; }
 ${root} .DialogButton.dot-pill.on { background: ${red} !important; border-color: ${red} !important; color: #fff !important; }
+${root} .dot-switch { display: inline-block; position: relative; width: 44px; height: 24px; flex: none;
+  box-sizing: border-box; border-radius: 12px; border: 1.5px solid ${line2}; background: transparent; }
+${root} .dot-switch::after { content: ""; position: absolute; top: 3.5px; left: 4px; width: 14px; height: 14px;
+  border-radius: 50%; background: #5a5a5a; transition: left .12s ease; }
+${root} .dot-switch.on { background: ${text}; border-color: ${text}; }
+${root} .dot-switch.on::after { left: 23px; background: #000; }
+${root} .dot-switch.disabled { opacity: .4; }
 ${root} .dot-reddot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${red}; margin-right: 6px; vertical-align: middle; }
 `;
 }
