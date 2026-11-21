@@ -279,6 +279,42 @@ class Plugin:
         await _bg(system.steam_check)
         return out
 
+    # ---- Cloud saves: CloudRedirect (Steam games), OpenSave (non-Steam) ----
+
+    async def cloud_saves(self, auto=False):
+        """The page's state. auto: ask the cloud again when the last answer is old."""
+        system = Plugin._system()
+        st = await _bg(system.cloud.state, bool(auto))
+        apps = await _bg(system.cloud.steam_apps)
+        st["opensave"] = await _bg(system.cloud.opensave.state, apps)
+        return st
+
+    async def cloud_saves_summary(self):
+        """One line's worth for the Device tab (CloudRedirect only, no cloud or OpenSave calls)."""
+        st = await _bg(Plugin._system().cloud.state, False)
+        return {"installed": st["installed"], "provider_label": st["provider_label"],
+                "games": st["summary"]["games"], "problems": st["summary"]["problems"] + len(st["problems"])}
+
+    async def cloud_saves_check(self):
+        system = Plugin._system()
+        started = await _bg(system.cloud.start_check)
+        return {"started": started, "checking": system.cloud.checking()}
+
+    async def cloud_saves_alerts(self):
+        return await _bg(Plugin._system().cloud.alerts)
+
+    async def opensave_start(self):
+        return await _bg(Plugin._system().cloud.opensave.start)
+
+    async def opensave_sync(self, game_id):
+        return await _bg(Plugin._system().cloud.opensave.sync, str(game_id))
+
+    async def opensave_backup(self, game_id):
+        return await _bg(Plugin._system().cloud.opensave.backup, str(game_id))
+
+    async def opensave_untrack(self, game_id):
+        return await _bg(Plugin._system().cloud.opensave.untrack, str(game_id))
+
     async def sleep_clear(self):
         system = Plugin._system()
         await _bg(system.sleep.clear)

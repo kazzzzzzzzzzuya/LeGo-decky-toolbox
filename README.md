@@ -22,8 +22,8 @@ every feature that your system cannot do says so, with the reason.
 | Tab | What it holds |
 |---|---|
 | **Game** | What is happening now in plain words (frame rate, watts, hours left), a red alert only when something broke, and **one choice per game**: *Longest battery*, *Balanced* or *Smoothest*. Each sets the game's power, frame cap, fan and frame generation together, shows the hours it gives (learned per game) and is remembered |
-| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), buttons, lights, gyro in Steam games, and whether your Steam mods (SLSsteam, CloudRedirect, ASSella / Uran) still work |
-| **More** | Every detailed control, nothing removed: power and TDP (Auto TDP), frame rate cap, battery goal, fan curve, gyro for emulators (DSU), Steam mods and backups, backup / updates / about. A change here overrides the game's mode for that game |
+| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), buttons, lights, gyro (Steam games and emulators on one page), and **Cloud saves**: per game, whether its save reached the cloud |
+| **More** | Every detailed control, nothing removed: power and TDP (Auto TDP), frame rate cap, battery goal, fan curve, Steam mods (SLSsteam, CloudRedirect, ASSella / Uran) and backups, backup / updates / about. A change here overrides the game's mode for that game |
 
 Saved settings are applied when SteamOS starts, after sleep, and when a
 controller reconnects, also while the menu is closed.
@@ -52,6 +52,7 @@ Suite has the same look.
 | Auto TDP | The above, in Gaming Mode (the frame rate comes from gamescope) |
 | Swapped menu buttons, gyro in Steam games | InputPlumber is running (it is on SteamOS) |
 | **Fan curve** | **The `acpi_call` kernel module. SteamOS does not include it; More → Fan curve installs it** |
+| Cloud saves | [CloudRedirect](https://github.com/crghofficial/cloudredirect) for Steam games, [OpenSave](https://github.com/Liquid-co/OpenSave) for emulators and non-Steam games (either one is enough) |
 
 **About the fan curve.** The Legion Go only accepts a fan table through a
 Lenovo firmware call, and Linux can only make that call with the `acpi_call`
@@ -311,7 +312,7 @@ controller.
 
 Press **Calibrate** once and leave the controllers alone for a few seconds.
 
-### Device: sound, sleep, Steam mods
+### Device: sound, sleep, Steam mods, cloud saves
 
 **Speaker EQ.** SteamOS plays the speakers without the processing Windows
 gives them. The EQ sits in front of the built-in speakers only: headphones,
@@ -338,6 +339,35 @@ Their settings files are backed up whenever everything works (last 8 kept)
 and can be restored from the tab. **Hold Steam client updates** writes Valve's
 `steam.cfg` switch so the client stays on its build until your mods catch up;
 SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
+
+**Cloud saves.** Device → Cloud saves lists every game
+whose saves go to the cloud, each with a white tick when all is well and a red
+**!** with the reason when not. Select a game for its details. It has two
+parts, one tool per game:
+
+- **Steam games · CloudRedirect.** The games in SLSsteam's `AdditionalApps`,
+  read the way CloudRedirect reads them, so an entry it would skip (a number
+  in quotes, a list written on one line) is named. Per game: when its saves
+  last synced and how many files, whether the last upload finished, and
+  whether those files are in your cloud (Google Drive, OneDrive, R2, S3).
+  Above the list: CloudRedirect not loaded in Steam (also a 32-bit build in a
+  64-bit Steam), signed out, connection failures since Steam started.
+  It reads CloudRedirect's log and its record of each game's files; the cloud
+  is asked through CloudRedirect's own read-only listing commands, run as you,
+  when you press **Check the cloud now**, when the page opens and the last
+  check is older than half an hour, and once a minute and a half after a game
+  synced. Nothing is changed in the cloud or on the device. A notification
+  says so once when a game's upload failed or its files are not in the cloud.
+- **Other games · OpenSave.** Emulators and non-Steam games tracked in
+  OpenSave (install its Flatpak in Desktop Mode and set it up there): when
+  each was last saved and synced, and problems (two devices changed a save,
+  save folder missing). **Start OpenSave** starts its background service;
+  per game, **Back up now** uploads to OpenSave's cloud (nothing on the
+  device changes) and **Sync with my other devices** asks first, because a
+  newer save from another device replaces the one here (OpenSave keeps the
+  earlier version). Steam games are never synced or backed up from here: one
+  that OpenSave tracks too is named, with a button to stop tracking it in
+  OpenSave (its files and snapshots stay).
 
 ## With frame generation and upscalers
 
@@ -418,11 +448,15 @@ SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
   controllers by pressing a button.
 - **Menu buttons swap back** – InputPlumber restarted; the plugin re-applies
   the swap within a few seconds.
+- **Cloud saves says "Not in the cloud" or a file is missing** – open the
+  game once, save and close it, then **Check the cloud now**. If it stays,
+  CloudRedirect's log (`~/.config/CloudRedirect/cloud_redirect.log`) has the
+  details; the line above the list names connection failures.
 - Logs: `~/homebrew/logs/Legion Go Toolbox/`.
 
 ## Scope and limits
 
-- Used on a Legion Go (83E1), and verified with simulated hardware (161
+- Used on a Legion Go (83E1), and verified with simulated hardware (232
   automated tests). Every module reads the device state back after a change
   and reports it when a change did not take.
 - Legion Go 2 and Legion Go S are recognised for the parts that are known to
@@ -444,6 +478,8 @@ py_modules/lgo_toolbox/
   battery.py                charge limit
   controller.py             stick lights, remapping, touchpad
   plumber.py                swapped menu buttons (InputPlumber)
+  steam_check.py            Steam mods still loaded after a Steam update
+  cloud_saves.py            cloud saves per game (CloudRedirect, OpenSave)
 src/                        the tabs (React)
 tests/                      backend tests with simulated hardware
 ```
@@ -494,6 +530,10 @@ about the hardware:
   of reading frame times from gamescope's control interface
 - [decky-lsfg-vk](https://github.com/xXJSONDeruloXx/decky-lsfg-vk) – tabs in
   the Quick Access menu
+- [CloudRedirect](https://github.com/crghofficial/cloudredirect) and
+  [OpenSave](https://github.com/Liquid-co/OpenSave) – the cloud-save tools
+  the Cloud saves page reports on (their log, files, command line and local
+  API)
 - [Legion Go 2 Companion](https://github.com/Rayekkk/LegionGo2Companion) –
   the module-overview layout
 - [Doto](https://github.com/oliverlalan/Doto) – the dot-matrix font, by the

@@ -53,7 +53,7 @@ export const AboutSection: FC<{ updates: Updates | null; checking: boolean; chec
       }
       if (out.settings) replaceSettings(out.settings);
       if (out.gyro) replaceGyroSettings(out.gyro);
-      setNote("Settings restored. Calibrate the gyro once (More → Gyro for emulators).");
+      setNote("Settings restored. Calibrate the gyro once (Device → Gyro → Emulators).");
     } catch (e) {
       setNote(`Restore failed: ${e}`);
     }

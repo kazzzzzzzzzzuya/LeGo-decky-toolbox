@@ -2,23 +2,25 @@ import { DropdownItem, PanelSection, PanelSectionRow } from "@decky/ui";
 import { toaster } from "@decky/api";
 import { FC, useEffect, useState } from "react";
 
-import { SystemState, systemState, systemUpdate } from "../backend";
+import { cloudSavesSummary, SystemState, systemState, systemUpdate } from "../backend";
 import { usePanelVisible } from "../panel";
 import { update, useStore } from "../store";
-import { ErrorRow, Group, NavRow, PLUGIN_NAME, SubPage, Toggle } from "../ui";
+import { ErrorRow, Group, NavRow, Pills, PLUGIN_NAME, SubPage, Toggle } from "../ui";
+import { CloudSavesPage } from "./CloudSaves";
 import { ControlsTab, LAYOUTS } from "./Controls";
 import { LightsTab } from "./Lights";
+import { GyroTab } from "./Gyro";
 import { SteamGyroSection } from "./SteamGyro";
 import { SystemTab } from "./System";
 
-type Page = "buttons" | "lights" | "gyro" | "sound" | "sleep" | "steam";
+type Page = "buttons" | "lights" | "gyro" | "sound" | "sleep" | "saves";
 const TITLES: Record<Page, string> = {
   buttons: "Buttons",
   lights: "Lights",
-  gyro: "Gyro in Steam games",
+  gyro: "Gyro",
   sound: "Sound",
   sleep: "Sleep",
-  steam: "Steam mods",
+  saves: "Cloud saves",
 };
 
 /** Set-once settings of the device, grouped; each group's details on a page of its own. */
@@ -26,7 +28,22 @@ export const DeviceTab: FC = () => {
   const { state } = useStore();
   const [page, setPage] = useState<Page | null>(null);
   const [sys, setSys] = useState<SystemState | null>(null);
+  const [saves, setSaves] = useState<Awaited<ReturnType<typeof cloudSavesSummary>> | null>(null);
   const visible = usePanelVisible();
+  useEffect(() => {
+    if (page) return;
+    let alive = true;
+    const load = () =>
+      cloudSavesSummary()
+        .then((s) => alive && setSaves(s))
+        .catch(() => undefined);
+    load();
+    const id = visible ? setInterval(load, 15000) : undefined;
+    return () => {
+      alive = false;
+      if (id) clearInterval(id);
+    };
+  }, [page, visible]);
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -51,10 +68,10 @@ export const DeviceTab: FC = () => {
       <SubPage title={TITLES[page]} back={back}>
         {page === "buttons" && <ControlsTab />}
         {page === "lights" && <LightsTab />}
-        {page === "gyro" && <SteamGyroSection />}
+        {page === "gyro" && <GyroPage />}
         {page === "sound" && <SystemTab part="speakers" />}
         {page === "sleep" && <SystemTab part="sleep" />}
-        {page === "steam" && <SystemTab part="steam" />}
+        {page === "saves" && <CloudSavesPage />}
       </SubPage>
     );
   }
@@ -67,9 +84,6 @@ export const DeviceTab: FC = () => {
   const c = settings.controls;
   const layout = LAYOUTS.find((l) => l.data === c.swap_layout);
   const sticks = settings.lighting.sticks;
-  const steam = sys?.steam;
-  const failing = steam?.items.filter((i) => !i.ok && i.id !== "steam") ?? [];
-  const mods = steam?.items.filter((i) => i.id !== "steam") ?? [];
   const sleep = sys?.sleep;
 
   return (
@@ -159,32 +173,44 @@ export const DeviceTab: FC = () => {
         />
         <NavRow
           label="Gyro"
-          sub={c.steam_controller !== "xbox" ? "On in Steam games" : "Off in Steam games"}
+          sub={`Steam games: ${c.steam_controller !== "xbox" ? "on" : "off"} · emulators: ${state.gyro.settings.enabled ? "on" : "off"}`}
           onClick={() => setPage("gyro")}
         />
       </PanelSection>
 
-      <Group>Steam mods</Group>
+      <Group>Saves</Group>
       <PanelSection>
         <NavRow
-          warn={failing.length > 0}
-          label={
-            !steam || steam.overall === "idle" || mods.length === 0
-              ? "Steam mods"
-              : failing.length
-                ? `${mods.length - failing.length} of ${mods.length} working`
-                : "All working"
-          }
+          warn={!!saves?.problems}
+          label="Cloud saves"
           sub={
-            failing.length
-              ? `${failing.map((i) => i.label).join(", ")} needs a look`
-              : mods.length
-                ? mods.map((i) => i.label).join(" · ")
-                : "SLSsteam, CloudRedirect, ASSella / Uran"
+            saves?.installed
+              ? saves.problems
+                ? `${saves.problems} ${saves.problems === 1 ? "thing needs" : "things need"} a look`
+                : `${saves.games} ${saves.games === 1 ? "game" : "games"} in ${saves.provider_label ?? "no cloud yet"} · other games with OpenSave`
+              : "Steam games (CloudRedirect), other games (OpenSave)"
           }
-          onClick={() => setPage("steam")}
+          onClick={() => setPage("saves")}
         />
       </PanelSection>
+    </>
+  );
+};
+
+/** Device → Gyro: Steam games and emulators on one page, picked at the top. */
+const GyroPage: FC = () => {
+  const [which, setWhich] = useState<"steam" | "emu">("steam");
+  return (
+    <>
+      <Pills
+        options={[
+          { id: "steam", label: "Steam games" },
+          { id: "emu", label: "Emulators" },
+        ]}
+        value={which}
+        onChange={setWhich}
+      />
+      {which === "steam" ? <SteamGyroSection /> : <GyroTab />}
     </>
   );
 };

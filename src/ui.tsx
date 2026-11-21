@@ -270,7 +270,7 @@ export const Check: FC<{ ok: boolean; label: string; detail?: string }> = ({ ok,
 
 /** One action per press: a Field calls onActivate for A and also for a tap (it takes a MouseEvent),
  *  and onClick for the tap as well, so a tap would otherwise act twice. */
-function useOnce(fn: () => void): () => void {
+export function useOnce(fn: () => void): () => void {
   const last = useRef(0);
   return () => {
     const now = Date.now();

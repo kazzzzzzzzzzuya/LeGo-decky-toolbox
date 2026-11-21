@@ -1,5 +1,5 @@
-"""The System tab: Speaker EQ, Sleep guard and the Steam update check, with
-their own settings file (system.json) and one background thread."""
+"""The System tab: Speaker EQ, Sleep guard, the Steam update check and Cloud
+saves, with their own settings file (system.json) and one background thread."""
 
 import collections
 import copy
@@ -10,6 +10,7 @@ import time
 
 from . import speaker_eq, sleep_guard
 from .battery import battery_info
+from .cloud_saves import CloudSaves
 from .steam_check import SteamCheck
 from .useros import User, write_atomic
 
@@ -81,6 +82,7 @@ class System(object):
         self.eq = speaker_eq.SpeakerEq(self.user, os.path.join(state_dir, "speaker-eq.log"), logger)
         self.sleep = sleep_guard.SleepGuard(os.path.join(state_dir, "sleep.json"), battery_info, logger=logger)
         self.steam = SteamCheck(self.user, state_dir, logger)
+        self.cloud = CloudSaves(self.user, state_dir, self.steam, logger)
         self._steam_result = None
         self._steam_at = 0.0
         self._stop = threading.Event()
@@ -135,7 +137,8 @@ class System(object):
         while not self._stop.is_set():
             conf = self.get_settings()
             for name, fn in (("eq", lambda: self.eq.tick(conf["eq"])),
-                             ("sleep", lambda: self.sleep.tick(conf["sleep"]))):
+                             ("sleep", lambda: self.sleep.tick(conf["sleep"])),
+                             ("cloud saves", self.cloud.tick)):
                 try:
                     fn()
                 except Exception:
