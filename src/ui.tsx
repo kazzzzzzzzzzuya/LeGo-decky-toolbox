@@ -1,5 +1,6 @@
 import { ButtonItem, DialogButton, Field, Focusable, PanelSection, PanelSectionRow } from "@decky/ui";
 import { FC, ReactNode, useState } from "react";
+import { FaChevronLeft } from "react-icons/fa";
 
 import type { Capability } from "./backend";
 
@@ -262,4 +263,60 @@ export const Check: FC<{ ok: boolean; label: string; detail?: string }> = ({ ok,
       {detail && <div style={{ fontSize: 11.5, color: ok ? "#8a8a8a" : "#ff5a5f", overflowWrap: "anywhere" }}>{detail}</div>}
     </span>
   </div>
+);
+
+/** A row that opens a page: name, a line of what is set now, and a chevron. */
+export const NavRow: FC<{ label: ReactNode; sub?: ReactNode; warn?: boolean; onClick: () => void }> = ({
+  label,
+  sub,
+  warn,
+  onClick,
+}) => (
+  <PanelSectionRow>
+    <Field
+      label={
+        <span>
+          {warn && <span className="dot-reddot" />}
+          {label}
+        </span>
+      }
+      description={sub}
+      onActivate={onClick}
+      onClick={onClick}
+      highlightOnFocus
+      focusable
+      bottomSeparator="none"
+    >
+      <span style={{ color: "#8a8a8a", fontSize: 18 }}>›</span>
+    </Field>
+  </PanelSectionRow>
+);
+
+/** A small grey group title over rows. */
+export const Group: FC<{ children: ReactNode }> = ({ children }) => (
+  <div className="dot-label" style={{ margin: "12px 4px 4px" }}>
+    {children}
+  </div>
+);
+
+/** A page inside a tab: B or the back row returns to the tab's list. */
+export const SubPage: FC<{ title: string; back: () => void; children: ReactNode }> = ({ title, back, children }) => (
+  <Focusable
+    onCancelButton={(e: { stopPropagation?: () => void }) => {
+      e?.stopPropagation?.();
+      back();
+    }}
+    onCancelActionDescription="Back"
+  >
+    <PanelSection>
+      <PanelSectionRow>
+        <ButtonItem layout="below" onClick={back}>
+          <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <FaChevronLeft size={12} /> {title}
+          </span>
+        </ButtonItem>
+      </PanelSectionRow>
+    </PanelSection>
+    {children}
+  </Focusable>
 );

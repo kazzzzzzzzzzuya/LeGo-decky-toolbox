@@ -298,6 +298,15 @@ class HubPlaytime(TempDirCase):
         self.drive(10, t)
         self.assertIsNone(self.hub._pt_ceiling)
         self.assertEqual(self.requests[-1], {})
+
+    def test_smoothest_games_ask_frame_suite_to_boost(self):
+        self.hub.boost_requests = lambda: {"9": "Elden Ring"}
+        self.drive(2)
+        self.assertEqual(self.requests[-1], {"9": {"standby": False, "multiplier": None,
+                                                   "boost": True, "name": "Elden Ring"}})
+        self.hub.boost_requests = lambda: {}
+        self.drive(2, 2)
+        self.assertEqual(self.requests[-1], {})
         self.assertEqual(self.lsfg_mult.get(7, 1), 1)
         self.assertEqual(self.hub.smooth_for()["fps"], 60)
         self.assertEqual(self.limits.value, 15)

@@ -2,25 +2,13 @@ import { ButtonItem, DropdownItem, Field, PanelSection, PanelSectionRow } from "
 import { toaster } from "@decky/api";
 import { FC, useEffect, useRef, useState } from "react";
 
-import { setSmoothGame, smoothPlan } from "../backend";
-import {
-  addPrefix,
-  hasPrefix,
-  readLaunchOptions,
-  removePrefix,
-  writeLaunchOptions,
-} from "../launchOptions";
+import { setSmoothGame } from "../backend";
+import { FG_AUTO, FGMOD_RE, OFF, setCap } from "../cap";
+import { hasPrefix, readLaunchOptions } from "../launchOptions";
 import { replaceSettings, useStore } from "../store";
 import { ErrorRow, Info, PLUGIN_NAME, Unavailable } from "../ui";
 
-const OFF = 0;
-const FG_AUTO = 0;
 const FG_CHOICES = [FG_AUTO, 1, 2, 3, 4];
-// OptiScaler in the launch options: Decky-Framegen's wrapper, or the DLL
-// override its direct patch (and Frame Suite) sets. Frame generation switched
-// on in the game is then made inside the game.
-const FGMOD_RE =
-  /(^|[\s/])fgmod(\s|$)|(^|\s)WINEDLLOVERRIDES=\S*\b(dxgi|winmm|version|dbghelp|winhttp|wininet|d3d12)=n,b/;
 // Auto TDP's target list, with 36 in place of 40: doubled by frame
 // generation every cap then lands on a target (36 -> 72; 40 -> 80 is none),
 // and 36 divides the 144 Hz screen evenly.
@@ -88,37 +76,14 @@ export const SmoothSection: FC = () => {
 
   /** Change one game's cap: launch options first, then the plugin's record. */
   const apply = async (appId: number, name: string, fps: number, moved = false) => {
-    const fg = games[String(appId)]?.fg ?? FG_AUTO;
     if (working.current) return;
     working.current = true;
     setBusy(true);
     setProblem(null);
     try {
-      const entry = games[String(appId)];
-      const original = await readLaunchOptions(appId);
-      let options = entry ? removePrefix(original, entry.prefix, entry.added_command) : original;
-      let now = false;
-      const fgmod = FGMOD_RE.test(original);
-      if (fps === OFF) {
-        await writeLaunchOptions(appId, options);
-        replaceSettings(await setSmoothGame(appId, null, name, "", false, FG_AUTO, false));
-      } else {
-        const plan = await smoothPlan(fps, appId);
-        if (entry && plan.live && entry.prefix === plan.prefix && hasPrefix(original, plan.prefix)) {
-          // Live cap file: the launch options stay as they are.
-          now = true;
-          replaceSettings(
-            await setSmoothGame(appId, fps, name, plan.prefix, entry.added_command, fg, fgmod),
-          );
-        } else {
-          const next = addPrefix(options, plan.prefix);
-          options = next.value;
-          await writeLaunchOptions(appId, options);
-          replaceSettings(
-            await setSmoothGame(appId, fps, name, plan.prefix, next.addedCommand, fg, fgmod),
-          );
-        }
-      }
+      const res = await setCap(games, appId, name, fps);
+      replaceSettings(res.settings);
+      const now = res.now;
       toaster.toast({
         title: PLUGIN_NAME,
         body:

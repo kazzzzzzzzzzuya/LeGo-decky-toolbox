@@ -9,7 +9,7 @@ import {
   SliderField,
   ToggleField,
 } from "@decky/ui";
-import { toaster } from "@decky/api";
+import { toaster, useQuickAccessVisible } from "@decky/api";
 import { FC, useEffect, useRef, useState } from "react";
 
 import {
@@ -66,7 +66,9 @@ const Wave: FC = () => (
   </PanelSectionRow>
 );
 
-export const SystemTab: FC = () => {
+/** The System sections: all three, or one ("speakers", "sleep", "steam") for a page of its own. */
+export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part }) => {
+  const show = (p: string) => !part || part === p;
   const [st, setSt] = useState<SystemState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [snaps, setSnaps] = useState<SteamSnapshot[]>([]);
@@ -83,7 +85,9 @@ export const SystemTab: FC = () => {
       })
       .catch((e) => setError(String(e)));
   const loadSnaps = () => steamSnapshots().then(setSnaps).catch(() => undefined);
+  const visible = useQuickAccessVisible();
   useEffect(() => {
+    if (!visible) return;
     void refresh();
     void loadSnaps();
     const id = setInterval(() => void refresh(), 2000);
@@ -91,7 +95,7 @@ export const SystemTab: FC = () => {
       clearInterval(id);
       if (toneTimer.current) clearTimeout(toneTimer.current);
     };
-  }, []);
+  }, [visible]);
 
   if (!st) return <Info label={error ? "Backend not reachable" : "Loading…"}>{error}</Info>;
   const { settings, eq, sleep, steam } = st;
@@ -149,6 +153,7 @@ export const SystemTab: FC = () => {
 
   return (
     <>
+      {show("speakers") && (
       <PanelSection title="Speakers">
         {!eq.available ? (
           <Info label="Speaker EQ is not available" warn>
@@ -209,7 +214,9 @@ export const SystemTab: FC = () => {
           </>
         )}
       </PanelSection>
+      )}
 
+      {show("sleep") && (
       <PanelSection title="Sleep">
         {sleep.last ? (
           <Stats>
@@ -285,7 +292,9 @@ export const SystemTab: FC = () => {
           </Fold>
         )}
       </PanelSection>
+      )}
 
+      {show("steam") && (<>
       <PanelSection title="Steam update check">
         {!steam ? (
           <Info label="Checking…" />
@@ -367,6 +376,7 @@ export const SystemTab: FC = () => {
             )}
         </PanelSection>
       </Fold>
+      </>)}
     </>
   );
 };
@@ -380,7 +390,7 @@ export function watchSteamMods(): () => void {
         if (r?.overall !== "fail") return;
         const names = r.items.filter((i) => !i.ok && i.id !== "steam").map((i) => i.label).join(", ");
         toast(
-          `${r.updated_since_good ? "Steam updated: " : ""}${names || "a Steam mod"} is not working. See the System tab.`,
+          `${r.updated_since_good ? "Steam updated: " : ""}${names || "a Steam mod"} is not working. See Device → Steam mods.`,
         );
       })
       .catch(() => undefined);

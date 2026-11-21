@@ -86,6 +86,7 @@ class Hub(object):
         self._set_boost = m.get("set_boost") or set_cpu_boost
         self._boost_state = m.get("boost_state") or cpu_boost_state
         self._write_requests = m.get("write_requests") or write_requests
+        self.boost_requests = lambda: {}   # main.py hands in the System tab's Smoothest games
         self._wall = m.get("wall") or time.time
 
         self._lock = threading.RLock()      # settings
@@ -1085,6 +1086,10 @@ class Hub(object):
                 out[key] = {"standby": True, "multiplier": None}
         if self._pt_fg and self._app is not None and str(self._app) in out:
             out[str(self._app)]["multiplier"] = int(self._pt_fg)
+        # Games set to Smoothest on the Game tab: Frame Suite turns its Boost on.
+        for key, name in (self.boost_requests() or {}).items():
+            entry = out.setdefault(str(key), {"standby": False, "multiplier": None})
+            entry["boost"], entry["name"] = True, str(name or "")[:120]
         return out
 
     def _pt_send(self, now):

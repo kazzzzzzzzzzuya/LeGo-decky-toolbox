@@ -15,18 +15,15 @@ button remapping, swapped menu buttons and per-controller gyro for emulators.
 
 ## Features
 
-One Decky plugin, six tabs (switch with **LB / RB**). Nothing is changed on
-your device until you switch a feature on, and every feature that your system
-cannot do says so, with the reason, instead of pretending.
+One Decky plugin, three tabs (switch with **LB / RB**), ordered by what you
+need most. Nothing is changed on your device until you choose something, and
+every feature that your system cannot do says so, with the reason.
 
-| Tab | What you can do |
+| Tab | What it holds |
 |---|---|
-| **Home** | See every module at a glance, limit charging to 80 %, reset |
-| **Power** | Pick a power mode or set the TDP in watts, per game if you like. **Auto TDP** finds the lowest power that still holds a frame rate you choose. **Battery playtime** makes a game last the hours you choose on battery |
-| **Fan** | Draw a ten-point fan curve, presets, full speed, live temperature, per game and on battery vs charger |
-| **Buttons and lights** | Swap View/Menu with the Legion buttons, remap Y1 Y2 Y3 M2 M3, switch the touchpad off. Under *Lights*: stick lights: effect, colour, brightness, speed. Power-button light on/off, and off while sleeping |
-| **Gyro** | Gyro in ordinary Steam games (handheld), and each detached controller as its own motion device for Dolphin, Switch emulators and others (DSU / CemuHook) |
-| **System** | **Speaker EQ** for the built-in speakers (never headphones or Bluetooth), battery used while asleep and **power-off after a long sleep**, and a **Steam update check** that tells you when a Steam update broke SLSsteam, CloudRedirect or ASSella / Uran, with backups of their settings |
+| **Game** | What is happening now in plain words (frame rate, watts, hours left), a red alert only when something broke, and **one choice per game**: *Longest battery*, *Balanced* or *Smoothest*. Each sets the game's power, frame cap, fan and frame generation together, shows the hours it gives (learned per game) and is remembered |
+| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), buttons, lights, gyro in Steam games, and whether your Steam mods (SLSsteam, CloudRedirect, ASSella / Uran) still work |
+| **More** | Every detailed control, nothing removed: power and TDP (Auto TDP), frame rate cap, battery goal, fan curve, gyro for emulators (DSU), Steam mods and backups, backup / updates / about. A change here overrides the game's mode for that game |
 
 Saved settings are applied when SteamOS starts, after sleep, and when a
 controller reconnects, also while the menu is closed.
@@ -54,17 +51,17 @@ Suite has the same look.
 | TDP and power modes | SteamOS has the Lenovo power-limit driver (current versions do) |
 | Auto TDP | The above, in Gaming Mode (the frame rate comes from gamescope) |
 | Swapped menu buttons, gyro in Steam games | InputPlumber is running (it is on SteamOS) |
-| **Fan curve** | **The `acpi_call` kernel module. SteamOS does not include it; the Home tab installs it** |
+| **Fan curve** | **The `acpi_call` kernel module. SteamOS does not include it; More → Fan curve installs it** |
 
 **About the fan curve.** The Legion Go only accepts a fan table through a
 Lenovo firmware call, and Linux can only make that call with the `acpi_call`
-module. When it is missing, the Home tab shows **Install acpi_call**: the
+module. When it is missing, More → Fan curve shows **Install acpi_call**: the
 plugin builds the module on the device (internet, about 4 GB of free space
 during the build, several minutes) and loads it. The build happens in a
 throw-away overlay, the same technique Legion Center uses, but nothing is
 written to SteamOS's system partition: the finished module is kept in the
 plugin's data folder and loaded at start. After a SteamOS update that brings
-a new kernel the Home tab asks you to build it once more. A module that is
+a new kernel that page asks you to build it once more. A module that is
 already present (Legion Center's *Install Fan Support*, Bazzite) is used as
 it is. Without the module the fan follows the firmware's own curve, which is
 safe. The installer's mechanics are tested, but it has not been run on a
@@ -83,23 +80,41 @@ Legion Go yet.
 6. Open the Quick Access menu → Decky → **Legion Go Toolbox** (the plugin's
    name inside Decky).
 
-**Updating:** from 2.10.0 the Home tab says when a newer release exists:
-press **Update to …** at the top and confirm Decky's prompt. **About** has
-**Check for updates** and **Install another version** (one list, to go back
-as well). Settings stay. Updating from 2.9.0 or older: those versions delete
-their settings while Decky updates them, so press **Backup → Save** on the
-Home tab first; 2.10.0 brings the backup back by itself when it starts
-without settings.
+**Updating:** the Game tab says when a newer release exists: press
+**Update to …** at the top and confirm Decky's prompt. **More → Backup,
+updates, about** has **Check for updates** and **Install another version**.
+Settings stay.
+
+**Coming from 2.x:** the version numbers started again at **1.0.0** with the
+simpler three-tab layout. Install 1.0.0 once by hand (the zip from the
+release, or *Install another version*, which lists it as older); your
+settings stay and later updates are offered as usual.
 
 ## Using the tabs
 
-Each tab shows its main settings first. Less-used ones sit in closed sections
-marked **▾** (for example *More power settings*, *Edit the curve points*,
-*Gyro for emulators*); select one to open it. Open or closed is remembered.
+### The Game tab: one choice per game
 
-The first time the plugin opens, **Getting started** sits at the top of the Overview tab: power,
-Smooth frame rate, Battery playtime and Frame Suite in five short notes. **Got it, close this** hides it;
-the **Getting started** button under About brings it back.
+Start a game, open the plugin, pick how it should run:
+
+| Mode | Frame cap | Power (Auto TDP) | Fan* | Frame generation |
+|---|---|---|---|---|
+| **Longest battery** | 36 fps | 5–12 W, aims at 36 fps | silent | off |
+| **Balanced** | 60 fps | 8–20 W, aims at 60 fps | quiet | off |
+| **Smoothest** | none | 10–25 W, aims at 60 fps | cooler | **on**: Frame Suite's Boost (needs Frame Suite) |
+
+\* Only while the custom fan curve is on (More → Fan curve); otherwise the firmware's own curve.
+
+The choice is remembered per game and applied by setting that game's own
+power profile, frame cap (in its launch options: restart the game once) and
+fan curve; Smoothest asks Frame Suite to turn its Boost on, which starts with
+the game's next start. The hours shown per mode are learned while the game
+runs in that mode on battery. Anything changed under **More** overrides the
+mode for that game. Without a mode a game runs exactly as before.
+
+### The Device and More tabs
+
+Rows with **›** open a page; **B** (or the top row) goes back. The sections
+below describe those pages.
 
 ### Power
 
@@ -162,7 +177,7 @@ already has one.
 Other launch-option tools: settings from HelixSR, Frame Suite, Decky-Framegen
 and similar plugins are kept. Decky-Framegen's own panel and Steam ROM Manager
 *replace* a game's whole launch options when they apply (Frame Suite adds its
-settings next to the cap instead); the Power tab then says the cap is
+settings next to the cap instead); More → Frame rate cap then says the cap is
 missing and offers to add it again. For emulators added with Steam ROM
 Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot
 reach Flatpak apps, and the DXVK fallback only works for DirectX games. Shader-compilation and loading stutter come from the
@@ -220,7 +235,7 @@ overheating protection; the plugin only changes the table it follows.
 - The firmware throws away *full speed* and the custom curve whenever the
   power mode changes - whether Steam, another tool or this plugin changes it.
   The plugin reads both back every 5 seconds (and one second after each of
-  its own power changes) and puts them back. The Fan tab shows how often it
+  its own power changes) and puts them back. The fan page shows how often it
   had to.
 - The firmware uses a custom table only in the *Custom* power mode.
 - **Separate settings per game** and **Separate settings on charger** give a
@@ -294,7 +309,7 @@ controller.
 
 Press **Calibrate** once and leave the controllers alone for a few seconds.
 
-### System
+### Device: sound, sleep, Steam mods
 
 **Speaker EQ.** SteamOS plays the speakers without the processing Windows
 gives them. The EQ sits in front of the built-in speakers only: headphones,
@@ -331,15 +346,15 @@ SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
   system-wide), it caps the game's own frames instead; the plugin tells the
   two apart from where each is installed.
   1. In decky-lsfg-vk turn it on for the game with the multiplier you want
-     (for example 2×) and leave its **Base FPS cap off** (the Power tab
+     (for example 2×) and leave its **Base FPS cap off** (More → Frame rate cap
      warns when it is on: two limiters).
-  2. Power tab → Smooth frame rate: choose the game's cap, for example 60.
+  2. More → Frame rate cap: choose the game's cap, for example 60.
      **Frame generation** below it stays on *Auto* and shows what it read,
      for example *Auto · lsfg-vk 2× · 60 → 120 fps*. A multiplier changed in
      decky-lsfg-vk is followed within seconds, even mid-game.
   3. Steam's Framerate limit off. The plugin sets the screen rate for the
      final rate and Auto TDP aims at it (120), not at the cap.
-  4. Prefer a fixed value? Pick Off or 2×-4× instead of Auto; the Power tab
+  4. Prefer a fixed value? Pick Off or 2×-4× instead of Auto; More → Frame rate cap
      says when it differs from lsfg-vk's setting.
   5. Even on the Legion Go's 144 Hz screen: 72 × 2 = 144 and 48 × 3 = 144.
      60 × 2 = 120 and 45 × 2 = 90 run at 144 Hz there, marked *uneven*; even on a
@@ -360,7 +375,7 @@ SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
   lsfg-vk game. For games it set up with OptiScaler, **Frame generation**
   on *Auto* follows the switch **Frame generation is on in the game** in
   Frame Suite: turn that on when you enable frame generation in the game's
-  settings and the Power tab shows *Auto · in-game 2× (Frame Suite) ·
+  settings and More → Frame rate cap shows *Auto · in-game 2× (Frame Suite) ·
   60 → 120 fps* within seconds, also mid-game. The plugin reads this from
   Frame Suite's own file (`~/.config/frame-suite/bridge.json`) and never
   writes to it. With lsfg-vk on for the same game, lsfg-vk's multiplier
@@ -392,7 +407,7 @@ SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
   afterwards. Steam's performance overlay is not affected.
 - **Streaming shows a different frame rate than the device** – the stream
   runs at the client's refresh rate and repeats frames when the game is
-  slower. The game's real frame rate is what the Power tab shows.
+  slower. The game's real frame rate is what the Game tab shows.
 - **Auto TDP stays at the maximum** – the target frame rate is not reachable
   within your maximum TDP; raise the maximum or lower the target.
 - **Stick lights or remapping report "controllers not found"** – wake the

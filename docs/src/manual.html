@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 2.14.0</div>
+    <div class="kicker">User manual · Version 1.0.0</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -77,7 +77,7 @@
     <tr><th>Item</th><th>Details</th></tr>
     <tr><td class="k">Device</td><td>Lenovo Legion Go (model 83E1). Legion Go 2 and Legion Go S are recognised for the parts known to be identical (power limits, charge limit, power light); everything else stays off on those.</td></tr>
     <tr><td class="k">System</td><td>SteamOS with <a href="https://decky.xyz">Decky Loader</a> installed.</td></tr>
-    <tr><td class="k">For the fan curve only</td><td>The <code>acpi_call</code> kernel module, which the Home tab can install (chapter 4). Everything else works on a stock SteamOS.</td></tr>
+    <tr><td class="k">For the fan curve only</td><td>The <code>acpi_call</code> kernel module, which More → Fan curve can install (chapter 6). Everything else works on a stock SteamOS.</td></tr>
   </table>
 
   <h2>What each feature depends on</h2>
@@ -89,10 +89,10 @@
     <tr><td>Power modes and TDP</td><td>SteamOS has Lenovo's power-limit driver (current versions do)</td></tr>
     <tr><td>Auto TDP</td><td>The above, in Gaming Mode (the frame rate is read from the SteamOS compositor)</td></tr>
     <tr><td>Swapped menu buttons, gyro in Steam games</td><td>InputPlumber is running (it is on SteamOS)</td></tr>
-    <tr><td><b>Custom fan curve</b></td><td><b>The <code>acpi_call</code> module - SteamOS does not include it; the Home tab installs it</b></td></tr>
+    <tr><td><b>Custom fan curve</b></td><td><b>The <code>acpi_call</code> module - SteamOS does not include it; More → Fan curve installs it</b></td></tr>
   </table>
 
-  <div class="warn"><b>One controller of each thing.</b> Two plugins steering the same hardware keep overwriting each other. Remove (or switch off) SimpleDeckyTDP, Legion Center, HueSync, DeckyPlumber and LegionGoRemapper before using the matching tab here. Also turn off Steam's own <i>TDP limit</i> in the Performance menu if you use the Power tab.</div>
+  <div class="warn"><b>One controller of each thing.</b> Two plugins steering the same hardware keep overwriting each other. Remove (or switch off) SimpleDeckyTDP, Legion Center, HueSync, DeckyPlumber and LegionGoRemapper before using the matching tab here. Also turn off Steam's own <i>TDP limit</i> in the Performance menu if you manage power.</div>
 </section>
 
 <!-- ============================== 2 ============================== -->
@@ -108,12 +108,12 @@
     <li>Open <b>Legion Go Toolbox</b> from the Decky list.</li>
   </ol>
 
-  <h2>Getting started</h2>
-  <p>The first time the plugin opens, <b>Getting started</b> sits at the top of the Overview tab: power, Smooth frame rate, Battery playtime and Frame Suite in five short notes. <b>Got it, close this</b> hides it; the <b>Getting started</b> button under About brings it back.</p>
+  <h2>First steps</h2>
+  <p>Start a game, open the plugin: the <b>Game</b> tab shows what is happening and asks how the game should run. Pick one of the three modes; that is all most games need. Set-once things (charge limit, speakers, buttons) are on the <b>Device</b> tab.</p>
 
   <h2>Update</h2>
-  <p>From version 2.10 the plugin looks for new releases itself. When there is one, <b>Update to …</b> appears at the top of the Home tab: press it and confirm Decky's prompt; Decky checks the download and reloads the plugin. <b>About</b> on the Home tab has <b>Check for updates</b> and <b>Install another version</b>, one list for going back as well. Your settings are kept and carried forward automatically.</p>
-  <div class="note"><b>Updating from 2.9 or older:</b> those versions delete their settings while Decky updates them. Press <b>Backup → Save</b> on the Home tab first; version 2.10 and later bring the backup back by themselves when they start without settings. Installing a zip by hand still works the same way.</div>
+  <p>The plugin looks for new releases itself. When there is one, <b>Update to …</b> appears at the top of the Game tab: press it and confirm Decky's prompt; Decky checks the download and reloads the plugin. <b>More → Backup, updates, about</b> has <b>Check for updates</b> and <b>Install another version</b>, one list for going back as well. Your settings are kept.</p>
+  <div class="note"><b>Coming from 2.x:</b> the version numbers started again at 1.0.0 with the three-tab layout. Install 1.0.0 once by hand (the release zip, or <i>Install another version</i>, which lists it as older). Your settings stay; later updates are offered as usual.</div>
 
   <h2>Remove</h2>
   <p>Uninstall it from Decky's plugin list. Before that, switch off <i>Manage power</i>, <i>Custom fan curve</i> and <i>Swap menu buttons</i> if you want the firmware and SteamOS defaults back straight away - the plugin hands these back to the firmware when they are switched off. Your settings stay in <code>~/homebrew/settings/Legion Go Toolbox/</code>, so a reinstall picks them up; delete that folder to remove them too. Lights, remapping and the charge mode are stored in the hardware and stay as last set.</p>
@@ -123,17 +123,25 @@
 <section class="chapter">
   <h1><span class="chap-num">3</span>Finding your way around</h1>
 
-  <p>The plugin opens on <b>Home</b>. Switch tabs with <kbd>LB</kbd> / <kbd>RB</kbd> or by tapping the icons along the top. Each tab shows its main settings first; less-used ones sit in closed sections marked <b>▾</b> (for example <i>More power settings</i>, <i>Edit the curve points</i>, <i>Gyro for emulators</i>). Select one to open it; open or closed is remembered.</p>
+  <p>The plugin opens on <b>Game</b>. Switch tabs with <kbd>LB</kbd> / <kbd>RB</kbd> or by tapping them along the top. Rows with <b>›</b> open a page; <b>B</b> or the top row goes back. Closed sections marked <b>▾</b> open when selected and remember it.</p>
 
   <table>
-    <tr><th>Icon</th><th>Tab</th><th>What it holds</th></tr>
-    <tr><td>House</td><td class="k">Home</td><td>One status line per module (tap one to jump there), battery and 80 % charge limit, device, version, reset</td></tr>
-    <tr><td>Lightning bolt</td><td class="k">Power</td><td>Power mode, TDP, Auto TDP for a frame rate, per-game profiles, CPU boost</td></tr>
-    <tr><td>Fan</td><td class="k">Fan</td><td>Custom fan curve, presets, full speed, temperature</td></tr>
-    <tr><td>Gamepad</td><td class="k">Buttons and lights</td><td>Swapped menu buttons, back-button remapping, touchpad; stick lights and power-button light under <i>Lights</i></td></tr>
-    <tr><td>Rotating screen</td><td class="k">Gyro</td><td>Gyro in Steam games and per-controller gyro for emulators</td></tr>
-    <tr><td>Sliders</td><td class="k">System</td><td>Speaker EQ, battery used while asleep, power-off after a long sleep, Steam update check and backups (chapter 10)</td></tr>
+    <tr><th>Tab</th><th>What it holds</th></tr>
+    <tr><td class="k">Game</td><td>What is happening now (frame rate, watts, hours left), a red alert only when something broke, and one choice per game: <b>Longest battery</b>, <b>Balanced</b> or <b>Smoothest</b>.</td></tr>
+    <tr><td class="k">Device</td><td>Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers, buttons, lights, gyro in Steam games, Steam mods.</td></tr>
+    <tr><td class="k">More</td><td>Every detailed control: power and TDP, frame rate cap, battery goal, fan curve, gyro for emulators, Steam mods and backups, backup / updates / about. A change here overrides the game's mode for that game.</td></tr>
   </table>
+
+  <h2>One choice per game</h2>
+  <p>Start a game, open the plugin and pick how it runs. The choice is remembered for that game; without one, the game runs exactly as before.</p>
+  <table>
+    <tr><th>Mode</th><th>Frame cap</th><th>Power (Auto TDP)</th><th>Fan*</th><th>Frame generation</th></tr>
+    <tr><td class="k">Longest battery</td><td>36 fps</td><td>5–12 W, aims at 36 fps</td><td>silent</td><td>off</td></tr>
+    <tr><td class="k">Balanced</td><td>60 fps</td><td>8–20 W, aims at 60 fps</td><td>quiet</td><td>off</td></tr>
+    <tr><td class="k">Smoothest</td><td>none</td><td>10–25 W, aims at 60 fps</td><td>cooler</td><td>on: Frame Suite's Boost</td></tr>
+  </table>
+  <p>* Only while the custom fan curve is on; otherwise the firmware's curve. The frame cap goes into the game's launch options: restart the game once. Smoothest asks Frame Suite to turn its Boost on, which starts with the game's next start; if you switch it off in Frame Suite it stays off until you pick another mode. The hours shown per mode are learned while the game runs in that mode on battery.</p>
+  <p>The chapters that follow describe the pages under <b>Device</b> and <b>More</b>, where the same settings can be changed one by one.</p>
 
   <h2>Reading the screens</h2>
   <ul>
@@ -174,7 +182,7 @@
   <p><b>Back up settings</b> writes every setting and profile of the plugin - power and fan profiles, Smooth caps, lights, buttons, controller types, gyro tuning - to <code>legion-go-toolbox-backup.json</code> in your home folder. <b>Restore from backup</b> (select twice) replaces the current settings with it and applies them. Copy the file to another Legion Go to carry your setup over. The gyro's calibration is not part of it: calibrate once after restoring.</p>
 
   <h2>About</h2>
-  <p><b>Reset hardware settings</b> returns Power, Fan, Lights, Battery and Controls to their defaults (all off, Steam Deck controller, default swap layout). It does not touch the gyro's calibration and tuning - those have their own reset in the Gyro tab's advanced options.</p>
+  <p><b>Reset hardware settings</b> returns Power, Fan, Lights, Battery and Controls to their defaults (all off, Steam Deck controller, default swap layout). It does not touch the gyro's calibration and tuning - those have their own reset in the gyro pages's advanced options.</p>
 </section>
 
 <!-- ============================== 5 ============================== -->
@@ -208,7 +216,7 @@
   <h3>How it decides</h3>
   <table>
     <tr><th>Situation</th><th>What Auto TDP does</th></tr>
-    <tr><td>A game starts that Auto TDP has run before</td><td>Starts at the watts it settled at last time for that game and target - one value on battery, one on the charger - instead of searching from the maximum. The Home tab and the <b>Now</b> line show it as <i>remembered</i></td></tr>
+    <tr><td>A game starts that Auto TDP has run before</td><td>Starts at the watts it settled at last time for that game and target - one value on battery, one on the charger - instead of searching from the maximum. The Game tab and the <b>Now</b> line show it as <i>remembered</i></td></tr>
     <tr><td>Frame rate below 90 % of the target</td><td>Adds 3 W at once</td></tr>
     <tr><td>Frame rate between 90 and 97 % of the target</td><td>Adds 1 W</td></tr>
     <tr><td>Target held for 6 seconds</td><td>Tries 1 W less</td></tr>
@@ -235,7 +243,7 @@
   <h2 style="break-before: page">Smooth frame rate</h2>
   <p>A steady average is not enough for a smooth picture: every frame has to arrive at the same interval. Uneven frames are what you see as jitter even at 60 fps. Smooth mode sets this up per game.</p>
   <ol class="steps">
-    <li>Start the game and open the Power tab.</li>
+    <li>Start the game and open More → Power and TDP.</li>
     <li>Under <b>Smooth frame rate</b> choose a cap, for example <i>60 fps · screen 60 Hz</i> or <i>72 fps · screen 144 Hz</i>.</li>
     <li>Quit and start the game again once - the cap goes into its launch options. From then on, changing the cap or frame generation applies while the game runs.</li>
     <li>In Steam's Performance menu set <b>Framerate limit</b> off for this game, and switch off the game's own frame limiter and V-Sync.</li>
@@ -248,7 +256,7 @@
     <tr><td class="k">Matching refresh rate</td><td>While the game runs the screen switches to a rate the cap divides evenly, so each frame stays on screen for the same time: 30 and 60 fps at 60 Hz, 36, 72 and 144 fps at 144 Hz. The other caps in the list (45, 50, 90, 100, 120) are offered too, marked <i>screen 144 Hz, uneven</i>: they do not divide 60 or 144 Hz, so the screen runs at its highest rate and some frames stay on screen a little longer. gamescope's own limiter stays off, so limiters never stack. The refresh rate is handed back when the game closes.</td></tr>
     <tr><td class="k">Auto TDP</td><td>Aims at the cap and judges the slowest frame of each half second, not only the average. It does not cut power while frames arrive unevenly, and adds power when they keep arriving late. Unevenness the screen causes itself (90 fps at 144 Hz holds every other frame one refresh longer) is not counted, and unevenness that a few more watts do not fix (frame generation, shader stutter) stops adding power for a few minutes instead of climbing to the maximum.</td></tr>
   </table>
-  <p>The <b>Now</b> line shows the measured frame rate and the slowest frame; the closer the two, the smoother. Smooth mode puts its settings at the very start of the launch options, so wrapper commands such as lsfg-vk's <code>~/lsfg</code> or <code>gamemoderun</code> keep working. Your own launch options are kept, and turning Smooth mode off removes exactly what it added. HelixSR, Decky-Framegen and similar plugins keep working; Decky-Framegen and Steam ROM Manager replace the whole launch options when they apply, and the Power tab then offers <b>Add the cap again</b>. For emulators from Steam ROM Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot reach Flatpak apps. <b>Games with Smooth mode</b> lists every game with a cap.</p>
+  <p>The <b>Now</b> line shows the measured frame rate and the slowest frame; the closer the two, the smoother. Smooth mode puts its settings at the very start of the launch options, so wrapper commands such as lsfg-vk's <code>~/lsfg</code> or <code>gamemoderun</code> keep working. Your own launch options are kept, and turning Smooth mode off removes exactly what it added. HelixSR, Decky-Framegen and similar plugins keep working; Decky-Framegen and Steam ROM Manager replace the whole launch options when they apply, and More → Power and TDP then offers <b>Add the cap again</b>. For emulators from Steam ROM Manager prefer the emulator's own frame limiter: MangoHud's limiter cannot reach Flatpak apps. <b>Games with Smooth mode</b> lists every game with a cap.</p>
   <div class="note"><b>Limits.</b> Stutter from shader compilation or loading comes from the game itself and cannot be removed by a limiter. Smooth mode works in Gaming Mode only.</div>
 
   <h2>Battery playtime</h2>
@@ -267,7 +275,7 @@
     <tr><td class="k">Frame generation for battery time</td><td>Lets the plugin ask Frame Suite for lsfg-vk. The description says when it is ready, or why not.</td></tr>
     <tr><td class="k">Count from now again</td><td>Starts the goal's hours again without changing it.</td></tr>
   </table>
-  <p>The count runs only while the game runs on battery. On the charger everything goes back to your own settings and the count waits; after charging by 10 % or more it starts again. Setting a goal switches <b>Manage power</b> on. The Home tab shows the goal's time to go.</p>
+  <p>The count runs only while the game runs on battery. On the charger everything goes back to your own settings and the count waits; after charging by 10 % or more it starts again. Setting a goal switches <b>Manage power</b> on. The Game tab shows the goal's time to go.</p>
   <div class="tip"><b>Set a Smooth frame rate first.</b> Without one only the power limit is lowered, and the frame rate falls unevenly instead of stepping to an even cap. Screen brightness counts too: the screen alone draws several watts.</div>
   <div class="note">Not verified on a device yet.</div>
 
@@ -279,10 +287,10 @@
 <section class="chapter">
   <h1><span class="chap-num">6</span>Fan</h1>
 
-  <div class="note"><b>Requirement.</b> The Legion Go only accepts a fan curve through a Lenovo firmware call, and Linux can make that call only with the <code>acpi_call</code> kernel module. SteamOS does not include it: use <b>Install acpi_call</b> in the Home tab (chapter 4). If the module is already present - installed with Legion Center's <i>Install Fan Support</i>, or on Bazzite - the curve editor appears by itself. Without it the fan follows the firmware's own curve, which is safe.</div>
+  <div class="note"><b>Requirement.</b> The Legion Go only accepts a fan curve through a Lenovo firmware call, and Linux can make that call only with the <code>acpi_call</code> kernel module. SteamOS does not include it: use <b>Install acpi_call</b> under More → Fan curve (chapter 6). If the module is already present - installed with Legion Center's <i>Install Fan Support</i>, or on Bazzite - the curve editor appears by itself. Without it the fan follows the firmware's own curve, which is safe.</div>
 
   <h2>Custom fan curve</h2>
-  <p>The firmware keeps control of the fan and of overheating protection; the plugin only changes the curve it follows. The firmware uses a custom curve only in the <i>Custom</i> power mode. If the Power tab has a firmware mode selected, the Fan tab says <i>Not in use right now</i>.</p>
+  <p>The firmware keeps control of the fan and of overheating protection; the plugin only changes the curve it follows. The firmware uses a custom curve only in the <i>Custom</i> power mode. If More → Power and TDP has a firmware mode selected, the fan page says <i>Not in use right now</i>.</p>
 
   <h3>Presets</h3>
   <p>Fan level per temperature (°C). The firmware's scale goes up to 115.</p>
@@ -322,14 +330,14 @@
   <h3>Making a setting</h3>
   <ol class="steps">
     <li>Get into the situation you want to set up - start the game, and plug in or unplug.</li>
-    <li>Open the Fan tab. The heading names what you are editing, for example <i>ELDEN RING · on charger</i>. Until you change something it says <i>Using the general setting</i> and which one.</li>
+    <li>Open the fan page. The heading names what you are editing, for example <i>ELDEN RING · on charger</i>. Until you change something it says <i>Using the general setting</i> and which one.</li>
     <li>Change the preset, the curve or full speed. From then on that case has its own setting.</li>
   </ol>
   <p><b>Use the general setting here</b> removes the setting you are looking at. <b>Saved fan settings</b> lists every setting with its preset; selecting one removes it.</p>
 
   <h2>Why a setting can "turn itself off" - and what the plugin does</h2>
   <p>The firmware throws away <i>full speed</i> and the custom curve whenever the power mode changes - no matter whether Steam, another tool, Auto TDP or a manual change caused it. The fan then quietly falls back to the stock curve and temperatures climb.</p>
-  <p>The plugin therefore reads both back from the firmware every 5 seconds, and one second after each of its own power changes, and puts them back when they are gone. When this has happened the Fan tab shows a <b>Kept on</b> line, for example <i>The firmware dropped the fan setting 3 times (last just now); the plugin put it back.</i></p>
+  <p>The plugin therefore reads both back from the firmware every 5 seconds, and one second after each of its own power changes, and puts them back when they are gone. When this has happened the fan page shows a <b>Kept on</b> line, for example <i>The firmware dropped the fan setting 3 times (last just now); the plugin put it back.</i></p>
 </section>
 
 <!-- ============================== 7 ============================== -->
@@ -385,7 +393,7 @@
 <section class="chapter">
   <h1><span class="chap-num">9</span>Gyro</h1>
 
-  <p>The Legion Go has three motion sensors: one in each detachable controller and one in the tablet. The Gyro tab uses them in two separate ways.</p>
+  <p>The Legion Go has three motion sensors: one in each detachable controller and one in the tablet. The gyro pages uses them in two separate ways.</p>
 
   <div class="grid2">
     <div class="card"><h4>Gyro in Steam games</h4>Any game, through Steam Input. Uses the tablet's sensor, so it works with the controllers attached - like a Steam Deck.</div>
@@ -506,12 +514,12 @@
   <h2>lsfg-vk 2.0: Smooth mode with frame generation</h2>
   <p>One limiter does the whole job. MangoHud's limiter usually comes <i>after</i> lsfg-vk (decky-lsfg-vk installs lsfg-vk in your user folder, which Vulkan loads first), so it sees the generated frames too. The plugin therefore sets it to the frame rate on screen - cap × multiplier, 120 for 60 × 2 - and the game itself settles at the cap. Where MangoHud comes first (lsfg-vk installed system-wide), it caps the game's own frames instead; the plugin tells the two apart from where each is installed. Turning Smooth mode off lifts the cap at once, also in a running game.</p>
   <ol class="steps">
-    <li>In decky-lsfg-vk turn it on for the game with the multiplier you want, for example <b>2×</b>, and leave its <b>Base FPS cap</b> <i>off</i>. The Power tab warns <i>Two frame limiters</i> when it is on.</li>
-    <li>Power tab → <b>Smooth frame rate</b>: choose the game's cap, for example <i>60</i>.</li>
+    <li>In decky-lsfg-vk turn it on for the game with the multiplier you want, for example <b>2×</b>, and leave its <b>Base FPS cap</b> <i>off</i>. More → Power and TDP warns <i>Two frame limiters</i> when it is on.</li>
+    <li>More → <b>Smooth frame rate</b>: choose the game's cap, for example <i>60</i>.</li>
     <li><b>Frame generation</b> below it stays on <i>Auto</i>: the plugin reads the game's multiplier from lsfg-vk's own settings (<code>~/.config/lsfg-vk/conf.toml</code>) and shows it, for example <i>Auto · lsfg-vk 2× · 60 → 120 fps</i>. A multiplier changed in decky-lsfg-vk is followed within seconds, even while the game runs.</li>
     <li>Steam's Framerate limit off. The plugin sets the screen rate for the final rate, and Auto TDP aims at it (120) instead of the cap.</li>
   </ol>
-  <p>Prefer a fixed value? Choose <i>Off</i> or <i>2×-4×</i> instead of Auto. The Power tab says when it differs from lsfg-vk's setting. The plugin only reads lsfg-vk's files and never changes them.</p>
+  <p>Prefer a fixed value? Choose <i>Off</i> or <i>2×-4×</i> instead of Auto. More → Power and TDP says when it differs from lsfg-vk's setting. The plugin only reads lsfg-vk's files and never changes them.</p>
   <table>
     <tr><th>Cap × multiplier</th><th>On screen</th><th>Legion Go screen (60 / 144 Hz)</th></tr>
     <tr><td>30 × 2</td><td>60</td><td>Even at 60 Hz</td></tr>
@@ -564,14 +572,14 @@
     <tr><td>TDP keeps jumping back</td><td>Turn off Steam's own TDP limit (Performance menu) and remove other TDP plugins.</td></tr>
     <tr><td>Auto TDP stays "at your maximum"</td><td>The game cannot reach the target within your Maximum TDP. Raise the maximum or lower the target.</td></tr>
     <tr><td>Auto TDP says "waiting for the game to draw frames"</td><td>No game is in focus, it is paused, or you are in Desktop Mode. Otherwise the line names the reason. While streaming (Steam Remote Play, Punktfunk) gamescope does not report frame times by default; the plugin switches its frame reporting for as long as it measures and puts it back afterwards.</td></tr>
-    <tr><td>Stream shows another frame rate than the device</td><td>The stream runs at the client's refresh rate and repeats frames when the game is slower. The game's real frame rate is the one in the Power tab.</td></tr>
-    <tr><td>Fan full speed or curve switches itself off</td><td>The firmware drops them when the power mode changes. The plugin restores them within about 5 seconds; the Fan tab's <i>Kept on</i> line shows when it did.</td></tr>
-    <tr><td>No fan curve editor</td><td>The <code>acpi_call</code> module is missing: Home tab → Install acpi_call (chapter 4).</td></tr>
+    <tr><td>Stream shows another frame rate than the device</td><td>The stream runs at the client's refresh rate and repeats frames when the game is slower. The game's real frame rate is the one in More → Power and TDP.</td></tr>
+    <tr><td>Fan full speed or curve switches itself off</td><td>The firmware drops them when the power mode changes. The plugin restores them within about 5 seconds; the fan page's <i>Kept on</i> line shows when it did.</td></tr>
+    <tr><td>No fan curve editor</td><td>The <code>acpi_call</code> module is missing: More → Fan curve → Install acpi_call.</td></tr>
     <tr><td>Stick lights or remapping: "controllers not found"</td><td>Wake the controllers by pressing a button, then change the setting again.</td></tr>
     <tr><td>Menu buttons back to normal</td><td>InputPlumber restarted; the swap is re-applied within a few seconds.</td></tr>
-    <tr><td>No gyro option in Steam's controller settings</td><td>Gyro tab → the type for <i>All games</i> (or for that game) must not be <i>Xbox controller</i>. Restart the game after changing it.</td></tr>
+    <tr><td>No gyro option in Steam's controller settings</td><td>Device → Gyro → the type for <i>All games</i> (or for that game) must not be <i>Xbox controller</i>. Restart the game after changing it.</td></tr>
     <tr><td>PlayStation symbols in a game</td><td>The game supports PlayStation controllers natively. Use its button-prompt setting, or give that game the Steam Deck type.</td></tr>
-    <tr><td>Emulator gets no motion</td><td>Check the server address and slot; the Gyro tab shows "1 emulator connected" once it works. <code>tools/dsu_monitor.py</code> prints the live data without an emulator.</td></tr>
+    <tr><td>Emulator gets no motion</td><td>Check the server address and slot; the gyro pages shows "1 emulator connected" once it works. <code>tools/dsu_monitor.py</code> prints the live data without an emulator.</td></tr>
     <tr><td>"Port 26760 is already used"</td><td>Another motion server is running (EmuDeck can install one). Stop it, or pick another port here and in the emulator.</td></tr>
     <tr><td>Smooth mode says a limiter is already set</td><td>The game's launch options already cap the frame rate (for example lsfg-vk's frame-generation cap). Use that one, or remove it before choosing Smooth mode. Two limiters cause uneven frames.</td></tr>
     <tr><td>Motion drifts</td><td>Lay the controllers down and press Calibrate.</td></tr>

@@ -59,6 +59,9 @@ class Plugin:
             from lgo_toolbox.useros import User
             user = User(getattr(decky, "DECKY_USER", None), getattr(decky, "DECKY_USER_HOME", None))
             Plugin.system = System(decky.DECKY_PLUGIN_SETTINGS_DIR, logger=decky.logger, user=user)
+            hub = Plugin._hub()
+            Plugin.system.running_app = lambda: hub._app
+            hub.boost_requests = Plugin.system.boost_requests
             Plugin.system.start()
         return Plugin.system
 
@@ -241,6 +244,13 @@ class Plugin:
 
     async def system_update(self, patch):
         return await _bg(Plugin._system().update, patch)
+
+    async def set_mode(self, app_id, name, mode):
+        return await _bg(Plugin._system().set_mode, int(app_id), str(name or ""),
+                         mode if mode in ("battery", "balanced", "smooth") else None)
+
+    async def mode_info(self, app_id):
+        return await _bg(Plugin._system().mode_info, None if app_id is None else int(app_id))
 
     async def steam_check(self):
         system = Plugin._system()

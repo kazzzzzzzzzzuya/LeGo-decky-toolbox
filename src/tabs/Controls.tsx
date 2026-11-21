@@ -16,7 +16,7 @@ const BUTTONS: { key: RemapButton; label: string }[] = [
 // Every combination: what the two Legion buttons become, and which of View (two squares) and Menu (three
 // lines) opens Steam; the other one opens Quick Access.
 type Layout = "steam_menu" | "steam_view" | "lview_steam_menu" | "lmenu_steam_view";
-const LAYOUTS: { data: Layout; label: string; legion: string; steam: string; qam: string }[] = [
+export const LAYOUTS: { data: Layout; label: string; legion: string; steam: string; qam: string }[] = [
   { data: "steam_view", label: "L View, R Menu · View = Steam", legion: "View / Menu", steam: "View", qam: "Menu" },
   { data: "lview_steam_menu", label: "L View, R Menu · Menu = Steam (default)", legion: "View / Menu", steam: "Menu", qam: "View" },
   { data: "steam_menu", label: "L Menu, R View · Menu = Steam", legion: "Menu / View", steam: "Menu", qam: "View" },

@@ -400,3 +400,13 @@ export const steamRestore = callable<[name: string], { ok: boolean; restored: st
 );
 export const steamHold = callable<[on: boolean], { ok: boolean; error: string | null }>("steam_hold");
 export const sleepClear = callable<[], SystemState>("sleep_clear");
+
+// ---- Game tab: one mode per game ----
+export type ModeId = "battery" | "balanced" | "smooth";
+export interface ModeInfo {
+  mode: ModeId | null;
+  /** Hours a full battery lasts in each mode for this game, learned while it ran in it (null: not yet). */
+  hours: Partial<Record<ModeId, number | null>>;
+}
+export const setMode = callable<[appId: number, name: string, mode: ModeId | null], ModeInfo>("set_mode");
+export const modeInfo = callable<[appId: number | null], ModeInfo>("mode_info");

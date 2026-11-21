@@ -13,6 +13,8 @@ from .battery import battery_info
 from .steam_check import SteamCheck
 from .useros import User, write_atomic
 
+MODES = ("battery", "balanced", "smooth")   # Longest battery, Balanced, Smoothest
+MODE_LEARN_KEEP = 60     # minutes of battery draw averaged per game and mode
 TICK_S = 2.0
 STEAM_CHECK_S = 60.0
 WATTS_EVERY_S = 60.0
@@ -23,6 +25,8 @@ def defaults():
     return {
         "eq": {"enabled": False, "preset": "balanced", "bass": 0, "treble": 0},
         "sleep": {"poweroff": False, "hours": 6, "battery_only": True},
+        # The Game tab's choice per game: {"<appid>": {"mode": "balanced", "name": "..."}}
+        "modes": {},
     }
 
 
@@ -40,6 +44,12 @@ def sanitize(data):
                 out["eq"][k] = max(-speaker_eq.TONE_DB, min(speaker_eq.TONE_DB, int(round(float(eq.get(k, 0))))))
             except (TypeError, ValueError):
                 pass
+    modes = data.get("modes")
+    if isinstance(modes, dict):
+        for key, v in list(modes.items())[:500]:
+            if isinstance(key, str) and key.isdigit() and len(key) <= 10 and isinstance(v, dict) \
+                    and v.get("mode") in MODES:
+                out["modes"][key] = {"mode": v["mode"], "name": str(v.get("name") or "")[:120]}
     if isinstance(sl, dict):
         out["sleep"]["poweroff"] = bool(sl.get("poweroff", False))
         out["sleep"]["battery_only"] = bool(sl.get("battery_only", True))
@@ -75,6 +85,9 @@ class System(object):
         self._thread = None
         self._watts = collections.deque(maxlen=WATTS_KEPT)
         self._watts_at = None
+        self.running_app = lambda: None          # main.py hands in the hub's running game
+        self._learn_path = os.path.join(state_dir, "mode-watts.json")
+        self._learn = self._load_learn()
 
     def _load(self):
         try:
@@ -138,7 +151,69 @@ class System(object):
         except Exception:
             info = {}
         w = info.get("watts")
-        self._watts.append(round(w, 1) if w is not None and info.get("status") == "Discharging" else None)
+        draining = w is not None and info.get("status") == "Discharging"
+        self._watts.append(round(w, 1) if draining else None)
+        if draining and info.get("minutes") and info.get("percent"):
+            # Energy the battery holds when full, worked out from what it says now.
+            full = w * info["minutes"] / 60.0 / (info["percent"] / 100.0)
+            if 10 <= full <= 200:
+                self._learn["full_wh"] = round(full, 1)
+        app = self.running_app()
+        mode = (self.get_settings()["modes"].get(str(app)) or {}).get("mode") if app is not None else None
+        if draining and mode:
+            key = "%s:%s" % (app, mode)
+            avg, n = self._learn["watts"].get(key) or (w, 0)
+            n = min(n + 1, MODE_LEARN_KEEP)
+            self._learn["watts"][key] = (round(avg + (w - avg) / n, 2), n)
+            write_atomic(self._learn_path, json.dumps(self._learn))
+
+    def _load_learn(self):
+        try:
+            with open(self._learn_path) as f:
+                data = json.load(f)
+            if isinstance(data, dict) and isinstance(data.get("watts"), dict):
+                data["watts"] = {k: tuple(v) for k, v in data["watts"].items()
+                                 if isinstance(v, (list, tuple)) and len(v) == 2}
+                return data
+        except (OSError, ValueError, TypeError):
+            pass
+        return {"watts": {}, "full_wh": None}
+
+    # -- modes -------------------------------------------------------------------
+    def set_mode(self, app_id, name, mode):
+        """Remember the Game tab's choice for a game (None forgets it)."""
+        key = str(int(app_id))
+        with self._lock:
+            modes = dict(self.settings["modes"])
+            if mode in MODES:
+                modes[key] = {"mode": mode, "name": str(name or "")[:120]}
+            else:
+                modes.pop(key, None)
+            self.settings["modes"] = modes
+            write_atomic(self.path, json.dumps(self.settings, indent=1))
+        return self.mode_info(app_id)
+
+    def mode_info(self, app_id):
+        """The game's mode and, per mode, the hours a full battery would last
+        (learned from the battery draw while the game ran in that mode)."""
+        if app_id is None:
+            return {"mode": None, "hours": {}}
+        key = str(int(app_id))
+        full = self._learn.get("full_wh")
+        try:
+            pct = (battery_info() or {}).get("percent")
+        except Exception:
+            pct = None
+        hours = {}
+        for m in MODES:
+            avg, n = self._learn["watts"].get("%s:%s" % (key, m)) or (None, 0)
+            hours[m] = round(full * pct / 100.0 / avg, 2) if (full and pct and avg and n >= 3) else None
+        return {"mode": (self.get_settings()["modes"].get(key) or {}).get("mode"), "hours": hours}
+
+    def boost_requests(self):
+        """Games set to Smoothest: Frame Suite is asked to boost them ({appid: name})."""
+        return {k: v["name"] for k, v in self.get_settings()["modes"].items()
+                if v["mode"] == "smooth" and int(k) < 0x80000000}
 
     def watts_history(self):
         return list(self._watts)
