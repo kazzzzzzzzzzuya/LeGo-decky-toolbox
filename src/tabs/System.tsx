@@ -317,7 +317,7 @@ export const SystemTab: FC<{ part?: "speakers" | "sleep" | "steam" }> = ({ part 
                   <span>{steam.checked_at}</span>
                 </div>
                 {steam.items.map((i) => (
-                  <Check key={i.id} ok={i.ok} label={i.label} detail={i.ok ? i.detail.split(" · ")[0] : i.detail} />
+                  <Check key={i.id} ok={i.ok} label={i.label} detail={i.ok ? i.detail.split(" · ").slice(0, 2).join(" · ") : i.detail} />
                 ))}
               </div>
             </Field>

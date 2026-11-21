@@ -59,6 +59,18 @@ def yaml_problems(text):
     return out
 
 
+CR_SYNC = re.compile(r"^\[(\d\d:\d\d):\d\d\].*(UploadBatch|PromoteStagedBatch|DownloadBatch|download(ed)? \d+ file)", re.I)
+
+
+def cr_last_sync(raw):
+    """"HH:MM" of the last upload or download CloudRedirect logged, or None."""
+    for line in reversed(raw.decode("utf-8", "replace").splitlines()):
+        m = CR_SYNC.match(line.strip())
+        if m:
+            return m.group(1)
+    return None
+
+
 def cr_log_problems(raw):
     """Problem lines of the last CloudRedirect session in its log."""
     lines = raw.decode("utf-8", "replace").splitlines()
@@ -192,15 +204,18 @@ class SteamCheck(object):
             loaded = "cloud_redirect.so" in names
             log = _read(self.user.path(".config", "CloudRedirect", "cloud_redirect.log"), LOG_TAIL)
             problems = cr_log_problems(log) if log else []
+            synced = cr_last_sync(log) if log else None
+            # Working = loaded and no errors in its log, whichever build it is: the official one handles
+            # 64-bit Steam as well (seen on the device: official build, saves uploaded to Google Drive).
             ok = (loaded if running else True) and not problems
-            detail = ("LeGo 64-bit fork" if fork else "official build")
-            detail += (" · loaded" if loaded else " · NOT loaded in Steam") if running else ""
+            parts = ["LeGo 64-bit fork" if fork else "official build"]
+            if synced:
+                parts.append("last sync " + synced)
+            if running:
+                parts.append("loaded" if loaded else "NOT loaded in Steam")
             if problems:
-                detail += " · log: " + problems[-1]
-            if not fork and os.path.exists(cr_so + ".official"):
-                detail += " · the fork was replaced (Update/Deploy or Headcrab?)"
-                ok = False
-            item("cloudredirect", "CloudRedirect", ok, detail)
+                parts.append("log: " + problems[-1])
+            item("cloudredirect", "CloudRedirect", ok, " · ".join(parts))
 
         lib = self.user.path(".local", "share", "ACCELA", "db", "plugin_library.json")
         if os.path.exists(lib):
