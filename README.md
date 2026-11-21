@@ -458,6 +458,10 @@ pnpm run build                            # UI -> dist/
 bash scripts/package.sh                   # -> release/legion-go-toolbox.zip
 ```
 
+**Version numbers** follow one rule: in *x.y.z*, *z* counts fixes up to 10; after
+*x.y.10* comes *x.(y+1).0*, with *y* up to 20; after *x.20.10* comes *(x+1).0.0*.
+*x* also goes up for a major change. `node scripts/next-version.mjs` prints the next one.
+
 The PDF manual and README live in `docs/`. To rebuild them after editing
 `docs/src/manual.html` or this README (needs Node with `marked` and
 Playwright):

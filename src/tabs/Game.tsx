@@ -1,10 +1,10 @@
 import { DialogButton, Field, Focusable, PanelSection, PanelSectionRow } from "@decky/ui";
-import { useQuickAccessVisible } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
 import { FaBalanceScale, FaLeaf, FaRocket } from "react-icons/fa";
 
 import { ModeId, ModeInfo, modeInfo, SystemState, systemState } from "../backend";
 import { applyMode, hm, Mode, modeById, MODES, modeSets } from "../modes";
+import { usePanelVisible } from "../panel";
 import { useStore } from "../store";
 import { Info, NavRow } from "../ui";
 import type { Updates } from "../backend";
@@ -19,10 +19,15 @@ const ICONS: Record<ModeId, ReactNode> = {
 /** One big reading: label over a dot-matrix number and its unit. */
 const Reading: FC<{ label: string; value: string | number; unit: string }> = ({ label, value, unit }) => (
   <div style={{ flex: 1, minWidth: 0 }}>
-    <div className="dot-label">{label}</div>
-    <div className="dot-num" style={{ fontSize: 30, lineHeight: 1, marginTop: 3, whiteSpace: "nowrap" }}>
+    <div
+      className="dot-label"
+      style={{ letterSpacing: 1.5, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+    >
+      {label}
+    </div>
+    <div className="dot-num" style={{ fontSize: 26, lineHeight: 1, marginTop: 4, whiteSpace: "nowrap" }}>
       {value}
-      <span style={{ fontSize: 12, color: "#8a8a8a", marginLeft: 2 }}>{unit}</span>
+      <span style={{ fontSize: 12, color: "#8a8a8a", marginLeft: 3 }}>{unit}</span>
     </div>
   </div>
 );
@@ -36,9 +41,8 @@ export const GameTab: FC<{ go: (tab: string) => void; updates: Updates | null }>
   const [busy, setBusy] = useState<ModeId | null>(null);
   const working = useRef(false);
 
-  const visible = useQuickAccessVisible();
+  const visible = usePanelVisible();
   useEffect(() => {
-    if (!visible) return;
     let alive = true;
     const load = () => {
       modeInfo(appId)
@@ -48,7 +52,10 @@ export const GameTab: FC<{ go: (tab: string) => void; updates: Updates | null }>
         .then((s) => alive && setSys(s))
         .catch(() => undefined);
     };
-    load();
+    load();                          // once on opening, even if visibility can't be told
+    if (!visible) return () => {
+      alive = false;
+    };
     const id = setInterval(load, 5000);
     return () => {
       alive = false;
@@ -93,19 +100,18 @@ export const GameTab: FC<{ go: (tab: string) => void; updates: Updates | null }>
             <div className="dot-card dot-grid" style={{ width: "100%" }}>
               <div className="dot-label">{appId != null ? "Now playing" : "No game running"}</div>
               {appId != null && <div style={{ fontSize: 16, fontWeight: 600, marginTop: 3 }}>{name}</div>}
-              <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-                {appId != null && (
-                  <Reading label={before != null ? "Before menu" : "Frame rate"} value={fps != null ? Math.round(fps) : "–"} unit="fps" />
-                )}
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                {appId != null && <Reading label="FPS" value={fps != null ? Math.round(fps) : "–"} unit="" />}
                 <Reading label={charging ? "TDP" : "Power"} value={watts != null ? Math.round(watts) : "–"} unit="W" />
                 <Reading
-                  label={charging ? "Battery" : "Left"}
+                  label={charging ? "Battery" : "Time left"}
                   value={charging ? (batt?.percent ?? "–") : hm(batt?.minutes != null ? batt.minutes / 60 : null)}
-                  unit={charging ? "%" : "h"}
+                  unit={charging ? "%" : ""}
                 />
               </div>
               <div style={{ fontSize: 12.5, color: "#8a8a8a", marginTop: 8 }}>
                 {[
+                  before != null ? "fps before menu" : null,
                   status.fan.temp != null ? `${status.fan.temp} °C` : null,
                   batt ? `battery ${batt.percent} %` : null,
                   charging ? (batt?.status === "Full" ? "full" : "charging") : null,

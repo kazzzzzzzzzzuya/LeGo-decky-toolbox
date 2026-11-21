@@ -4,9 +4,8 @@ import {
   Field,
   PanelSection,
   PanelSectionRow,
-  SliderField,
-  ToggleField,
-} from "@decky/ui";
+  SliderField } from "@decky/ui";
+import { Toggle } from "../ui";
 import { toaster } from "@decky/api";
 import { FC, useState } from "react";
 
@@ -177,7 +176,7 @@ const SlotSection: FC<SlotSectionProps> = ({
   return (
     <PanelSection title={SLOT_TITLES[name]}>
       <PanelSectionRow>
-        <ToggleField
+        <Toggle
           label="Enabled"
           description={slotSummary(name, status, serviceOn)}
           checked={settings.enabled}
@@ -274,21 +273,21 @@ const SlotSection: FC<SlotSectionProps> = ({
             />
           </PanelSectionRow>
           <PanelSectionRow>
-            <ToggleField
+            <Toggle
               label="Invert pitch"
               checked={settings.invert_pitch}
               onChange={(v) => set({ invert_pitch: v })}
             />
           </PanelSectionRow>
           <PanelSectionRow>
-            <ToggleField
+            <Toggle
               label="Invert yaw"
               checked={settings.invert_yaw}
               onChange={(v) => set({ invert_yaw: v })}
             />
           </PanelSectionRow>
           <PanelSectionRow>
-            <ToggleField
+            <Toggle
               label="Invert roll"
               checked={settings.invert_roll}
               onChange={(v) => set({ invert_roll: v })}
@@ -414,7 +413,7 @@ export const GyroTab: FC = () => {
 
   const modeToggle = (
     <PanelSectionRow>
-      <ToggleField
+      <Toggle
         label="Advanced options"
         description={
           settings.advanced
@@ -432,7 +431,7 @@ export const GyroTab: FC = () => {
       <>
         <PanelSection title="Gyro for emulators">
           <PanelSectionRow>
-            <ToggleField
+            <Toggle
               label="Controller gyro"
               description={overallLine(status)}
               checked={settings.enabled}
@@ -522,7 +521,7 @@ export const GyroTab: FC = () => {
     <>
       <PanelSection title="Status">
         <PanelSectionRow>
-          <ToggleField
+          <Toggle
             label="Gyro service"
             description="Reads the controller motion sensors and serves them to emulators."
             checked={settings.enabled}
@@ -549,7 +548,7 @@ export const GyroTab: FC = () => {
 
       <PanelSection title="Server">
         <PanelSectionRow>
-          <ToggleField
+          <Toggle
             label="Auto-calibrate when resting"
             description="Removes gyro drift whenever a controller lies perfectly still."
             checked={settings.auto_calibrate}
@@ -570,7 +569,7 @@ export const GyroTab: FC = () => {
           />
         </PanelSectionRow>
         <PanelSectionRow>
-          <ToggleField
+          <Toggle
             label="Allow other devices"
             description="Lets emulators on other machines in your network use this motion data."
             checked={settings.lan}

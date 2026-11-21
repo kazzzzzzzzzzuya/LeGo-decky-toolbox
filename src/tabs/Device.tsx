@@ -1,11 +1,11 @@
-import { DropdownItem, PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
+import { DropdownItem, PanelSection, PanelSectionRow } from "@decky/ui";
 import { toaster } from "@decky/api";
-import { useQuickAccessVisible } from "@decky/api";
 import { FC, useEffect, useState } from "react";
 
 import { SystemState, systemState, systemUpdate } from "../backend";
+import { usePanelVisible } from "../panel";
 import { update, useStore } from "../store";
-import { ErrorRow, Group, NavRow, PLUGIN_NAME, SubPage } from "../ui";
+import { ErrorRow, Group, NavRow, PLUGIN_NAME, SubPage, Toggle } from "../ui";
 import { ControlsTab, LAYOUTS } from "./Controls";
 import { LightsTab } from "./Lights";
 import { SteamGyroSection } from "./SteamGyro";
@@ -26,15 +26,17 @@ export const DeviceTab: FC = () => {
   const { state } = useStore();
   const [page, setPage] = useState<Page | null>(null);
   const [sys, setSys] = useState<SystemState | null>(null);
-  const visible = useQuickAccessVisible();
+  const visible = usePanelVisible();
   useEffect(() => {
-    if (!visible) return;
     let alive = true;
     const load = () =>
       systemState()
         .then((s) => alive && setSys(s))
         .catch(() => undefined);
-    load();
+    load();                          // once on opening, even if visibility can't be told
+    if (!visible) return () => {
+      alive = false;
+    };
     const id = setInterval(load, 3000);
     return () => {
       alive = false;
@@ -77,7 +79,7 @@ export const DeviceTab: FC = () => {
         {caps.charge_limit.available && (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Stop charging at 80 %"
                 description="Healthier battery when you mostly play plugged in."
                 checked={settings.battery.charge_limit ?? status.battery.charge_limit ?? false}
@@ -90,7 +92,7 @@ export const DeviceTab: FC = () => {
         {sys && sleep?.available && (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Power off after a long sleep"
                 description={`After ${sys.settings.sleep.hours} h asleep${
                   sleep.average_ph != null ? ` · asleep it uses ${sleep.average_ph.toFixed(1)} %/h` : ""
@@ -122,7 +124,7 @@ export const DeviceTab: FC = () => {
       <PanelSection>
         {sys && (sys.eq.available ? (
           <PanelSectionRow>
-            <ToggleField
+            <Toggle
               label="Better speakers"
               description={
                 sys.settings.eq.enabled

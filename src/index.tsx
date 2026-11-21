@@ -1,11 +1,12 @@
 import { Router, Tabs, gamepadTabbedPageClasses, staticClasses } from "@decky/ui";
-import { definePlugin, useQuickAccessVisible } from "@decky/api";
+import { definePlugin } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
 import { FaEllipsisH, FaGamepad, FaTabletAlt } from "react-icons/fa";
 import { GiToolbox } from "react-icons/gi";
 
 import { menuState, onResume, onSuspend, setRunningApp } from "./backend";
 import { DOT, dotCss } from "./dot";
+import { panel, usePanelVisible } from "./panel";
 import { flushWrites, load, refreshStatus, useStore } from "./store";
 import { DeviceTab } from "./tabs/Device";
 import { GameTab } from "./tabs/Game";
@@ -185,7 +186,9 @@ const Content: FC = () => {
   const [tab, setTab] = useState("Game");
   const [updates, checking, check] = useUpdates();
   // The menu slows the game (MAKO pauses): the backend keeps the frame rate from just before it opened.
-  const visible = useQuickAccessVisible();
+  const visible = usePanelVisible();
+  const visibleRef = useRef(visible);
+  visibleRef.current = visible;
   useEffect(() => {
     void menuState(visible).catch(() => undefined);
   }, [visible]);
@@ -195,13 +198,11 @@ const Content: FC = () => {
     void load();
     return () => flushWrites();
   }, []);
-  const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const id = setInterval(
       () => {
         // The panel stays mounted while the menu is closed: do not poll then.
-        const el = root.current;
-        if (el && el.getClientRects().length === 0) return;
+        if (!visibleRef.current) return;
         void refreshStatus();
       },
       tab === "More" ? 500 : 1000,
@@ -238,10 +239,11 @@ const Content: FC = () => {
 
   return (
     <div
-      ref={root}
       className="lgo-toolbox-tabs"
       style={{ height: "95%", width: "300px", position: "fixed", marginTop: "-12px", overflow: "hidden" }}
     >
+      {/* 1 px high, so it has a size whenever the panel is on screen (see panel.ts) */}
+      <div ref={(el) => panel.attach(el)} style={{ height: 1, marginBottom: -1 }} />
       <style>{TAB_STYLES + currentTabStyles()}</style>
       <Tabs activeTab={tab} onShowTab={(next: string) => setTab(next)} tabs={tabs} />
     </div>

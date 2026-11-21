@@ -320,3 +320,22 @@ export const SubPage: FC<{ title: string; back: () => void; children: ReactNode 
     {children}
   </Focusable>
 );
+
+/** A switch row drawn by the theme (Steam's own toggle ignores restyling on some clients and
+ *  stayed blue). Same props as Decky's ToggleField: A or a tap flips it. */
+export const Toggle: FC<{
+  label: ReactNode;
+  description?: ReactNode;
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (v: boolean) => void;
+}> = ({ label, description, checked, disabled, onChange }) => {
+  const flip = () => {
+    if (!disabled) onChange(!checked);
+  };
+  return (
+    <Field label={label} description={description} focusable highlightOnFocus onActivate={flip} onClick={flip}>
+      <span className={`dot-switch${checked ? " on" : ""}${disabled ? " disabled" : ""}`} role="switch" aria-checked={checked} />
+    </Field>
+  );
+};

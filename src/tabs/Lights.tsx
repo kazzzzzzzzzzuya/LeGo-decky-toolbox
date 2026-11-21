@@ -1,9 +1,9 @@
-import { DropdownItem, Field, PanelSection, PanelSectionRow, SliderField, ToggleField } from "@decky/ui";
+import { DropdownItem, Field, PanelSection, PanelSectionRow, SliderField } from "@decky/ui";
 import { FC } from "react";
 
 import type { StickMode } from "../backend";
 import { update, useStore } from "../store";
-import { ErrorRow, hueSatToRgb, rgbToHueSat, Unavailable } from "../ui";
+import { ErrorRow, hueSatToRgb, rgbToHueSat, Toggle, Unavailable } from "../ui";
 
 const MODE_OPTIONS: { data: StickMode; label: string }[] = [
   { data: "solid", label: "Solid colour" },
@@ -33,7 +33,7 @@ export const LightsTab: FC = () => {
         ) : (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Stick lights"
                 description={
                   sticks.managed
@@ -131,14 +131,14 @@ export const LightsTab: FC = () => {
         ) : (
           <>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Power light"
                 checked={ledOn}
                 onChange={(v) => update({ lighting: { power_led: { managed: true, on: v } } })}
               />
             </PanelSectionRow>
             <PanelSectionRow>
-              <ToggleField
+              <Toggle
                 label="Off while sleeping"
                 description="Turns the light off when the device goes to sleep and back on when it wakes."
                 checked={led.off_in_sleep}
