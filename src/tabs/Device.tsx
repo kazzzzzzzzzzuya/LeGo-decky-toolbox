@@ -2,16 +2,17 @@ import { DropdownItem, PanelSection, PanelSectionRow } from "@decky/ui";
 import { toaster } from "@decky/api";
 import { FC, useEffect, useState } from "react";
 
-import { SystemState, systemState, systemUpdate } from "../backend";
+import { cloudSavesSummary, SystemState, systemState, systemUpdate } from "../backend";
 import { usePanelVisible } from "../panel";
 import { update, useStore } from "../store";
 import { ErrorRow, Group, NavRow, PLUGIN_NAME, SubPage, Toggle } from "../ui";
+import { CloudSavesPage } from "./CloudSaves";
 import { ControlsTab, LAYOUTS } from "./Controls";
 import { LightsTab } from "./Lights";
 import { SteamGyroSection } from "./SteamGyro";
 import { SystemTab } from "./System";
 
-type Page = "buttons" | "lights" | "gyro" | "sound" | "sleep" | "steam";
+type Page = "buttons" | "lights" | "gyro" | "sound" | "sleep" | "steam" | "saves";
 const TITLES: Record<Page, string> = {
   buttons: "Buttons",
   lights: "Lights",
@@ -19,6 +20,7 @@ const TITLES: Record<Page, string> = {
   sound: "Sound",
   sleep: "Sleep",
   steam: "Steam mods",
+  saves: "Cloud saves",
 };
 
 /** Set-once settings of the device, grouped; each group's details on a page of its own. */
@@ -26,7 +28,22 @@ export const DeviceTab: FC = () => {
   const { state } = useStore();
   const [page, setPage] = useState<Page | null>(null);
   const [sys, setSys] = useState<SystemState | null>(null);
+  const [saves, setSaves] = useState<Awaited<ReturnType<typeof cloudSavesSummary>> | null>(null);
   const visible = usePanelVisible();
+  useEffect(() => {
+    if (page) return;
+    let alive = true;
+    const load = () =>
+      cloudSavesSummary()
+        .then((s) => alive && setSaves(s))
+        .catch(() => undefined);
+    load();
+    const id = visible ? setInterval(load, 15000) : undefined;
+    return () => {
+      alive = false;
+      if (id) clearInterval(id);
+    };
+  }, [page, visible]);
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -55,6 +72,7 @@ export const DeviceTab: FC = () => {
         {page === "sound" && <SystemTab part="speakers" />}
         {page === "sleep" && <SystemTab part="sleep" />}
         {page === "steam" && <SystemTab part="steam" />}
+        {page === "saves" && <CloudSavesPage />}
       </SubPage>
     );
   }
@@ -183,6 +201,26 @@ export const DeviceTab: FC = () => {
                 : "SLSsteam, CloudRedirect, ASSella / Uran"
           }
           onClick={() => setPage("steam")}
+        />
+      </PanelSection>
+
+      <Group>Cloud saves</Group>
+      <PanelSection>
+        <NavRow
+          warn={!!saves?.problems}
+          label={
+            !saves || !saves.installed
+              ? "Cloud saves"
+              : saves.problems
+                ? `${saves.problems} ${saves.problems === 1 ? "thing needs" : "things need"} a look`
+                : `${saves.games} ${saves.games === 1 ? "game" : "games"} synced`
+          }
+          sub={
+            saves?.installed
+              ? `Steam games to ${saves.provider_label ?? "no cloud yet"} · other games with OpenSave`
+              : "Steam games (CloudRedirect) and other games (OpenSave)"
+          }
+          onClick={() => setPage("saves")}
         />
       </PanelSection>
     </>

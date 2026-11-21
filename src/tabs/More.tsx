@@ -5,6 +5,7 @@ import type { Updates } from "../backend";
 import { useStore } from "../store";
 import { Group, Info, modeLabel, NavRow, SubPage } from "../ui";
 import { AboutSection, AcpiSection } from "./About";
+import { CloudSavesPage } from "./CloudSaves";
 import { FanTab } from "./Fan";
 import { GyroTab } from "./Gyro";
 import { hours, PlaytimeSection } from "./Playtime";
@@ -12,7 +13,7 @@ import { PowerTab } from "./Power";
 import { SmoothSection } from "./Smooth";
 import { SystemTab } from "./System";
 
-type Page = "power" | "cap" | "playtime" | "fan" | "gyro" | "steam" | "about";
+type Page = "power" | "cap" | "playtime" | "fan" | "gyro" | "steam" | "saves" | "about";
 const TITLES: Record<Page, string> = {
   power: "Power and TDP",
   cap: "Frame rate cap",
@@ -20,6 +21,7 @@ const TITLES: Record<Page, string> = {
   fan: "Fan curve",
   gyro: "Gyro for emulators",
   steam: "Steam mods and backups",
+  saves: "Cloud saves",
   about: "Backup, updates, about",
 };
 
@@ -47,6 +49,7 @@ export const MoreTab: FC<{ updates: Updates | null; checking: boolean; check: (f
         )}
         {page === "gyro" && <GyroTab />}
         {page === "steam" && <SystemTab part="steam" />}
+        {page === "saves" && <CloudSavesPage />}
         {page === "about" && <AboutSection updates={updates} checking={checking} check={check} />}
       </SubPage>
     );
@@ -100,6 +103,7 @@ export const MoreTab: FC<{ updates: Updates | null; checking: boolean; check: (f
       <PanelSection>
         <NavRow label="Gyro for emulators" sub={gyro.settings.enabled ? "On" : "Off"} onClick={() => setPage("gyro")} />
         <NavRow label="Steam mods and backups" sub="Check, settings backups, update hold" onClick={() => setPage("steam")} />
+        <NavRow label="Cloud saves" sub="Per game: did the save reach the cloud" onClick={() => setPage("saves")} />
         <NavRow
           label="Backup, updates, about"
           sub={`Version ${state.version}${updates?.newer ? ` · ${updates.latest} available` : ""}`}

@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 1.0.4</div>
+    <div class="kicker">User manual · Version 1.0.5</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -52,7 +52,7 @@
     <li><span class="n">7</span><span><span class="t">Lights</span><br><span class="d">Stick lights, power-button light</span></span></li>
     <li><span class="n">8</span><span><span class="t">Controls</span><br><span class="d">Swapped menu buttons, back-button remapping, touchpad</span></span></li>
     <li><span class="n">9</span><span><span class="t">Gyro</span><br><span class="d">Gyro in Steam games, gyro in emulators (Wii Sports, Switch Sports)</span></span></li>
-    <li><span class="n">10</span><span><span class="t">Sound, sleep and Steam</span><br><span class="d">Speaker EQ, battery used while asleep, power-off after a long sleep, Steam update check</span></span></li>
+    <li><span class="n">10</span><span><span class="t">Sound, sleep and Steam</span><br><span class="d">Speaker EQ, battery used while asleep, power-off after a long sleep, Steam update check, cloud saves</span></span></li>
     <li><span class="n">11</span><span><span class="t">With frame generation and upscalers</span><br><span class="d">lsfg-vk 2.0, MAKO, Frame Suite, Decky-Framegen, HelixSR</span></span></li>
     <li><span class="n">12</span><span><span class="t">Troubleshooting</span><br><span class="d">Symptoms and fixes</span></span></li>
     <li><span class="n">13</span><span><span class="t">Reference</span><br><span class="d">Files, limits, what is re-applied when, credits</span></span></li>
@@ -128,7 +128,7 @@
   <table>
     <tr><th>Tab</th><th>What it holds</th></tr>
     <tr><td class="k">Game</td><td>What is happening now (frame rate, watts, hours left), a red alert only when something broke, and one choice per game: <b>Longest battery</b>, <b>Balanced</b> or <b>Smoothest</b>.</td></tr>
-    <tr><td class="k">Device</td><td>Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers, buttons, lights, gyro in Steam games, Steam mods.</td></tr>
+    <tr><td class="k">Device</td><td>Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers, buttons, lights, gyro in Steam games, Steam mods, cloud saves.</td></tr>
     <tr><td class="k">More</td><td>Every detailed control: power and TDP, frame rate cap, battery goal, fan curve, gyro for emulators, Steam mods and backups, backup / updates / about. A change here overrides the game's mode for that game.</td></tr>
   </table>
 
@@ -487,6 +487,13 @@
     <li><b>Hold Steam client updates</b> writes Valve's <code>steam.cfg</code> switch, so the Steam client stays on its build while your mods catch up. SteamOS updates are not affected. A <code>steam.cfg</code> you made yourself is never changed.</li>
   </ul>
   <p>A mod that no longer loads after an update needs its own update for the new Steam build; the check tells you which one.</p>
+
+  <h2>Cloud saves</h2>
+  <p>Device → <b>Cloud saves</b> (also under More) answers one question per game: did its save reach the cloud? A white tick means yes; a red <b>!</b> gives the reason. Select a game for its details. Each game has one tool:</p>
+  <ul>
+    <li><b>Steam games · CloudRedirect</b>: the games in SLSsteam's <code>AdditionalApps</code>, read the way CloudRedirect reads them, so an entry it would skip (a number in quotes, a list on one line) is named. Per game: when its saves last synced and how many files, whether the last upload finished, and whether those files are in your cloud. Above the list: CloudRedirect not loaded in Steam (also a 32-bit build in a 64-bit Steam), signed out, connection failures since Steam started. <b>Check the cloud now</b> asks the cloud with CloudRedirect's own read-only listing; it also happens when the page opens and the last check is older than half an hour, and once after a game synced. Nothing is changed in the cloud or on the device. A notification says so once when a game's upload failed or its files are missing in the cloud.</li>
+    <li><b>Other games · OpenSave</b>: emulators and non-Steam games tracked in OpenSave (install its Flatpak in Desktop Mode and set it up there). Per game: last save, last sync with your other devices, problems. <b>Start OpenSave</b> starts its background service; <b>Back up now</b> uploads to OpenSave's cloud without changing anything on the device; <b>Sync with my other devices</b> asks first, because a newer save from another device replaces the one here (OpenSave keeps the earlier version). Steam games are never synced or backed up from here: one OpenSave tracks too is named, with a button to stop tracking it in OpenSave (its files and snapshots stay).</li>
+  </ul>
 </section>
 
 <!-- ============================== 11 ============================== -->
