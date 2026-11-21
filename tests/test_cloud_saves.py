@@ -108,6 +108,8 @@ class Log(unittest.TestCase):
         self.assertEqual(r["session"]["curl_failures"], 1)
         self.assertEqual(r["session"]["started"], "11:00")
         self.assertIn("SSL peer certificate", r["session"]["curl_last"])
+        r = cs.parse_log(b"[09:00:00][INFO] [GDrive] curl failed: 60 (GET https://x)\n")   # the official build
+        self.assertEqual(r["session"]["curl_last"], "curl 60 (certificate check failed)")
 
 
 class CloudCompare(unittest.TestCase):

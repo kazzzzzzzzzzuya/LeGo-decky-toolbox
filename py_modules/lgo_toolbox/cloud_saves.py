@@ -262,6 +262,9 @@ R_PUB_OK = re.compile(r"^\[NS\] CompleteBatch\(pub\): publish \d+/\d+ succeeded 
 R_PUB_FAIL = re.compile(r"^\[NS\] CompleteBatch\(pub\): all publish attempts exhausted for app (\d+)")
 R_CHANGELIST = re.compile(r"^\[NS-CL\] GetAppFileChangelist app=(\d+)")
 R_CURL = re.compile(r"curl failed: (-?\d+)(?: \[([^\]]*)\])?")
+CURL_SAID = {"6": "server not found, no internet?", "7": "could not connect", "28": "timed out",
+             "35": "secure connection failed", "56": "connection dropped",
+             "60": "certificate check failed"}
 WHY = {
     "cloud": "the cloud could not be reached",
     "steam": "Steam reported the upload as failed",
@@ -290,7 +293,7 @@ def parse_log(raw):
         if "curl failed" in msg:
             c = R_CURL.search(msg)
             sess["curl_failures"] += 1
-            sess["curl_last"] = (("curl %s: %s" % (c.group(1), c.group(2) or "")).strip(": ")
+            sess["curl_last"] = (("curl %s (%s)" % (c.group(1), c.group(2) or CURL_SAID.get(c.group(1), "error")))
                                  if c else msg)[:120]
             continue
         if "configured but not authenticated" in msg:
