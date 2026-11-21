@@ -1,27 +1,23 @@
 import { PanelSection } from "@decky/ui";
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 
-import type { Updates } from "../backend";
+import { SystemState, systemState, type Updates } from "../backend";
 import { useStore } from "../store";
 import { Group, Info, modeLabel, NavRow, SubPage } from "../ui";
 import { AboutSection, AcpiSection } from "./About";
-import { CloudSavesPage } from "./CloudSaves";
 import { FanTab } from "./Fan";
-import { GyroTab } from "./Gyro";
 import { hours, PlaytimeSection } from "./Playtime";
 import { PowerTab } from "./Power";
 import { SmoothSection } from "./Smooth";
 import { SystemTab } from "./System";
 
-type Page = "power" | "cap" | "playtime" | "fan" | "gyro" | "steam" | "saves" | "about";
+type Page = "power" | "cap" | "playtime" | "fan" | "steam" | "about";
 const TITLES: Record<Page, string> = {
   power: "Power and TDP",
   cap: "Frame rate cap",
   playtime: "Battery goal",
   fan: "Fan curve",
-  gyro: "Gyro for emulators",
   steam: "Steam mods and backups",
-  saves: "Cloud saves",
   about: "Backup, updates, about",
 };
 
@@ -33,6 +29,10 @@ export const MoreTab: FC<{ updates: Updates | null; checking: boolean; check: (f
 }) => {
   const { state } = useStore();
   const [page, setPage] = useState<Page | null>(null);
+  const [sys, setSys] = useState<SystemState | null>(null);
+  useEffect(() => {
+    if (!page) void systemState().then(setSys).catch(() => undefined);
+  }, [page]);
   if (!state) return null;
 
   if (page) {
@@ -47,15 +47,14 @@ export const MoreTab: FC<{ updates: Updates | null; checking: boolean; check: (f
             <FanTab />
           </>
         )}
-        {page === "gyro" && <GyroTab />}
         {page === "steam" && <SystemTab part="steam" />}
-        {page === "saves" && <CloudSavesPage />}
         {page === "about" && <AboutSection updates={updates} checking={checking} check={check} />}
       </SubPage>
     );
   }
 
-  const { settings, status, gyro } = state;
+  const { settings, status } = state;
+  const failing = sys?.steam?.items.filter((i) => !i.ok && i.id !== "steam") ?? [];
   const pw = status.power;
   const powerLine = !settings.power.enabled
     ? "Not managed"
@@ -72,8 +71,8 @@ export const MoreTab: FC<{ updates: Updates | null; checking: boolean; check: (f
 
   return (
     <>
-      <Info label="Everything from before">
-        Nothing was removed. A change here overrides the mode for this game only.
+      <Info label="Detailed controls">
+        A change here overrides the mode for this game only. Gyro and cloud saves are in the Device tab.
       </Info>
       <Group>This game</Group>
       <PanelSection>
@@ -101,9 +100,18 @@ export const MoreTab: FC<{ updates: Updates | null; checking: boolean; check: (f
       </PanelSection>
       <Group>Device</Group>
       <PanelSection>
-        <NavRow label="Gyro for emulators" sub={gyro.settings.enabled ? "On" : "Off"} onClick={() => setPage("gyro")} />
-        <NavRow label="Steam mods and backups" sub="Check, settings backups, update hold" onClick={() => setPage("steam")} />
-        <NavRow label="Cloud saves" sub="Per game: did the save reach the cloud" onClick={() => setPage("saves")} />
+        <NavRow
+          label="Steam mods and backups"
+          warn={failing.length > 0}
+          sub={
+            failing.length
+              ? `${failing.map((i) => i.label).join(", ")} needs a look`
+              : sys?.steam?.overall === "ok"
+                ? "All working · check, settings backups, update hold"
+                : "Check, settings backups, update hold"
+          }
+          onClick={() => setPage("steam")}
+        />
         <NavRow
           label="Backup, updates, about"
           sub={`Version ${state.version}${updates?.newer ? ` · ${updates.latest} available` : ""}`}

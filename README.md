@@ -22,8 +22,8 @@ every feature that your system cannot do says so, with the reason.
 | Tab | What it holds |
 |---|---|
 | **Game** | What is happening now in plain words (frame rate, watts, hours left), a red alert only when something broke, and **one choice per game**: *Longest battery*, *Balanced* or *Smoothest*. Each sets the game's power, frame cap, fan and frame generation together, shows the hours it gives (learned per game) and is remembered |
-| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), buttons, lights, gyro in Steam games, whether your Steam mods (SLSsteam, CloudRedirect, ASSella / Uran) still work, and **Cloud saves**: per game, whether its save reached the cloud |
-| **More** | Every detailed control, nothing removed: power and TDP (Auto TDP), frame rate cap, battery goal, fan curve, gyro for emulators (DSU), Steam mods and backups, backup / updates / about. A change here overrides the game's mode for that game |
+| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), buttons, lights, gyro (Steam games and emulators on one page), and **Cloud saves**: per game, whether its save reached the cloud |
+| **More** | Every detailed control, nothing removed: power and TDP (Auto TDP), frame rate cap, battery goal, fan curve, Steam mods (SLSsteam, CloudRedirect, ASSella / Uran) and backups, backup / updates / about. A change here overrides the game's mode for that game |
 
 Saved settings are applied when SteamOS starts, after sleep, and when a
 controller reconnects, also while the menu is closed.
@@ -340,7 +340,7 @@ and can be restored from the tab. **Hold Steam client updates** writes Valve's
 `steam.cfg` switch so the client stays on its build until your mods catch up;
 SteamOS updates are not affected, and a `steam.cfg` of your own is left alone.
 
-**Cloud saves.** Device → Cloud saves (also under More) lists every game
+**Cloud saves.** Device → Cloud saves lists every game
 whose saves go to the cloud, each with a white tick when all is well and a red
 **!** with the reason when not. Select a game for its details. It has two
 parts, one tool per game:
