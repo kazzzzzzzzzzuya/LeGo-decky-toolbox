@@ -244,6 +244,23 @@ class SteamChecks(unittest.TestCase):
         self.assertTrue(r["updated_since_good"])
         self.assertIn("NOT loaded", [i for i in r["items"] if i["id"] == "cloudredirect"][0]["detail"])
 
+    def test_official_build_that_loads_and_syncs_is_fine(self):
+        # Seen on the device: the fork replaced by the official build (its .official backup left),
+        # loaded, saves uploaded. That is working, not a failure.
+        self.put(".local/share/CloudRedirect/cloud_redirect.so", "elf official")
+        self.put(".local/share/CloudRedirect/cloud_redirect.so.official", "elf official")
+        self.put(".config/CloudRedirect/cloud_redirect.log",
+                 "[12:51:44][INFO] CloudRedirect build x\n"
+                 "[12:51:48][INFO] [GDriveProvider] UploadBatch: 3 file(s) (2 uploaded, 1 CAS-skipped)\n")
+        c = steam_check.SteamCheck(self.user, self.state, proc=self.proc)
+        self.steam_runs(["/h/SLSsteam.so", "/h/cloud_redirect.so"])
+        cr = [i for i in c.check()["items"] if i["id"] == "cloudredirect"][0]
+        self.assertTrue(cr["ok"], cr)
+        self.assertEqual(cr["detail"], "official build · last sync 12:51 · loaded")
+        self.steam_runs(["/h/SLSsteam.so"])                       # not loaded: that is a failure
+        cr = [i for i in c.check()["items"] if i["id"] == "cloudredirect"][0]
+        self.assertFalse(cr["ok"])
+
     def test_restore_puts_files_back(self):
         c = steam_check.SteamCheck(self.user, self.state, proc=self.proc)
         name = c.snapshot("test", force=True)

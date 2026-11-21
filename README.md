@@ -330,7 +330,9 @@ shutdown. Hibernation, swap and boot settings are not touched.
 
 **Steam update check.** Every minute, and a minute after Steam starts, the
 tab checks that each installed Steam client mod (SLSsteam, CloudRedirect,
-ASSella / Uran) is still loaded and its settings file is readable, and
+ASSella / Uran) is still loaded and its settings file is readable (for
+CloudRedirect: loaded with no errors in its log, whichever build, plus the
+time of its last sync), and
 notifies you when one stopped working after a Steam update. It only reads.
 Their settings files are backed up whenever everything works (last 8 kept)
 and can be restored from the tab. **Hold Steam client updates** writes Valve's
