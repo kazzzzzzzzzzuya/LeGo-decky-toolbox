@@ -53,7 +53,7 @@ function askInstall(r: Release, current: string) {
   );
 }
 
-/** "Version x is available" at the top of the Home tab, only when there is one. */
+/** "Update to x" at the top of the Game tab, only when there is one. */
 export const UpdateBanner: FC<{ updates: Updates | null }> = ({ updates }) => {
   if (!updates?.ok || !updates.newer || !updates.latest) return null;
   const r = updates.releases[0];
@@ -106,9 +106,20 @@ export const UpdateRows: FC<{ updates: Updates | null; checking: boolean; check:
             : !updates.ok
               ? `Could not check: ${updates.error}`
               : updates.newer
-                ? `${updates.latest} is available (top of this tab)`
-                : "Up to date"}
+                ? `${updates.latest} is available`
+                : `Up to date (${updates.current})`}
       </Info>
+      {updates?.ok && updates.newer && updates.latest && updates.releases[0] && (
+        <PanelSectionRow>
+          <ButtonItem
+            layout="below"
+            description={`You have ${updates.current}.${updates.releases[0].notes ? ` ${updates.releases[0].notes.split("\n")[0].slice(0, 140)}` : ""}`}
+            onClick={() => askInstall(updates.releases[0], updates.current)}
+          >
+            Update to {updates.latest}
+          </ButtonItem>
+        </PanelSectionRow>
+      )}
       <PanelSectionRow>
         <ButtonItem layout="below" onClick={() => void check(true)}>
           {checking ? "Checking…" : "Check for updates"}

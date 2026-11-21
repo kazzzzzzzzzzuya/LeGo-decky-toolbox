@@ -80,10 +80,10 @@ Legion Go yet.
 6. Open the Quick Access menu → Decky → **Legion Go Toolbox** (the plugin's
    name inside Decky).
 
-**Updating:** the Game tab says when a newer release exists: press
-**Update to …** at the top and confirm Decky's prompt. **More → Backup,
-updates, about** has **Check for updates** and **Install another version**.
-Settings stay.
+**Updating:** when a newer release exists, **Update to …** appears at the top
+of the Game tab and above **Check for updates** in **More → Backup, updates,
+about**; press it and confirm Decky's prompt. The same page has **Install
+another version**. Settings stay.
 
 **Coming from 2.x:** the version numbers started again at **1.0.0** with the
 simpler three-tab layout. Install 1.0.0 once by hand (the zip from the
