@@ -180,11 +180,18 @@ def read_sls_config(text):
             if n is not None and 0 < n <= 0xFFFFFFFF:
                 if n not in apps:
                     apps.append(n)
+            elif n == 0 or not item.strip():
+                continue                      # 0 (or nothing) is no game; CloudRedirect passes over it too
             else:
                 skipped.append(item[:40])
-        if skipped:
+        quoted = [x for x in skipped if re.search(r"\d", x)]
+        other = [x for x in skipped if not re.search(r"\d", x)]
+        if quoted:
             problems.append("CloudRedirect skips %s in AdditionalApps. Write each game as a plain number, "
-                            "without quotes (- 1234)." % ", ".join(repr(s) for s in skipped[:3]))
+                            "without quotes (- 1234)." % ", ".join(repr(s) for s in quoted[:3]))
+        if other:
+            problems.append("CloudRedirect skips %s in AdditionalApps: not a game number."
+                            % ", ".join(repr(s) for s in other[:3]))
     return {"apps": apps[:MAX_GAMES], "skipped": skipped, "cloud_blocked": blocked, "problems": problems}
 
 
@@ -655,7 +662,9 @@ class CloudSaves(object):
             games.append(self._game(app, self._name(libs, app), ctx, ev, capps.get(str(app))))
         for item in (sls or {}).get("skipped", [])[:MAX_GAMES]:
             m = re.search(r"\d+", item)
-            app = int(m.group(0)) if m and int(m.group(0)) <= 0xFFFFFFFF else None
+            app = int(m.group(0)) if m and 0 < int(m.group(0)) <= 0xFFFFFFFF else None
+            if app is None:
+                continue                      # not a game: named once above the list
             games.append({"appid": app, "name": self._name(libs, app) if app else None, "level": "fail",
                           "key": "skip|%s" % item,
                           "problem": "CloudRedirect skips this game: in AdditionalApps it is written as %r. "

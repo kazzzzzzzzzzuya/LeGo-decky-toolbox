@@ -76,6 +76,12 @@ class SlsConfig(unittest.TestCase):
         self.assertEqual(r["apps"], [])
         self.assertIn("Windows line endings", r["problems"][0])
 
+    def test_zero_is_no_game_and_not_a_problem(self):
+        # Seen on the device: "- 0" in AdditionalApps (the cloud's app 0 is CloudRedirect's account data).
+        r = cs.read_sls_config("DisableCloud: no\nAdditionalApps:\n  - 0\n  - 3489700\n  - abc\n")
+        self.assertEqual(r["apps"], [3489700])
+        self.assertEqual(r["problems"], ["CloudRedirect skips 'abc' in AdditionalApps: not a game number."])
+
     def test_disable_cloud(self):
         self.assertTrue(cs.read_sls_config("AdditionalApps:\n  - 10\n")["cloud_blocked"])
         self.assertTrue(cs.read_sls_config("DisableCloud: yes\nAdditionalApps:\n  - 10\n")["cloud_blocked"])
