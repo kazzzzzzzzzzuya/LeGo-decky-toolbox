@@ -22,7 +22,8 @@ const AUTO_STATES: Record<string, string> = {
   no_game: "no game running",
 };
 
-export const PowerTab: FC = () => {
+/** bare: without the Smooth frame rate and Battery playtime sections (More shows them as rows). */
+export const PowerTab: FC<{ bare?: boolean }> = ({ bare }) => {
   const { state } = useStore();
   if (!state) return null;
   const { caps, settings, status } = state;
@@ -192,6 +193,8 @@ export const PowerTab: FC = () => {
         </PanelSection>
       )}
 
+      {!bare && (
+        <>
       <Fold id="power-smooth" title="Smooth frame rate" summary={(() => {
           const sm = status.smooth;
           return sm?.fps ? `On for this game: ${sm.shown ?? sm.output ?? sm.fps} fps` : "A steady frame rate per game";
@@ -210,6 +213,9 @@ export const PowerTab: FC = () => {
       >
         <PlaytimeSection />
       </Fold>
+
+        </>
+      )}
 
       {p.enabled && (
         <Fold id="power-more" title="More power settings" summary="Per-game profiles, CPU boost">

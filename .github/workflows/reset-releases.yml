@@ -1,0 +1,34 @@
+name: Reset releases
+
+# One-off: deletes every GitHub release and every v* tag, so the numbering can start again
+# (1.0.0). Run it from the Actions tab and type DELETE to confirm. Release again afterwards.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DELETE to remove every release and v* tag"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  reset:
+    if: inputs.confirm == 'DELETE'
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Delete releases and tags
+        run: |
+          gh release list --limit 1000 --json tagName --jq '.[].tagName' | while read -r tag; do
+            [ -n "$tag" ] && gh release delete "$tag" --yes --cleanup-tag && echo "deleted release $tag"
+          done
+          git fetch --tags --force
+          for tag in $(git tag -l 'v*'); do
+            git push origin ":refs/tags/$tag" && echo "deleted tag $tag"
+          done
+          echo "Left: $(gh release list --limit 1000 | wc -l) releases, $(git ls-remote --tags origin 'v*' | wc -l) tags"

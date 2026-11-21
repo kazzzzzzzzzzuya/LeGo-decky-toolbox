@@ -17,7 +17,7 @@ const TEMPS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 // Lenovo's minimum curve for the Legion Go: nothing below it is accepted.
 const FLOOR = [44, 48, 55, 60, 71, 79, 87, 87, 100, 100];
 const MAX_LEVEL = 115;
-const PRESETS: Record<string, number[]> = {
+export const PRESETS: Record<string, number[]> = {
   silent: FLOOR.slice(),
   balanced: [44, 50, 58, 66, 78, 88, 96, 100, 105, 110],
   performance: [50, 56, 64, 74, 86, 96, 105, 110, 115, 115],

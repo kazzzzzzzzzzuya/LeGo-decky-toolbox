@@ -51,6 +51,15 @@ ${rules([
     [sel(root, sld?.TickActive), `background: ${text} !important;`],
     [sel(root, sld?.DescriptionValue), `font-family: "LgoDoto", monospace; font-weight: 900; font-size: 16px; color: ${text};`],
   ])}
+/* Fallbacks by name pattern: Steam's class names read "module_Name_hash", so these hold even
+   when Decky's class map is out of date (seen: the toggle stayed Steam's blue). */
+${root} [class*="_ToggleRail_"] { background: transparent !important; border: 1.5px solid ${line2}; border-radius: 13px; box-sizing: border-box; }
+${root} [class*="_ToggleSwitch_"] { background: #5a5a5a !important; box-shadow: none !important; }
+${root} [class*="_On_"] [class*="_ToggleRail_"], ${root} [class*="_On_"] > [class*="_ToggleRail_"] { background: ${text} !important; border-color: ${text}; }
+${root} [class*="_On_"] [class*="_ToggleSwitch_"] { background: #000 !important; }
+${root} [class*="_SliderTrack_"] { background: radial-gradient(#555 1px, transparent 1.3px) 0 50% / 6px 2px repeat-x, transparent !important; box-shadow: none !important; }
+${root} [class*="_SliderHandle_"] { background: ${text} !important; box-shadow: 0 0 0 4px ${bg} !important; border: none !important; }
+${root} [class*="_FieldDescription_"] { color: ${mute} !important; }
 ${root} .dot-red { color: ${red}; }
 ${root} .DialogButton.dot-pill.on { background: ${red} !important; border-color: ${red} !important; color: #fff !important; }
 ${root} .dot-reddot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: ${red}; margin-right: 6px; vertical-align: middle; }

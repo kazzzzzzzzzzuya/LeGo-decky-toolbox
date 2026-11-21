@@ -202,7 +202,9 @@ def _mako(m):
 
 def write_requests(home, games, clock=time.time):
     """Ask Frame Suite for frame generation: {appid: {"standby": bool,
-    "multiplier": int or None}}. An empty dict removes the file. Written
+    "multiplier": int or None, optional "boost": True and "name"}} ("boost":
+    the game is set to Smoothest on the Game tab, so Frame Suite turns its
+    Boost on). An empty dict removes the file. Written
     atomically, owned by the home's owner, only inside that home. Returns
     None or an error text."""
     if not home:
@@ -226,10 +228,14 @@ def write_requests(home, games, clock=time.time):
                 os.mkdir(p, 0o755)
                 if os.geteuid() == 0:
                     os.chown(p, home_st.st_uid, home_st.st_gid)
-        data = {"version": VERSION, "updated": int(clock()),
-                "games": {str(k): {"standby": bool(v.get("standby")),
-                                   "multiplier": v.get("multiplier") if _int(v.get("multiplier")) else None}
-                          for k, v in sorted(games.items())}}
+        out = {}
+        for k, v in sorted(games.items()):
+            e = {"standby": bool(v.get("standby")),
+                 "multiplier": v.get("multiplier") if _int(v.get("multiplier")) else None}
+            if v.get("boost"):
+                e["boost"], e["name"] = True, str(v.get("name") or "")[:120]
+            out[str(k)] = e
+        data = {"version": VERSION, "updated": int(clock()), "games": out}
         fd, tmp = tempfile.mkstemp(dir=folder, prefix=".framegen-")
         try:
             with os.fdopen(fd, "w") as f:

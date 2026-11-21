@@ -289,6 +289,53 @@ class WattsHistory(unittest.TestCase):
         self.assertEqual(s.watts_history(), [11.4, None])
 
 
+class Modes(unittest.TestCase):
+    def setUp(self):
+        self.d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.s = system.System(self.d, user=FakeUser(self.d))
+
+    def test_modes_are_kept_and_smoothest_asks_for_boost(self):
+        self.s.set_mode(9, "Elden Ring", "smooth")
+        self.s.set_mode(7, "Persona", "battery")
+        self.s.set_mode(2147483649, "Shortcut", "smooth")      # non-Steam: Frame Suite cannot boost it
+        self.assertEqual(self.s.boost_requests(), {"9": "Elden Ring"})
+        self.assertEqual(system.System(self.d, user=FakeUser(self.d)).get_settings()["modes"]["7"]["mode"], "battery")
+        self.s.set_mode(9, "Elden Ring", None)
+        self.assertEqual(self.s.boost_requests(), {})
+        self.assertNotIn("bad", system.sanitize({"modes": {"bad": {"mode": "smooth"}, "3": {"mode": "x"}}})["modes"])
+
+    def test_hours_are_learned_per_game_and_mode(self):
+        self.s.set_mode(9, "Elden Ring", "balanced")
+        self.s.running_app = lambda: 9
+        readings = iter([{"watts": 15.0, "status": "Discharging", "minutes": 120, "percent": 60}] * 4)
+        system.battery_info = lambda: next(readings, {"watts": 15.0, "status": "Discharging", "minutes": 120, "percent": 60})
+        try:
+            for t in range(4):
+                self.s._sample_watts(t * 61.0)
+            hours = self.s.mode_info(9)["hours"]
+        finally:
+            import lgo_toolbox.battery as b
+            system.battery_info = b.battery_info
+        # full battery: 15 W x 2 h / 60 % = 50 Wh; at 60 % and 15 W: 2 h
+        self.assertEqual(hours, {"battery": None, "balanced": 2.0, "smooth": None})
+        self.assertEqual(self.s.mode_info(9)["mode"], "balanced")
+
+
+class BoostRequestFile(unittest.TestCase):
+    def test_written_for_frame_suite(self):
+        from lgo_toolbox import suite
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d)
+        self.assertIsNone(suite.write_requests(d, {"9": {"standby": False, "multiplier": None,
+                                                         "boost": True, "name": "Elden Ring"},
+                                                   "7": {"standby": True, "multiplier": 2}}, clock=lambda: 5))
+        with open(os.path.join(d, suite.REQUESTS)) as f:
+            data = json.load(f)
+        self.assertEqual(data["games"]["9"], {"standby": False, "multiplier": None, "boost": True, "name": "Elden Ring"})
+        self.assertEqual(data["games"]["7"], {"standby": True, "multiplier": 2})
+
+
 class Settings(unittest.TestCase):
     def test_sanitize(self):
         s = system.sanitize({"eq": {"enabled": 1, "preset": "x", "bass": 99}, "sleep": {"hours": 5}})

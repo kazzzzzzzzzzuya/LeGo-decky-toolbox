@@ -161,3 +161,8 @@ export function useStore(): Store {
   }, []);
   return store;
 }
+
+/** The state right now, outside React (for actions that read it once). */
+export function currentState(): State | null {
+  return store.state;
+}

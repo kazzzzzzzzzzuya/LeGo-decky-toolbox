@@ -1,22 +1,18 @@
 import { Router, Tabs, gamepadTabbedPageClasses, staticClasses } from "@decky/ui";
 import { definePlugin } from "@decky/api";
 import { FC, ReactNode, useEffect, useRef, useState } from "react";
-import { FaBolt, FaFan, FaGamepad, FaHome, FaSlidersH } from "react-icons/fa";
-import { MdScreenRotation } from "react-icons/md";
+import { FaEllipsisH, FaGamepad, FaTabletAlt } from "react-icons/fa";
 import { GiToolbox } from "react-icons/gi";
 
 import { onResume, onSuspend, setRunningApp } from "./backend";
 import { DOT, dotCss } from "./dot";
 import { flushWrites, load, refreshStatus, useStore } from "./store";
-import { ControlsTab } from "./tabs/Controls";
-import { FanTab } from "./tabs/Fan";
-import { GyroTab } from "./tabs/Gyro";
-import { SteamGyroSection } from "./tabs/SteamGyro";
-import { HomeTab } from "./tabs/Home";
-import { LightsTab } from "./tabs/Lights";
-import { PowerTab } from "./tabs/Power";
-import { SystemTab, watchSteamMods } from "./tabs/System";
-import { Fold, PLUGIN_NAME } from "./ui";
+import { DeviceTab } from "./tabs/Device";
+import { GameTab } from "./tabs/Game";
+import { MoreTab } from "./tabs/More";
+import { watchSteamMods } from "./tabs/System";
+import { useUpdates } from "./tabs/Updates";
+import { PLUGIN_NAME } from "./ui";
 
 // Dot theme (see dot.ts): black, white and grey, one red accent; tabs are a row of round outlined
 // icons, the current one filled white; each tab starts with its name in dot-matrix type.
@@ -112,6 +108,37 @@ const TAB_STYLES = `
     margin-top: 2px;
     overflow-wrap: anywhere;
   }
+  .lgo-toolbox-tabs .DialogButton.lgo-mode {
+    display: flex !important;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    padding: 10px 14px !important;
+    border-radius: 20px !important;
+    text-align: left;
+  }
+  .lgo-toolbox-tabs .lgo-mode .lgo-mode-line {
+    display: block;
+    font-size: 11.5px;
+    color: ${DOT.mute};
+    margin-top: 1px;
+  }
+  .lgo-toolbox-tabs .lgo-mode-icon { display: flex; flex: none; }
+  /* Chosen: filled white. Focused: a red ring (white fill alone would look chosen). */
+  .lgo-toolbox-tabs .DialogButton.lgo-mode.gpfocus,
+  .lgo-toolbox-tabs .DialogButton.lgo-mode:hover {
+    background: transparent !important;
+    color: ${DOT.text} !important;
+    border: 2px solid ${DOT.red} !important;
+  }
+  .lgo-toolbox-tabs .DialogButton.lgo-mode.on {
+    background: ${DOT.text} !important;
+    color: #000 !important;
+    border-color: ${DOT.text} !important;
+  }
+  .lgo-toolbox-tabs .DialogButton.lgo-mode.on.gpfocus { border: 2px solid ${DOT.red} !important; }
+  .lgo-toolbox-tabs .lgo-mode.on .lgo-mode-line { color: #444; }
   .lgo-toolbox-tabs .lgo-fold .DialogButton {
     border-style: dashed !important;
     border-radius: 20px !important;
@@ -141,12 +168,9 @@ const currentTabStyles = () => {
 };
 
 const TAB_NAMES: Record<string, string> = {
-  Home: "Overview",
-  Power: "Power and frame rate",
-  Fan: "Fan",
-  Controls: "Buttons and lights",
-  Gyro: "Gyro",
-  System: "Sound, sleep and Steam",
+  Game: "This game",
+  Device: "Device",
+  More: "More",
 };
 
 const wrap = (id: string, content: ReactNode) => (
@@ -158,9 +182,10 @@ const wrap = (id: string, content: ReactNode) => (
 
 const Content: FC = () => {
   const { state, error } = useStore();
-  const [tab, setTab] = useState("Home");
+  const [tab, setTab] = useState("Game");
+  const [updates, checking, check] = useUpdates();
 
-  // The gyro bars want quick updates; everything else is fine at 1 Hz.
+  // The gyro bars (on a page under More) want quicker updates; everything else is fine at 1 Hz.
   useEffect(() => {
     void load();
     return () => flushWrites();
@@ -174,7 +199,7 @@ const Content: FC = () => {
         if (el && el.getClientRects().length === 0) return;
         void refreshStatus();
       },
-      tab === "Gyro" ? 250 : 1000,
+      tab === "More" ? 500 : 1000,
     );
     return () => clearInterval(id);
   }, [tab]);
@@ -187,43 +212,23 @@ const Content: FC = () => {
     );
   }
 
-  const icon = (id: string, node: ReactNode) => (
-    <span className={id === tab ? "lgo-tab-current" : undefined} style={{ display: "flex" }}>
+  const icon = (id: string, node: ReactNode, label: string) => (
+    <span
+      className={id === tab ? "lgo-tab-current" : undefined}
+      style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, letterSpacing: 1.5, textTransform: "uppercase" }}
+    >
       {node}
+      {label}
     </span>
   );
   const tabs = [
-    { id: "Home", title: icon("Home", <FaHome size={18} />), content: wrap("Home", <HomeTab go={setTab} />) },
-    { id: "Power", title: icon("Power", <FaBolt size={18} />), content: wrap("Power", <PowerTab />) },
-    { id: "Fan", title: icon("Fan", <FaFan size={18} />), content: wrap("Fan", <FanTab />) },
+    { id: "Game", title: icon("Game", <FaGamepad size={16} />, "Game"), content: wrap("Game", <GameTab go={setTab} updates={updates} />) },
+    { id: "Device", title: icon("Device", <FaTabletAlt size={15} />, "Device"), content: wrap("Device", <DeviceTab />) },
     {
-      id: "Controls",
-      title: icon("Controls", <FaGamepad size={18} />),
-      content: wrap(
-        "Controls",
-        <>
-          <ControlsTab />
-          <Fold id="lights" title="Lights" summary="Stick lights and the power-button light">
-            <LightsTab />
-          </Fold>
-        </>,
-      ),
+      id: "More",
+      title: icon("More", <FaEllipsisH size={15} />, "More"),
+      content: wrap("More", <MoreTab updates={updates} checking={checking} check={check} />),
     },
-    { id: "Gyro", title: icon("Gyro", <MdScreenRotation size={18} />), content: wrap(
-        "Gyro",
-        <>
-          <SteamGyroSection />
-          <Fold
-            id="gyro-emulators"
-            title="Gyro for emulators"
-            summary={state.gyro.settings.enabled ? "On: each controller is a motion device (DSU)" : "Dolphin, Switch emulators and others"}
-          >
-            <GyroTab />
-          </Fold>
-        </>,
-      ),
-    },
-    { id: "System", title: icon("System", <FaSlidersH size={18} />), content: wrap("System", <SystemTab />) },
   ];
 
   return (
