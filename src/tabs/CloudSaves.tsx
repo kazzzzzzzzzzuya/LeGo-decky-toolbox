@@ -128,14 +128,56 @@ function steamMark(g: CloudGame): Mark {
   return g.level;
 }
 
+/** Where the game's save is: here, in the cloud, both (null: cloud not asked yet). */
+function place(g: CloudGame): { local: boolean; cloud: boolean | null } {
+  const c = g.cloud;
+  const checked = !!c && !c.error && c.present != null;
+  return { local: (g.files ?? 0) > 0, cloud: checked ? !!c?.present && (c?.files ?? 1) > 0 : null };
+}
+
+const hasSave = (g: CloudGame) => {
+  const p = place(g);
+  return p.local || p.cloud === true || g.last_upload?.result === "ok";
+};
+
+/** Names A–Z first, then "App 123" by number. */
+function byName(a: CloudGame, b: CloudGame): number {
+  const na = g2(a), nb = g2(b);
+  if (!!na !== !!nb) return na ? -1 : 1;
+  if (na && nb) return na.localeCompare(nb);
+  return (a.appid ?? 0) - (b.appid ?? 0);
+}
+const g2 = (g: CloudGame) => g.name ?? steamName(g.appid);
+
+const WhereTag: FC<{ g: CloudGame; where: string }> = ({ g, where }) => {
+  const p = place(g);
+  const [text, warn] = p.cloud === null
+    ? [p.local ? "This device · cloud not checked yet" : "Cloud not checked yet", false]
+    : p.local && p.cloud ? [`This device + ${where}`, false]
+      : p.local ? ["This device only", true]
+        : p.cloud ? [`${where} only`, false] : [null, false];
+  if (!text) return null;
+  return (
+    <span style={{
+      display: "inline-block", fontSize: 10.5, letterSpacing: 0.5, borderRadius: 8, padding: "0 6px", marginTop: 4,
+      border: `1px solid ${warn ? "rgba(215,25,33,.55)" : "#3a3a3a"}`, color: warn ? "#ff5a5f" : "#f2f2f2",
+    }}>
+      {text}
+    </span>
+  );
+};
+
 function steamLine(g: CloudGame, where: string): string {
   if (g.problem) return g.problem;
   if (g.uploading) return "Uploading now…";
+  const p = place(g);
+  if (!p.local && p.cloud) {
+    return `In ${where}${g.cloud?.newest ? `, updated ${when(g.cloud.newest)}` : ""} · not on this device`;
+  }
   const parts = [`Synced ${when(g.synced_at)}`];
   if (g.files != null) parts.push(`${plural(g.files, "file")}${g.bytes ? `, ${size(g.bytes)}` : ""}`);
   const c = g.cloud;
-  if (c && !c.error && !c.stale && c.present) parts.push(`in ${where}`);
-  else if (c?.stale) parts.push("cloud check soon");
+  if (c?.stale) parts.push("cloud check soon");
   return parts.join(" · ");
 }
 
@@ -184,6 +226,7 @@ export const CloudSavesPage: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [showEmpty, setShowEmpty] = useState(false);
   const visible = usePanelVisible();
   const loading = useRef(false);
 
@@ -229,6 +272,24 @@ export const CloudSavesPage: FC = () => {
     });
 
   const os = st.opensave;
+  const top = st.games.filter((g) => hasSave(g) || g.level === "fail");
+  const withSaves = [...top.filter((g) => g.level === "fail").sort(byName), ...top.filter((g) => g.level !== "fail").sort(byName)];
+  const noSaves = st.games.filter((g) => !top.includes(g)).sort(byName);
+  const row = (g: CloudGame, i: number) => {
+    const key = `cr-${g.appid ?? `x${i}`}`;
+    const line = (
+      <>
+        {steamLine(g, where)}
+        <br />
+        <WhereTag g={g} where={where} />
+      </>
+    );
+    return (
+      <GameRow key={key} mark={steamMark(g)} name={gameName(g)} line={line} open={open === key} toggle={() => toggle(key)}>
+        <Details lines={steamDetails(g, where)} />
+      </GameRow>
+    );
+  };
   return (
     <>
       <PanelSection title="Steam games · CloudRedirect">
@@ -240,7 +301,7 @@ export const CloudSavesPage: FC = () => {
         ) : (
           <>
             <Stats>
-              <Stat label="Games" value={st.summary.games} size={34} sub={st.provider_label ? `to ${st.provider_label}` : "no cloud chosen"} />
+              <Stat label="With saves" value={withSaves.filter(hasSave).length} size={34} sub={`of ${plural(st.games.length, "game")}`} />
               <Stat
                 label="Need a look"
                 value={st.summary.problems + st.problems.length}
@@ -258,14 +319,19 @@ export const CloudSavesPage: FC = () => {
             {st.games.length === 0 && (
               <Info label="No games">Add games to AdditionalApps in SLSsteam's config.yaml, one per line (- 1234).</Info>
             )}
-            {st.games.map((g, i) => {
-              const key = `cr-${g.appid ?? i}`;
-              return (
-                <GameRow key={key} mark={steamMark(g)} name={gameName(g)} line={steamLine(g, where)} open={open === key} toggle={() => toggle(key)}>
-                  <Details lines={steamDetails(g, where)} />
-                </GameRow>
-              );
-            })}
+            {withSaves.map(row)}
+            {noSaves.length > 0 && (
+              <PanelSectionRow>
+                <ButtonItem
+                  layout="below"
+                  description={showEmpty ? undefined : "Games in your list that have nothing synced yet."}
+                  onClick={() => setShowEmpty(!showEmpty)}
+                >
+                  {`No saves yet (${noSaves.length})  ${showEmpty ? "▴" : "▾"}`}
+                </ButtonItem>
+              </PanelSectionRow>
+            )}
+            {showEmpty && noSaves.map(row)}
             {st.can_check && (
               <PanelSectionRow>
                 <ButtonItem
