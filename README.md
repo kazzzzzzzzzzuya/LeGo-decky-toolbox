@@ -7,6 +7,13 @@
 Power and automatic TDP, fan curve, stick and power lights, charge limit,
 button remapping, swapped menu buttons and per-controller gyro for emulators.
 
+It works best together with **[Frame Suite](https://github.com/kazzzzzzzzzzuya/Frame-Suite)**.
+Choose *Smoothest* for a game here and Frame Suite turns its frame generation on;
+the toolbox keeps power, fan and battery in step with what Frame Suite does in
+that game.
+
+<img src="docs/images/game.png" width="250" alt="Game tab: now playing, frame rate, watts, time left, and the three modes"> <img src="docs/images/device.png" width="250" alt="Device tab: charge limit, sleep, speakers, controller batteries, buttons, lights, gyro, cloud saves"> <img src="docs/images/frame-suite.png" width="250" alt="Frame Suite's first page next to it">
+
 **[User manual (PDF)](docs/Legion-Go-Toolbox-Manual.pdf)** · [Features](#features) · [Requirements](#requirements) · [Installation](#installation) · [Using the tabs](#using-the-tabs) · [Troubleshooting](#troubleshooting) · [How it works](#how-it-works) · [Credits](#credits)
 
 </div>
@@ -81,12 +88,12 @@ Legion Go yet.
 6. Open the Quick Access menu → Decky → **Legion Go Toolbox** (the plugin's
    name inside Decky).
 
-**Updating:** when a newer release exists, **Update to …** appears at the top
+When a newer release exists, **Update to …** appears at the top
 of the Game tab and above **Check for updates** in **More → Backup, updates,
 about**; press it and confirm Decky's prompt. The same page has **Install
 another version**. Settings stay.
 
-**Coming from 2.x:** the version numbers started again at **1.0.0** with the
+Coming from 2.x? The version numbers started again at **1.0.0** with the
 simpler three-tab layout. Install 1.0.0 once by hand (the zip from the
 release, or *Install another version*, which lists it as older); your
 settings stay and later updates are offered as usual.
@@ -436,25 +443,25 @@ parts, one tool per game:
 
 ## Troubleshooting
 
-- **A feature says "not available"** – the text under it gives the reason.
-- **TDP jumps back** – Steam's own TDP limit is still on, or another TDP
+- **A feature says "not available"**: the text under it gives the reason.
+- **TDP jumps back**: Steam's own TDP limit is still on, or another TDP
   plugin is installed.
-- **Auto TDP says "waiting for the game to draw frames"** – no game is in
+- **Auto TDP says "waiting for the game to draw frames"**: no game is in
   focus, or the game is paused. Otherwise the line shows why no frame rate
   is measured. While streaming (Steam Remote Play, Punktfunk) gamescope does
   not report frame times by default; the plugin switches its frame
   reporting (`mangoapp_use_output_timing`) while it measures and restores it
   afterwards. Steam's performance overlay is not affected.
-- **Streaming shows a different frame rate than the device** – the stream
+- **Streaming shows a different frame rate than the device**: the stream
   runs at the client's refresh rate and repeats frames when the game is
   slower. The game's real frame rate is what the Game tab shows.
-- **Auto TDP stays at the maximum** – the target frame rate is not reachable
+- **Auto TDP stays at the maximum**: the target frame rate is not reachable
   within your maximum TDP; raise the maximum or lower the target.
-- **Stick lights or remapping report "controllers not found"** – wake the
+- **Stick lights or remapping report "controllers not found"**: wake the
   controllers by pressing a button.
-- **Menu buttons swap back** – InputPlumber restarted; the plugin re-applies
+- **Menu buttons swap back**: InputPlumber restarted; the plugin re-applies
   the swap within a few seconds.
-- **Cloud saves says "Not in the cloud" or a file is missing** – open the
+- **Cloud saves says "Not in the cloud" or a file is missing**: open the
   game once, save and close it, then **Check the cloud now**. If it stays,
   CloudRedirect's log (`~/.config/CloudRedirect/cloud_redirect.log`) has the
   details; the line above the list names connection failures.
@@ -522,27 +529,27 @@ This plugin is its own code, but it stands on what these projects worked out
 about the hardware:
 
 - [Handheld Daemon](https://github.com/hhd-dev/hhd) and
-  [hwinfo](https://github.com/hhd-dev/hwinfo) – controller protocol, Lenovo
+  [hwinfo](https://github.com/hhd-dev/hwinfo): controller protocol, Lenovo
   firmware methods
 - [Legion Center](https://github.com/InnoVision-Games/legion-center) /
-  LegionGoRemapper – remapping, fan table, charge limit
-- [HueSync](https://github.com/honjow/HueSync) – power light locations
-- [SimpleDeckyTDP](https://github.com/aarron-lee/SimpleDeckyTDP) – Lenovo
+  LegionGoRemapper: remapping, fan table, charge limit
+- [HueSync](https://github.com/honjow/HueSync): power light locations
+- [SimpleDeckyTDP](https://github.com/aarron-lee/SimpleDeckyTDP): Lenovo
   power-limit interface
 - [DeckyPlumber](https://github.com/aarron-lee/DeckyPlumber) and
-  [InputPlumber](https://github.com/ShadowBlip/InputPlumber) – menu-button
+  [InputPlumber](https://github.com/ShadowBlip/InputPlumber): menu-button
   swap
-- [Panel de Control](https://github.com/Hooandee/panel-de-control) – the idea
+- [Panel de Control](https://github.com/Hooandee/panel-de-control): the idea
   of reading frame times from gamescope's control interface
-- [decky-lsfg-vk](https://github.com/xXJSONDeruloXx/decky-lsfg-vk) – tabs in
+- [decky-lsfg-vk](https://github.com/xXJSONDeruloXx/decky-lsfg-vk): tabs in
   the Quick Access menu
 - [CloudRedirect](https://github.com/crghofficial/cloudredirect) and
-  [OpenSave](https://github.com/Liquid-co/OpenSave) – the cloud-save tools
+  [OpenSave](https://github.com/Liquid-co/OpenSave): the cloud-save tools
   the Cloud saves page reports on (their log, files, command line and local
   API)
-- [Legion Go 2 Companion](https://github.com/Rayekkk/LegionGo2Companion) –
+- [Legion Go 2 Companion](https://github.com/Rayekkk/LegionGo2Companion):
   the module-overview layout
-- [Doto](https://github.com/oliverlalan/Doto) – the dot-matrix font, by the
+- [Doto](https://github.com/oliverlalan/Doto): the dot-matrix font, by the
   Doto Project Authors (SIL Open Font License 1.1; a small Latin subset is
   embedded in `src/dot.ts`)
 
