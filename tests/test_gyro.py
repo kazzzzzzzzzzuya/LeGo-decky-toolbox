@@ -914,6 +914,27 @@ class EndToEnd(unittest.TestCase):
         self._wait(lambda: not t.running)
 
 
+    def test_automatic_follows_tablet_while_both_attached(self):
+        """Automatic: both controllers on the tablet -> the tablet's sensor; one detached -> that controller."""
+        t = self.tablets[0]
+        t.present = True
+        self._wait(lambda: self.svc._tablet_available, 6.0)
+        for _ in range(40):                                    # both on the tablet
+            self.pad.send(left_state=2, right_state=2)
+            time.sleep(0.01)
+            if self.svc.get_status()["slots"]["combined"]["source"] == "tablet":
+                break
+        self.assertEqual(self.svc.get_status()["slots"]["combined"]["source"], "tablet")
+        self._wait(lambda: t.running, 6.0)
+        for _ in range(40):                                    # right taken off
+            self.pad.send(left_state=2, right_state=3)
+            time.sleep(0.01)
+            if self.svc.get_status()["slots"]["combined"]["source"] == "right":
+                break
+        self.assertEqual(self.svc.get_status()["slots"]["combined"]["source"], "right")
+        self._wait(lambda: not t.running, 6.0)
+
+
 class TabletSensor(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.mkdtemp()

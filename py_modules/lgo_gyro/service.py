@@ -600,12 +600,18 @@ class GyroService(object):
             return "left" if left else None
         if source == "tablet":
             return "tablet" if self._tablet_available else None
+        # Automatic: a detached controller moves on its own, so it leads (right first). With both on
+        # the tablet (or none connected) the handheld moves as one: follow the tablet's own sensor.
+        if right and not self._sides["right"].attached:
+            return "right"
+        if left and not self._sides["left"].attached:
+            return "left"
+        if self._tablet_available:
+            return "tablet"
         if right:
             return "right"
         if left:
             return "left"
-        if self._tablet_available:
-            return "tablet"
         return None
 
     def _update_combined(self, buttons, fresh, now):

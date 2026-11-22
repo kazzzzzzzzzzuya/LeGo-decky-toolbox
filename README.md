@@ -299,7 +299,8 @@ controller type, so a game may start with that type's default layout.
 
 **In emulators.** Add a DSU / CemuHook motion server in your emulator: `127.0.0.1`, port
 `26760`. Slot 0 = whole handheld, slot 1 = left controller, slot 2 = right
-controller. With the gyro off, **Turn on when a controller is detached** starts
+controller. Slot 0 on *Automatic* follows a detached controller (right first)
+and, while both are on the tablet, the tablet's own sensor. With the gyro off, **Turn on when a controller is detached** starts
 it by itself when you take a controller off and stops it 15 s after both are
 back on the tablet (it looks every 5 seconds, reading only).
 
