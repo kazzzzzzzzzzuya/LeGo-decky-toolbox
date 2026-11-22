@@ -201,7 +201,7 @@ const SlotSection: FC<SlotSectionProps> = ({
             description={
               settings.source === "tablet" && !tabletAvailable
                 ? "The tablet sensor was not found on this system."
-                : "Automatic uses the right controller, then the left one, then the tablet."
+                : "Automatic: a detached controller (right first); with both on the tablet, the tablet's own sensor."
             }
             rgOptions={SOURCE_OPTIONS}
             selectedOption={settings.source ?? "auto"}
