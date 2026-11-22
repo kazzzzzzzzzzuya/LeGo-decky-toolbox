@@ -374,3 +374,45 @@ export const Toggle: FC<{
     </Field>
   );
 };
+
+/** Each detachable controller's battery as the gyro service last read it (also with the gyro off:
+ *  it reads one report a minute then). null when the device has no detachable controllers. */
+export interface PadBattery { side: "left" | "right"; connected: boolean; attached: boolean; battery: number | null }
+export function padBatteries(gyro: { status: { device: { found: boolean }; slots: Record<string, { controller_connected?: boolean; attached?: boolean; battery?: number | null }> } } | undefined): PadBattery[] | null {
+  const slots = gyro?.status?.slots;
+  if (!slots || !gyro?.status.device.found) return null;
+  return (["left", "right"] as const).map((side) => ({
+    side,
+    connected: !!slots[side]?.controller_connected,
+    attached: !!slots[side]?.attached,
+    battery: slots[side]?.battery ?? null,
+  }));
+}
+
+/** The Controllers card: L and R battery in big numbers, and whether each is detached. */
+export const PadBatteryCard: FC<{ pads: PadBattery[] }> = ({ pads }) => (
+  <PanelSectionRow>
+    <Field bottomSeparator="none" padding="none" childrenLayout="below" childrenContainerWidth="max">
+      <div className="dot-card dot-grid" style={{ width: "100%" }}>
+        <div className="dot-label">Controllers</div>
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          {pads.map((p) => {
+            const low = p.connected && !p.attached && p.battery != null && p.battery <= 15;
+            return (
+              <div key={p.side} style={{ flex: 1, minWidth: 0 }}>
+                <div className="dot-label" style={{ letterSpacing: 1.5 }}>{p.side === "left" ? "Left" : "Right"}</div>
+                <div className={low ? "dot-num dot-red" : "dot-num"} style={{ fontSize: 26, lineHeight: 1, marginTop: 4, whiteSpace: "nowrap" }}>
+                  {p.connected && p.battery != null ? p.battery : "–"}
+                  <span style={{ fontSize: 12, color: "#8a8a8a", marginLeft: 3 }}>{p.connected && p.battery != null ? "%" : ""}</span>
+                </div>
+                <div style={{ fontSize: 11.5, color: "#8a8a8a", marginTop: 4 }}>
+                  {!p.connected ? "off" : p.attached ? "on the tablet" : "detached"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </Field>
+  </PanelSectionRow>
+);

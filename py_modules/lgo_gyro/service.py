@@ -102,6 +102,7 @@ class GyroService(object):
                 name, Calibration.from_dict(self._settings["calibration"][name])
             )
         self._sides = {"left": _Side(), "right": _Side()}
+        self._battery_probed = -1e9
 
         self._tablet_samples = collections.deque(maxlen=64)
         make_tablet = tablet_factory or (
@@ -278,6 +279,7 @@ class GyroService(object):
 
                 if not self._settings["enabled"]:
                     self._shutdown_io()
+                    self._probe_battery(now)
                     self._status = self._build_status(now)
                     self._wait([self._wake_r], 0.5)
                     self._drain_wake()
@@ -744,6 +746,54 @@ class GyroService(object):
             self._save()
 
         self._status = self._build_status(now)
+
+    # ---- controller battery while the gyro is off --------------------------
+
+    BATTERY_PROBE_S = 60.0     # how often, with the stream otherwise closed
+    BATTERY_READ_S = 1.5       # how long to wait for one state report
+
+    def _probe_battery(self, now):
+        """With the gyro off the controllers' report stream stays closed. For the battery level of
+        each controller (shown on the Device tab), open it briefly once a minute, read one state
+        report and close it again. Read only: nothing is sent to the controllers."""
+        if now - self._battery_probed < self.BATTERY_PROBE_S:
+            return
+        self._battery_probed = now
+        try:
+            cands = legion_hid.find_candidates()[:2]
+        except Exception:
+            cands = []
+        try:
+            for cand in cands:
+                try:
+                    fd = legion_hid.open_candidate(cand)
+                except OSError:
+                    continue
+                try:
+                    end = time.monotonic() + self.BATTERY_READ_S
+                    while time.monotonic() < end:
+                        ready, _, _ = select.select([fd], [], [], 0.2)
+                        if not ready:
+                            continue
+                        try:
+                            buf = os.read(fd, 128)
+                        except (BlockingIOError, InterruptedError):
+                            continue
+                        except OSError:
+                            break
+                        report = legion_hid.parse_report(buf)
+                        if report is None:
+                            continue
+                        for name, sample in (("left", report.left), ("right", report.right)):
+                            side = self._sides[name]
+                            side.connected = sample.connected
+                            side.attached = sample.attached
+                            side.battery = sample.battery
+                        return
+                finally:
+                    os.close(fd)
+        finally:
+            legion_hid.cleanup_private_nodes()
 
     def _shutdown_io(self):
         if not self._io_open:

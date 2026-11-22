@@ -973,3 +973,36 @@ class TabletSensor(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BatteryWhileGyroOff(unittest.TestCase):
+    """Gyro off: one state report a minute gives each controller's battery and attach state."""
+
+    def test_probe_reads_one_report(self):
+        from lgo_gyro import legion_hid
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        path = os.path.join(tmp, "settings.json")
+        s = cfg.defaults()
+        s["enabled"] = False
+        cfg.save(path, s)
+        log = logging.getLogger("battery-test")
+        log.addHandler(logging.NullHandler())
+        log.propagate = False
+        svc = GyroService(path, logger=log)
+        r, w = os.pipe()
+        # left detached at 64 %, right attached at 100 % (charging on the tablet)
+        os.write(w, bytes(make_report(left_state=3, right_state=2, left_batt=64, right_batt=100)))
+        orig = (legion_hid.find_candidates, legion_hid.open_candidate, legion_hid.cleanup_private_nodes)
+        legion_hid.find_candidates = lambda: [object()]
+        legion_hid.open_candidate = lambda cand: r
+        legion_hid.cleanup_private_nodes = lambda: None
+        try:
+            svc._probe_battery(100.0)
+            svc._probe_battery(130.0)                 # within the minute: not again
+        finally:
+            legion_hid.find_candidates, legion_hid.open_candidate, legion_hid.cleanup_private_nodes = orig
+            os.close(w)
+        st = svc._build_status(100.0)["slots"]
+        self.assertEqual((st["left"]["battery"], st["left"]["attached"]), (64, False))
+        self.assertEqual((st["right"]["battery"], st["right"]["attached"]), (100, True))

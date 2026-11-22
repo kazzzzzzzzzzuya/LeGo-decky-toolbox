@@ -6,7 +6,7 @@ import { ModeId, ModeInfo, modeInfo, SystemState, systemState } from "../backend
 import { applyMode, hm, Mode, modeById, MODES, modeSets } from "../modes";
 import { usePanelVisible } from "../panel";
 import { useStore } from "../store";
-import { Info, NavRow } from "../ui";
+import { Info, NavRow, padBatteries } from "../ui";
 import type { Updates } from "../backend";
 import { UpdateBanner } from "./Updates";
 
@@ -115,6 +115,11 @@ export const GameTab: FC<{ go: (tab: string) => void; updates: Updates | null }>
                   status.fan.temp != null ? `${status.fan.temp} °C` : null,
                   batt ? `battery ${batt.percent} %` : null,
                   charging ? (batt?.status === "Full" ? "full" : "charging") : null,
+                  // Controllers while detached: their own battery.
+                  (() => {
+                    const off = (padBatteries(state.gyro) ?? []).filter((p) => p.connected && !p.attached && p.battery != null);
+                    return off.length ? off.map((p) => `${p.side === "left" ? "L" : "R"} ${p.battery} %`).join(" · ") : null;
+                  })(),
                 ]
                   .filter(Boolean)
                   .join(" · ")}

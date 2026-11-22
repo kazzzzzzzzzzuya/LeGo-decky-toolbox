@@ -12,6 +12,7 @@ import { watchCloudSaves } from "./tabs/CloudSaves";
 import { DeviceTab } from "./tabs/Device";
 import { GameTab } from "./tabs/Game";
 import { MoreTab } from "./tabs/More";
+import { watchControllerBattery } from "./padWatch";
 import { watchSteamMods } from "./tabs/System";
 import { useUpdates } from "./tabs/Updates";
 import { PLUGIN_NAME } from "./ui";
@@ -299,6 +300,7 @@ export default definePlugin(() => {
   const stopApp = watchRunningApp();
   const stopSleep = watchSleep();
   const stopMods = watchSteamMods();
+  const stopPads = watchControllerBattery();
   const stopSaves = watchCloudSaves();
   return {
     name: PLUGIN_NAME,
@@ -317,6 +319,7 @@ export default definePlugin(() => {
       stopApp();
       stopSleep();
       stopMods();
+      stopPads();
       stopSaves();
       flushWrites();
     },

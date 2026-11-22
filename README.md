@@ -22,7 +22,7 @@ every feature that your system cannot do says so, with the reason.
 | Tab | What it holds |
 |---|---|
 | **Game** | What is happening now in plain words (frame rate, watts, hours left), a red alert only when something broke, and **one choice per game**: *Longest battery*, *Balanced* or *Smoothest*. Each sets the game's power, frame cap, fan and frame generation together, shows the hours it gives (learned per game) and is remembered |
-| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), buttons, lights, gyro (Steam games and emulators on one page), and **Cloud saves**: per game, whether its save reached the cloud |
+| **Device** | Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers (Speaker EQ), **each controller's battery** (left and right, also while detached; a note when a detached one drops to 15 % and 5 %), buttons, lights, gyro (Steam games and emulators on one page), and **Cloud saves**: per game, whether its save reached the cloud |
 | **More** | Every detailed control, nothing removed: power and TDP (Auto TDP), frame rate cap, battery goal, fan curve, Steam mods (SLSsteam, CloudRedirect, ASSella / Uran) and backups, backup / updates / about. A change here overrides the game's mode for that game |
 
 Saved settings are applied when SteamOS starts, after sleep, and when a
