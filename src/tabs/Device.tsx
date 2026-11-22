@@ -175,7 +175,7 @@ export const DeviceTab: FC = () => {
         />
         <NavRow
           label="Gyro"
-          sub={`Steam games: ${c.steam_controller !== "xbox" ? "on" : "off"} · emulators: ${state.gyro.settings.enabled ? "on" : "off"}`}
+          sub={`Steam games: ${c.steam_controller !== "xbox" ? "on" : "off"} · emulators: ${state.gyro.settings.enabled ? "on" : state.gyro.settings.auto_detached ? (state.gyro.status.auto_active ? "on (detached)" : "when detached") : "off"}`}
           onClick={() => setPage("gyro")}
         />
       </PanelSection>

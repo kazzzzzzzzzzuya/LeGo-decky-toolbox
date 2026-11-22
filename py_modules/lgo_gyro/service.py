@@ -103,6 +103,8 @@ class GyroService(object):
             )
         self._sides = {"left": _Side(), "right": _Side()}
         self._battery_probed = -1e9
+        self._auto_on = False             # on by itself for a detached controller
+        self._auto_back_since = None
 
         self._tablet_samples = collections.deque(maxlen=64)
         make_tablet = tablet_factory or (
@@ -277,9 +279,11 @@ class GyroService(object):
                 now = time.monotonic()
                 self._apply_pending(now)
 
-                if not self._settings["enabled"]:
+                if not self._active():
                     self._shutdown_io()
                     self._probe_battery(now)
+                    if self._auto_wanted():
+                        continue          # a controller was detached: on with the next round
                     self._status = self._build_status(now)
                     self._wait([self._wake_r], 0.5)
                     self._drain_wake()
@@ -300,6 +304,7 @@ class GyroService(object):
                 now = time.monotonic()
                 if self._hid is not None and self._hid.fd in ready:
                     self._read_hid(now)
+                self._auto_check(now)
                 if self._wake_r in ready:
                     self._drain_wake()
                     self._run_commands(now)
@@ -750,13 +755,16 @@ class GyroService(object):
     # ---- controller battery while the gyro is off --------------------------
 
     BATTERY_PROBE_S = 60.0     # how often, with the stream otherwise closed
+    AUTO_PROBE_S = 5.0         # ... while waiting to turn on for a detached controller
+    AUTO_OFF_S = 15.0          # both controllers back (or off) this long: off again
     BATTERY_READ_S = 1.5       # how long to wait for one state report
 
     def _probe_battery(self, now):
         """With the gyro off the controllers' report stream stays closed. For the battery level of
         each controller (shown on the Device tab), open it briefly once a minute, read one state
         report and close it again. Read only: nothing is sent to the controllers."""
-        if now - self._battery_probed < self.BATTERY_PROBE_S:
+        every = self.AUTO_PROBE_S if self._settings.get("auto_detached") else self.BATTERY_PROBE_S
+        if now - self._battery_probed < every:
             return
         self._battery_probed = now
         try:
@@ -794,6 +802,44 @@ class GyroService(object):
                     os.close(fd)
         finally:
             legion_hid.cleanup_private_nodes()
+
+    # ---- on by itself while a controller is detached --------------------------
+
+    def _active(self):
+        """Running: switched on, or on by itself for a detached controller."""
+        return bool(self._settings["enabled"] or (self._settings.get("auto_detached") and self._auto_on))
+
+    def _detached(self):
+        return any(s.connected and not s.attached for s in self._sides.values())
+
+    def _auto_wanted(self):
+        """With the gyro off: turn on when a controller is detached (seen by the battery probe)."""
+        if self._settings["enabled"] or not self._settings.get("auto_detached") or self._auto_on:
+            return False
+        if self._detached():
+            self._auto_on = True
+            self._auto_back_since = None
+            self._log.info("Gyro for emulators: on by itself, a controller is detached")
+            return True
+        return False
+
+    def _auto_check(self, now):
+        """On by itself: off again once both controllers are back on the tablet (or off) for a while."""
+        if self._settings["enabled"] or not self._auto_on:
+            self._auto_on = self._auto_on and not self._settings["enabled"]
+            return
+        if not self._settings.get("auto_detached"):
+            self._auto_on = False
+            return
+        if self._detached():
+            self._auto_back_since = None
+        elif self._auto_back_since is None:
+            self._auto_back_since = now
+        elif now - self._auto_back_since >= self.AUTO_OFF_S:
+            self._auto_on = False
+            self._auto_back_since = None
+            self._battery_probed = now        # the sides were just read: no probe right away
+            self._log.info("Gyro for emulators: off again, both controllers are back")
 
     def _shutdown_io(self):
         if not self._io_open:
@@ -843,7 +889,8 @@ class GyroService(object):
             slots[name] = entry
 
         return {
-            "enabled": s["enabled"],
+            "enabled": self._active(),
+            "auto_active": bool(self._auto_on and not s["enabled"]),
             "running": self._thread is not None and self._thread.is_alive(),
             "model": self._model,
             "device": {

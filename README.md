@@ -299,7 +299,9 @@ controller type, so a game may start with that type's default layout.
 
 **In emulators.** Add a DSU / CemuHook motion server in your emulator: `127.0.0.1`, port
 `26760`. Slot 0 = whole handheld, slot 1 = left controller, slot 2 = right
-controller.
+controller. With the gyro off, **Turn on when a controller is detached** starts
+it by itself when you take a controller off and stops it 15 s after both are
+back on the tablet (it looks every 5 seconds, reading only).
 
 - **Dolphin**: *Controllers → Alternate Input Sources → DSU Client*, then in
   the Wii Remote's *Motion Input* tab choose `DSUClient/2/…` and press

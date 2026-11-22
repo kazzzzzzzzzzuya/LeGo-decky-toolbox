@@ -409,7 +409,23 @@ export const GyroTab: FC = () => {
   };
 
   const customised = defaults != null && isCustomised(settings, defaults);
-  const anyLive = settings.enabled && (status.slots.left.live || status.slots.right.live);
+  // Running: switched on, or on by itself for a detached controller (the switch shows only the former).
+  const running = status.enabled;
+  const anyLive = running && (status.slots.left.live || status.slots.right.live);
+  const autoToggle = !settings.enabled && (
+    <PanelSectionRow>
+      <Toggle
+        label="Turn on when a controller is detached"
+        description={
+          status.auto_active
+            ? "On now: a controller is detached. Off again 15 s after both are back."
+            : "Starts by itself when you take a controller off, and stops 15 s after both are back on the tablet."
+        }
+        checked={settings.auto_detached}
+        onChange={(v) => update({ auto_detached: v })}
+      />
+    </PanelSectionRow>
+  );
 
   const modeToggle = (
     <PanelSectionRow>
@@ -438,6 +454,7 @@ export const GyroTab: FC = () => {
               onChange={(v) => update({ enabled: v })}
             />
           </PanelSectionRow>
+          {autoToggle}
           {error && (
             <PanelSectionRow>
               <Field label="Error" description={error} padding="compact" />
@@ -447,13 +464,13 @@ export const GyroTab: FC = () => {
             <PanelSectionRow key={name}>
               <Field
                 label={name === "right" ? "Right controller" : "Left controller"}
-                description={simpleControllerLine(status.slots[name], settings.enabled)}
+                description={simpleControllerLine(status.slots[name], running)}
                 childrenLayout="below"
                 padding="compact"
               >
                 <ActivityBar
                   gyro={status.slots[name].gyro}
-                  active={settings.enabled && status.slots[name].connected && status.slots[name].live}
+                  active={running && status.slots[name].connected && status.slots[name].live}
                 />
               </Field>
             </PanelSectionRow>
@@ -512,7 +529,7 @@ export const GyroTab: FC = () => {
     name,
     settings: settings.slots[name],
     status: status.slots[name],
-    serviceOn: settings.enabled,
+    serviceOn: running,
     tabletAvailable: status.tablet.available,
     update,
   });
@@ -528,6 +545,7 @@ export const GyroTab: FC = () => {
             onChange={(v) => update({ enabled: v })}
           />
         </PanelSectionRow>
+        {autoToggle}
         <PanelSectionRow>
           <Field label="Controllers" description={controllerLine(status)} padding="compact" />
         </PanelSectionRow>
