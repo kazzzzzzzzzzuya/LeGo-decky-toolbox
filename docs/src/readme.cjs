@@ -3,6 +3,8 @@ const fs = require('fs');
 const { marked } = require('marked');
 const [src, out, css] = process.argv.slice(2);
 let md = fs.readFileSync(src, 'utf8');
+// Picture paths in README.md start at the repo root; this page is built in docs/src.
+md = md.replace(/src="docs\/images\//g, 'src="../images/');
 // The centred header block in the README is HTML wrapped around markdown.
 md = md.replace(/<div align="center">([\s\S]*?)<\/div>/, (_, inner) =>
   '<header class="cover">' + marked.parse(inner) + '</header>');

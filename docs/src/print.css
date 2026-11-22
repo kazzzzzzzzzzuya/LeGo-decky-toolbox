@@ -34,3 +34,6 @@ hr { border: 0; border-top: 0.6pt solid var(--line); margin: 12pt 0; }
 .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0.5pt; width: 15pt; height: 15pt; border-radius: 50%; background: var(--accent); color: #fff; font-size: 8pt; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .chapter { break-before: page; }
 .keep { break-inside: avoid; }
+
+/* README pictures: the three panels side by side, tops aligned */
+img[src^="../images/"] { width: 32%; height: auto; vertical-align: top; }
