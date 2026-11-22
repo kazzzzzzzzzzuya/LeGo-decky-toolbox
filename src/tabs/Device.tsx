@@ -5,7 +5,7 @@ import { FC, useEffect, useState } from "react";
 import { cloudSavesSummary, SystemState, systemState, systemUpdate } from "../backend";
 import { usePanelVisible } from "../panel";
 import { update, useStore } from "../store";
-import { ErrorRow, Group, NavRow, Pills, PLUGIN_NAME, SubPage, Toggle } from "../ui";
+import { ErrorRow, Group, NavRow, padBatteries, PadBatteryCard, Pills, PLUGIN_NAME, SubPage, Toggle } from "../ui";
 import { CloudSavesPage } from "./CloudSaves";
 import { ControlsTab, LAYOUTS } from "./Controls";
 import { LightsTab } from "./Lights";
@@ -81,6 +81,7 @@ export const DeviceTab: FC = () => {
     systemUpdate(patch)
       .then(setSys)
       .catch((e) => toaster.toast({ title: PLUGIN_NAME, body: `Could not save: ${e}` }));
+  const pads = padBatteries(state.gyro);
   const c = settings.controls;
   const layout = LAYOUTS.find((l) => l.data === c.swap_layout);
   const sticks = settings.lighting.sticks;
@@ -155,6 +156,7 @@ export const DeviceTab: FC = () => {
 
       <Group>Controls</Group>
       <PanelSection>
+        {pads && <PadBatteryCard pads={pads} />}
         <NavRow
           label="Buttons"
           sub={[
@@ -173,7 +175,7 @@ export const DeviceTab: FC = () => {
         />
         <NavRow
           label="Gyro"
-          sub={`Steam games: ${c.steam_controller !== "xbox" ? "on" : "off"} · emulators: ${state.gyro.settings.enabled ? "on" : "off"}`}
+          sub={`Steam games: ${c.steam_controller !== "xbox" ? "on" : "off"} · emulators: ${state.gyro.settings.enabled ? "on" : state.gyro.settings.auto_detached ? (state.gyro.status.auto_active ? "on (detached)" : "when detached") : "off"}`}
           onClick={() => setPage("gyro")}
         />
       </PanelSection>

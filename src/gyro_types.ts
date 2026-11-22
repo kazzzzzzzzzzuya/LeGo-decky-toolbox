@@ -18,6 +18,8 @@ export interface GyroSettings {
   enabled: boolean;
   /** Panel layout only: false = simple view, true = all options. */
   advanced: boolean;
+  /** Off, but on by itself while a controller is detached. */
+  auto_detached: boolean;
   port: number;
   lan: boolean;
   auto_calibrate: boolean;
@@ -42,7 +44,10 @@ export interface SlotStatus {
 }
 
 export interface GyroStatus {
+  /** Running: switched on, or on by itself for a detached controller. */
   enabled: boolean;
+  /** On by itself right now because a controller is detached. */
+  auto_active?: boolean;
   running: boolean;
   model: string;
   device: {

@@ -31,7 +31,7 @@
 <!-- ============================== COVER ============================== -->
 <section class="cover">
   <div class="top">
-    <div class="kicker">User manual · Version 1.0.6</div>
+    <div class="kicker">User manual · Version 1.0.7</div>
     <h1>Legion Go Toolbox</h1>
     <div class="sub">The Lenovo Legion Go's hardware controls in the Steam Quick Access menu: power and automatic TDP, fan, lights, battery, buttons and gyro.</div>
     <div class="tabs"><span>Home</span><span>Power</span><span>Fan</span><span>Lights</span><span>Controls</span><span>Gyro</span></div>
@@ -128,7 +128,7 @@
   <table>
     <tr><th>Tab</th><th>What it holds</th></tr>
     <tr><td class="k">Game</td><td>What is happening now (frame rate, watts, hours left), a red alert only when something broke, and one choice per game: <b>Longest battery</b>, <b>Balanced</b> or <b>Smoothest</b>.</td></tr>
-    <tr><td class="k">Device</td><td>Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers, buttons, lights, gyro (Steam games and emulators), cloud saves.</td></tr>
+    <tr><td class="k">Device</td><td>Set-once settings: stop charging at 80 %, power-off after a long sleep, better speakers, each controller's battery (left and right; read only, once a minute while the gyro for emulators is off; a note at 15 % and 5 % while detached), buttons, lights, gyro (Steam games and emulators), cloud saves.</td></tr>
     <tr><td class="k">More</td><td>Every detailed control: power and TDP, frame rate cap, battery goal, fan curve, Steam mods and backups, backup / updates / about. A change here overrides the game's mode for that game.</td></tr>
   </table>
 
@@ -423,7 +423,7 @@
   <div class="note"><b>Layouts per controller type.</b> Steam stores controller layouts separately for each controller type. After switching type, a game may start with that type's default layout.</div>
 
   <h2>Gyro for emulators</h2>
-  <p>The plugin runs a motion server in the DSU / CemuHook format on <code>127.0.0.1</code>, port <code>26760</code>. Add it once in each emulator.</p>
+  <p>The plugin runs a motion server in the DSU / CemuHook format on <code>127.0.0.1</code>, port <code>26760</code>. Add it once in each emulator. With the gyro off, <b>Turn on when a controller is detached</b> starts it by itself when you take a controller off and stops it 15 seconds after both are back on the tablet (it looks every 5 seconds; reading only).</p>
   <table>
     <tr><th>Slot</th><th>Device</th><th>Use it for</th></tr>
     <tr><td class="k">1</td><td>Left controller</td><td>Nunchuk, left Joy-Con, player 2's remote</td></tr>
