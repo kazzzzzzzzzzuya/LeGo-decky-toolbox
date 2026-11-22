@@ -8,6 +8,7 @@ import { menuState, onResume, onSuspend, setRunningApp } from "./backend";
 import { DOT, dotCss } from "./dot";
 import { panel, usePanelVisible } from "./panel";
 import { flushWrites, load, refreshStatus, useStore } from "./store";
+import { watchCloudSaves } from "./tabs/CloudSaves";
 import { DeviceTab } from "./tabs/Device";
 import { GameTab } from "./tabs/Game";
 import { MoreTab } from "./tabs/More";
@@ -298,6 +299,7 @@ export default definePlugin(() => {
   const stopApp = watchRunningApp();
   const stopSleep = watchSleep();
   const stopMods = watchSteamMods();
+  const stopSaves = watchCloudSaves();
   return {
     name: PLUGIN_NAME,
     titleView: (
@@ -315,6 +317,7 @@ export default definePlugin(() => {
       stopApp();
       stopSleep();
       stopMods();
+      stopSaves();
       flushWrites();
     },
   };

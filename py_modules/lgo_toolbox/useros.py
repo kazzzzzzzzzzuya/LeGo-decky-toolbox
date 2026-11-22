@@ -44,25 +44,29 @@ class User(object):
     def which(self, prog):
         return shutil.which(prog, path=self.env().get("PATH") or "/usr/bin:/bin")
 
-    def run(self, cmd, timeout=5.0):
+    def run(self, cmd, timeout=5.0, env=None):
         """(returncode, stdout, stderr) of a command run as the user; rc -1
-        when it could not start or timed out."""
+        when it could not start or timed out. env adds to the user's environment."""
+        full = self.env()
+        full.update(env or {})
         try:
             p = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               stdin=subprocess.DEVNULL, timeout=timeout, env=self.env(),
+                               stdin=subprocess.DEVNULL, timeout=timeout, env=full,
                                **self._as_user())
             return (p.returncode, p.stdout.decode("utf-8", "replace"),
                     p.stderr.decode("utf-8", "replace"))
         except (OSError, subprocess.SubprocessError, ValueError) as e:
             return -1, "", str(e)
 
-    def spawn(self, cmd, log_path=None):
+    def spawn(self, cmd, log_path=None, env=None):
         """Start a long-running process as the user. Its output goes to
-        log_path (opened here, as root)."""
+        log_path (opened here, as root). env adds to the user's environment."""
+        full = self.env()
+        full.update(env or {})
         log = open(log_path, "w") if log_path else subprocess.DEVNULL
         try:
             return subprocess.Popen(cmd, stdout=log, stderr=subprocess.STDOUT,
-                                    stdin=subprocess.DEVNULL, env=self.env(),
+                                    stdin=subprocess.DEVNULL, env=full,
                                     start_new_session=True, **self._as_user())
         finally:
             if log_path:

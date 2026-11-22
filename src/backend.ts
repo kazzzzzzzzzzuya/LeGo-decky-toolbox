@@ -413,3 +413,86 @@ export interface ModeInfo {
 export const setMode = callable<[appId: number, name: string, mode: ModeId | null], ModeInfo>("set_mode");
 export const modeInfo = callable<[appId: number | null], ModeInfo>("mode_info");
 export const menuState = callable<[open: boolean], void>("menu");
+
+// ---- Cloud saves: CloudRedirect (Steam games), OpenSave (non-Steam games) ----
+export type SaveLevel = "ok" | "warn" | "fail" | "none";
+export interface CloudGame {
+  appid: number | null;
+  name: string | null;
+  level: SaveLevel;
+  problem: string | null;
+  files: number | null;
+  bytes: number | null;
+  /** When CloudRedirect last recorded this game's synced files (Unix seconds). */
+  synced_at: number | null;
+  uploading?: boolean;
+  last_upload: { at: string; this_session: boolean; result: "ok" | "failed" | null; files: number | null } | null;
+  cloud: {
+    checked_at: number | null;
+    present: boolean | null;
+    matched: number | null;
+    compared: number | null;
+    missing: string[];
+    missing_count: number;
+    newest: number | null;
+    /** Files of this game in the cloud. */
+    files?: number | null;
+    error: string | null;
+    /** The saves changed here after this check: a new one follows. */
+    stale: boolean;
+  } | null;
+}
+export interface OpenSaveGame {
+  id: string;
+  name: string;
+  steam_app: number | null;
+  cloudredirect: boolean;
+  last_snapshot: number | null;
+  last_synced: number | null;
+  folder_missing: boolean;
+  emptied: boolean;
+  conflict: boolean;
+  playing: boolean;
+}
+export interface OpenSaveState {
+  installed: boolean;
+  running: boolean;
+  error?: string;
+  cloud?: { enabled: boolean; ready: boolean; provider: string } | null;
+  peers?: number;
+  peers_online?: number;
+  paused?: boolean;
+  games: OpenSaveGame[];
+  steam_games: OpenSaveGame[];
+}
+export interface CloudSavesState {
+  installed: boolean;
+  provider: string | null;
+  provider_label: string | null;
+  account: number | null;
+  loaded: boolean | null;
+  signed_in: boolean | null;
+  problems: string[];
+  session_started: string | null;
+  can_check: boolean;
+  checking: boolean;
+  cloud_at: number | null;
+  cloud_error: string | null;
+  games: CloudGame[];
+  summary: { games: number; problems: number; warnings: number };
+  opensave: OpenSaveState;
+}
+export interface OpenSaveAnswer { ok: boolean; reason?: string; error?: string; outcome?: string; uploaded?: number; already?: boolean }
+export const cloudSaves = callable<[auto: boolean], CloudSavesState>("cloud_saves");
+export const cloudSavesSummary = callable<
+  [],
+  { installed: boolean; provider_label: string | null; games: number; problems: number }
+>("cloud_saves_summary");
+export const cloudSavesCheck = callable<[], { started: boolean; checking: boolean }>("cloud_saves_check");
+export const cloudSavesAlerts = callable<[], { appid: number | null; name: string | null; problem: string }[]>(
+  "cloud_saves_alerts",
+);
+export const opensaveStart = callable<[], OpenSaveAnswer>("opensave_start");
+export const opensaveSync = callable<[gameId: string], OpenSaveAnswer>("opensave_sync");
+export const opensaveBackup = callable<[gameId: string], OpenSaveAnswer>("opensave_backup");
+export const opensaveUntrack = callable<[gameId: string], OpenSaveAnswer>("opensave_untrack");

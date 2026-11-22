@@ -389,7 +389,7 @@ export function watchSteamMods(): () => void {
         if (r?.overall !== "fail") return;
         const names = r.items.filter((i) => !i.ok && i.id !== "steam").map((i) => i.label).join(", ");
         toast(
-          `${r.updated_since_good ? "Steam updated: " : ""}${names || "a Steam mod"} is not working. See Device → Steam mods.`,
+          `${r.updated_since_good ? "Steam updated: " : ""}${names || "a Steam mod"} is not working. See More → Steam mods and backups.`,
         );
       })
       .catch(() => undefined);
